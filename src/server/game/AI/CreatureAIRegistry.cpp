@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@
 #include "ScheduledChangeAI.h"
 #include "SmartAI.h"
 #include "TotemAI.h"
+#include "AssistanceAI.h"
 
 #include "MovementGenerator.h"
 
@@ -36,6 +37,7 @@ namespace AIRegistry
         (new CreatureAIFactory<NullCreatureAI>("NullCreatureAI"))->RegisterSelf();
         (new CreatureAIFactory<TriggerAI>("TriggerAI"))->RegisterSelf();
         (new CreatureAIFactory<AggressorAI>("AggressorAI"))->RegisterSelf();
+        (new CreatureAIFactory<AssistanceAI>("AssistanceAI"))->RegisterSelf();
         (new CreatureAIFactory<ReactorAI>("ReactorAI"))->RegisterSelf();
         (new CreatureAIFactory<PassiveAI>("PassiveAI"))->RegisterSelf();
         (new CreatureAIFactory<CritterAI>("CritterAI"))->RegisterSelf();

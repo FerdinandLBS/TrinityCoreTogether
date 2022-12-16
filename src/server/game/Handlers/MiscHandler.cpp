@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -52,6 +52,8 @@
 #include "WhoListStorage.h"
 #include "World.h"
 #include "WorldPacket.h"
+#include "Item.h"
+#include "TCTogetherHandler.h"
 #include <cstdarg>
 #include <zlib.h>
 
@@ -94,6 +96,13 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPacket& recvData)
     std::string code = "";
 
     recvData >> guid >> menuId >> gossipListId;
+    Item* pItem = _player->GetItemByGuid(guid);
+    if (pItem && pItem->GetEntry() == 60000)
+    {
+        GossipSelect_Item(_player, pItem, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId));
+        recvData.rfinish();
+        return;
+    }
 
     if (!_player->PlayerTalkClass->GetGossipMenu().GetItem(gossipListId))
     {

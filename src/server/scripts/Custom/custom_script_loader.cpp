@@ -17,8 +17,13 @@
 
 // This is where scripts' loading functions should be declared:
 
+extern void AddSC_telebook_script();
+extern void AddSC_TCTogether_script();
+
 // The name of this function should match:
 // void Add${NameOfDirectory}Scripts()
 void AddCustomScripts()
 {
+    AddSC_telebook_script();
+    AddSC_TCTogether_script();
 }
