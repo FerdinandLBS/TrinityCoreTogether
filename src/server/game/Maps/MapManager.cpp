@@ -34,6 +34,10 @@
 #include "WorldSession.h"
 #include "Opcodes.h"
 
+//npcbot
+#include "botmgr.h"
+//end npcbot
+
 MapManager::MapManager()
     : _nextInstanceId(0), _scheduledScripts(0)
 {
@@ -51,6 +55,10 @@ void MapManager::Initialize()
     // Start mtmaps if needed.
     if (num_threads > 0)
         m_updater.activate(num_threads);
+
+    //npcbot: load bots
+    BotMgr::Initialize();
+    //end npcbot
 }
 
 void MapManager::InitializeVisibilityDistanceInfo()
