@@ -21,6 +21,7 @@
 #include "Creature.h"
 #include "DatabaseEnv.h"
 #include "DB2Stores.h"
+#include "GossipDef.h"
 #include "Item.h"
 #include "ItemPackets.h"
 #include "Log.h"
@@ -94,13 +95,13 @@ void WorldSession::HandleSwapInvItemOpcode(WorldPackets::Item::SwapInvItem& swap
 
     if (_player->IsBankPos(INVENTORY_SLOT_BAG_0, swapInvItem.Slot1) && !CanUseBank())
     {
-        TC_LOG_DEBUG("network", "HandleSwapInvItemOpcode - Unit (%s) not found or you can't interact with him.", m_currentBankerGUID.ToString().c_str());
+        TC_LOG_DEBUG("network", "HandleSwapInvItemOpcode - Unit (%s) not found or you can't interact with him.", _player->PlayerTalkClass->GetInteractionData().SourceGuid.ToString().c_str());
         return;
     }
 
     if (_player->IsBankPos(INVENTORY_SLOT_BAG_0, swapInvItem.Slot2) && !CanUseBank())
     {
-        TC_LOG_DEBUG("network", "HandleSwapInvItemOpcode - Unit (%s) not found or you can't interact with him.", m_currentBankerGUID.ToString().c_str());
+        TC_LOG_DEBUG("network", "HandleSwapInvItemOpcode - Unit (%s) not found or you can't interact with him.", _player->PlayerTalkClass->GetInteractionData().SourceGuid.ToString().c_str());
         return;
     }
 
@@ -158,13 +159,13 @@ void WorldSession::HandleSwapItem(WorldPackets::Item::SwapItem& swapItem)
 
     if (_player->IsBankPos(swapItem.ContainerSlotA, swapItem.SlotA) && !CanUseBank())
     {
-        TC_LOG_DEBUG("network", "HandleSwapItem - Unit (%s) not found or you can't interact with him.", m_currentBankerGUID.ToString().c_str());
+        TC_LOG_DEBUG("network", "HandleSwapItem - Unit (%s) not found or you can't interact with him.", _player->PlayerTalkClass->GetInteractionData().SourceGuid.ToString().c_str());
         return;
     }
 
     if (_player->IsBankPos(swapItem.ContainerSlotB, swapItem.SlotB) && !CanUseBank())
     {
-        TC_LOG_DEBUG("network", "HandleSwapItem - Unit (%s) not found or you can't interact with him.", m_currentBankerGUID.ToString().c_str());
+        TC_LOG_DEBUG("network", "HandleSwapItem - Unit (%s) not found or you can't interact with him.", _player->PlayerTalkClass->GetInteractionData().SourceGuid.ToString().c_str());
         return;
     }
 
@@ -660,7 +661,8 @@ void WorldSession::SendListInventory(ObjectGuid vendorGuid)
                 continue;
             }
 
-            int32 price = vendorItem->IsGoldRequired(itemTemplate) ? uint32(floor(itemTemplate->GetBuyPrice() * discountMod)) : 0;
+            uint64 price = uint64(floor(itemTemplate->GetBuyPrice() * discountMod));
+            price = itemTemplate->GetBuyPrice() > 0 ? std::max(uint64(1), price) : price;
 
             if (int32 priceMod = _player->GetTotalAuraModifier(SPELL_AURA_MOD_VENDOR_ITEMS_PRICES))
                 price -= CalculatePct(price, priceMod);
@@ -955,8 +957,8 @@ void WorldSession::HandleSocketGems(WorldPackets::Item::SocketGems& socketGems)
             gems[i] = gem;
             gemData[i].ItemId = gem->GetEntry();
             gemData[i].Context = gem->m_itemData->Context;
-            for (std::size_t b = 0; b < gem->m_itemData->BonusListIDs->size() && b < 16; ++b)
-                gemData[i].BonusListIDs[b] = (*gem->m_itemData->BonusListIDs)[b];
+            for (std::size_t b = 0; b < gem->GetBonusListIDs().size() && b < 16; ++b)
+                gemData[i].BonusListIDs[b] = gem->GetBonusListIDs()[b];
 
             gemProperties[i] = sGemPropertiesStore.LookupEntry(gem->GetTemplate()->GetGemProperties());
         }
@@ -1181,9 +1183,9 @@ bool WorldSession::CanUseBank(ObjectGuid bankerGUID) const
 {
     // bankerGUID parameter is optional, set to 0 by default.
     if (!bankerGUID)
-        bankerGUID = m_currentBankerGUID;
+        bankerGUID = _player->PlayerTalkClass->GetInteractionData().SourceGuid;
 
-    bool isUsingBankCommand = (bankerGUID == GetPlayer()->GetGUID() && bankerGUID == m_currentBankerGUID);
+    bool isUsingBankCommand = (bankerGUID == GetPlayer()->GetGUID() && bankerGUID == _player->PlayerTalkClass->GetInteractionData().SourceGuid);
 
     if (!isUsingBankCommand)
     {
