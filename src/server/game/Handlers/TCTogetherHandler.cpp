@@ -340,6 +340,9 @@ void GossipActionDoTrans(Player* player, Item* item, uint32 action) {
     case MW_GOSSIP_ACTION_TRANS + 305: // 祖阿曼
         player->TeleportTo(530, 6832.783203f, -7858.009766f, 163.976166f, 4.697f);
         break;
+    case MW_GOSSIP_ACTION_TRANS + 306: // 卡拉赞
+        player->TeleportTo(532, -11102.0f, -1998.19f, 50.05f, 0.533f);
+        break; 
     case MW_GOSSIP_ACTION_TRANS + 307: // 奥妮克西娅
         player->TeleportTo(1, -4745.300293f, -3753.068604f, 50.219667f, 4.697f);
         break;
