@@ -1,4 +1,4 @@
-#ifndef ASSISTANCE_AI_H
+﻿#ifndef ASSISTANCE_AI_H
 #define ASSISTANCE_AI_H
 
 #include "CreatureAI.h"
@@ -61,6 +61,7 @@ public:
     void Reborn(uint32 pct);
     void ResetPosition(bool force = false);
     bool AddOneTimeSpell(int32 spellId);
+    void AddSpellWithLevelLimit(int32 spellid, int32 level);
 
 private:
     ASSISTANCE_CLASS _class;
@@ -94,12 +95,14 @@ private:
     void updateTimer(uint32 diff);
     void resetLifeTimer();
     void ReadyToDie();
+    void handleUndeadRaceTalent();
     bool isCaster();
     void EngagementStart(Unit* who);
     float GetManaPct();
     bool AssistantsSpell(uint32 diff, Unit* victim);
     void UseInstanceHealing();
     float getSpecialFollowAngle();
+    void OnLevelUp();
 };
 
 #endif

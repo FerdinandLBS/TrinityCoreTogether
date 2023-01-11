@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -860,6 +860,66 @@ bool Pet::CreateBaseAtTamed(CreatureTemplate const* cinfo, Map* map, uint32 phas
     return true;
 }
 
+void Guardian::InitStatsForAssist(uint8 level) {
+
+    Unit* owner = GetOwner();
+    Creature* cowner = owner ? owner->ToCreature() : nullptr;
+    if (!owner || !owner->IsCharmedOwnedByPlayerOrPlayer()) {
+        return;
+    }
+    float stat;
+    float str = owner->GetStat(STAT_STRENGTH);
+    float intl = owner->GetStat(STAT_INTELLECT);
+    float agi = owner->GetStat(STAT_AGILITY);
+    float sta = owner->GetStat(STAT_STAMINA);
+    float dmgBonus;
+    float armor;
+    Aura* aura;
+
+    if (str > intl)
+        if (str > agi) stat = str; else stat = agi;
+    else
+        if (intl > agi) stat = intl; else stat = agi;
+
+    armor = (stat * 3.0f + sta * 2) * m_creatureInfo->ModArmor;
+    dmgBonus = stat * m_creatureInfo->ModDamage;
+
+    // Take care of special creature types
+    switch (GetEntry()) {
+    case 46002:
+    case 46003:
+    case 46004:
+    case 46005:
+    case 46006:
+    case 46015:
+    case 46016:
+    case 46025:
+    case 46026:
+        aura = owner->GetAuraOfRankedSpell(18769);
+        if (aura) {
+            dmgBonus *= (float)(101 + aura->GetSpellInfo()->_effects[0].BasePoints) / 100.f;
+        }
+        aura = owner->GetAuraOfRankedSpell(30242);
+        if (aura) {
+
+            dmgBonus *= (float)(101 + aura->GetSpellInfo()->_effects[0].BasePoints) / 100.f;
+        }
+        break;
+    }
+
+    SetCreateHealth(owner->GetMaxHealth() - ((sta - 20) * 10 + 20));
+    SetStatFlatModifier(UNIT_MOD_ARMOR, BASE_VALUE, armor);
+    SetStatFlatModifier(UNIT_MOD_STAT_STAMINA, BASE_VALUE, sta);
+    SetStatFlatModifier(UNIT_MOD_STAT_STRENGTH, BASE_VALUE, stat);
+    SetStatFlatModifier(UNIT_MOD_STAT_AGILITY, BASE_VALUE, stat);
+    SetStatFlatModifier(UNIT_MOD_STAT_INTELLECT, BASE_VALUE, stat);
+    SetStatFlatModifier(UNIT_MOD_STAT_SPIRIT, BASE_VALUE, stat);
+
+    SetBonusDamage(int32(dmgBonus));
+
+    SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, dmgBonus);
+    SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, dmgBonus);
+}
 /// @todo Move stat mods code to pet passive auras
 bool Guardian::InitStatsForLevel(uint8 petlevel)
 {
@@ -1106,18 +1166,22 @@ bool Guardian::InitStatsForLevel(uint8 petlevel)
                 }
                 default:
                 {
-                    /* ToDo: Check what 5f5d2028 broke/fixed and how much of Creature::UpdateLevelDependantStats()
-                     * should be copied here (or moved to another method or if that function should be called here
-                     * or not just for this default case)
-                     */
-                    CreatureBaseStats const* stats = sObjectMgr->GetCreatureBaseStats(petlevel, cinfo->unit_class);
-                    float basedamage = stats->GenerateBaseDamage(cinfo);
+                    if (GetEntry() < 44000 || GetEntry() > 50000) {
+                        /* ToDo: Check what 5f5d2028 broke/fixed and how much of Creature::UpdateLevelDependantStats()
+                         * should be copied here (or moved to another method or if that function should be called here
+                         * or not just for this default case)
+                         */
+                        CreatureBaseStats const* stats = sObjectMgr->GetCreatureBaseStats(petlevel, cinfo->unit_class);
+                        float basedamage = stats->GenerateBaseDamage(cinfo);
 
-                    float weaponBaseMinDamage = basedamage;
-                    float weaponBaseMaxDamage = basedamage * 1.5f;
+                        float weaponBaseMinDamage = basedamage;
+                        float weaponBaseMaxDamage = basedamage * 1.5f;
 
-                    SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, weaponBaseMinDamage);
-                    SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, weaponBaseMaxDamage);
+                        SetBaseWeaponDamage(BASE_ATTACK, MINDAMAGE, weaponBaseMinDamage);
+                        SetBaseWeaponDamage(BASE_ATTACK, MAXDAMAGE, weaponBaseMaxDamage);
+                    } else {
+                        InitStatsForAssist(petlevel);
+                    }
                     break;
                 }
             }

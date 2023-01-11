@@ -16,26 +16,27 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "AssistanceAI.h"
 #include "CombatAI.h"
 #include "ConditionMgr.h"
 #include "Creature.h"
 #include "CreatureAIImpl.h"
-#include "Log.h"
-#include "MotionMaster.h"
-#include "ObjectAccessor.h"
-#include "Player.h"
-#include "SpellInfo.h"
-#include "SpellMgr.h"
-#include "Vehicle.h"
+#include "Cell.h"
+#include "CellImpl.h"
 #include "FollowMovementGenerator.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
-#include "Cell.h"
-#include "CellImpl.h"
-#include "AssistanceAI.h"
-#include "TemporarySummon.h"
-#include "SpellHistory.h"
+#include "Item.h"
+#include "Log.h"
+#include "MotionMaster.h"
+#include "ObjectAccessor.h"
 #include "Pet.h"
+#include "Player.h"
+#include "SpellInfo.h"
+#include "SpellHistory.h"
+#include "SpellMgr.h"
+#include "TemporarySummon.h"
+#include "Vehicle.h"
 //#include "bot_ai.h"
 
 
@@ -322,6 +323,7 @@ Unit* AssistanceAI::GetVictim() {
 
 bool AssistanceAI::AssistantsSpell(uint32 diff, Unit* victim) {
     uint32 id;
+    Unit* owner = me->GetOwner();
 
     if (me->GetEntry() < 45000) {
         if (me->GetEntry() < 40000)
@@ -358,26 +360,25 @@ redo:
 
         // Take care of specail AI
         switch (id) {
-        case 85871: // Drain mana
-            if (me->GetPower(POWER_MANA) < 175 && victim && victim->GetPower(POWER_MANA) > 56) {
-                break;
-            }
-            continue;
-        case 85912:
-            if (me->GetHealthPct() > 60) {
+        case 56222:
+        case 355: // Taunt
+            if (victim && victim->GetTarget() == me->GetGUID() && _class != ASSISTANCE_CLASS::DPS)
+                continue;
+            if (owner && owner->GetHealthPct() > 55.f && _class != ASSISTANCE_CLASS::DPS) {
                 continue;
             }
-            else {
-                std::list<Creature*> list;
-                me->GetAllMinionsByEntry(list, 46017);
-                if (list.size() > 0) {
-                    casted = castSpell(list.front(), i);
-                    goto endloop;
-                }
-            }
+            //me->CastSpell(me, 71, true);
+            break;
+        case 47541: // death coil
+            if (me->GetPower(Powers::POWER_RUNIC_POWER) < 40)
+                continue;
+            
+            if (true == castSpell(victim, i))
+                goto endloop;
+
             continue;
-        case 85922: // Life Drain
-            if (me->GetHealthPct() > 60) {
+        case 78:
+            if (me->GetPower(Powers::POWER_RAGE) < 400) {
                 continue;
             }
             break;
@@ -385,18 +386,6 @@ redo:
             if (!victim || !victim->HasUnitState(UNIT_STATE_CASTING)) {
                 continue;
             }
-            break;
-        case 85947: // Holy light
-        {
-            Unit* owner = me->GetCharmerOrOwner();
-            if (owner && owner->ToPlayer()) {
-                Unit* ot = owner->ToPlayer()->GetSelectedUnit();
-                if (ot && ot->IsFriendlyTo(owner) && ot->GetHealthPct() <= 99.99f) {
-                    casted = castSpell(ot, i);
-                    goto endloop;
-                }
-            }
-        }
             break;
         case 85953: // Dark Ceremony
             if (GetManaPct() >= 0.6f) {
@@ -499,6 +488,9 @@ redo:
     }
 endloop:
     if (casted) {
+        if (id == 81171 || id == 81174) {
+            me->SetPower(Powers::POWER_RUNIC_POWER, me->GetPower(Powers::POWER_RUNIC_POWER) + 10);
+        }
         return true;
     }
 
@@ -621,6 +613,7 @@ void AssistanceAI::updateTimer(uint32 diff)
     if (me->GetLevel() < me->GetOwner()->GetLevel()) {
         me->SetLevel(me->GetOwner()->GetLevel());
         ((Guardian*)me)->InitStatsForLevel(me->GetLevel());
+        OnLevelUp();
         return;
     }
 
@@ -784,6 +777,133 @@ bool checkGnomeWarlockTelantPets(Creature* currentPet, Creature* summoned) {
         (entry == 46003 && (currentPet->GetEntry() == 417 || currentPet->GetEntry() == 70504));
 }
 
+void AssistanceAI::AddSpellWithLevelLimit(int32 spellid, int32 level) {
+    if (me->GetLevel() < level)
+        return;
+
+    for (int i = 0; i < 8; i++) {
+        if (me->m_spells[i] == 0) {
+            me->m_spells[i] = spellid;
+            break;
+        }
+    }
+}
+
+void AssistanceAI::OnLevelUp() {
+    switch (me->GetEntry()) {
+    case 45004:
+        for (int i = 0; i < 8; i++) me->m_spells[i] = 0;
+        handleUndeadRaceTalent();
+        break;
+    }
+}
+
+void AssistanceAI::handleUndeadRaceTalent() {
+
+    Player* owner = me->GetOwner() ? me->GetOwner()->ToPlayer() : nullptr;
+    if (!owner)
+        return;
+
+    Item* mainWeap = owner->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
+    Item* offWeap = owner->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND);
+
+    if (mainWeap) {
+        me->SetVirtualItem(0, mainWeap->GetTemplate()->ItemId);
+        Guardian* g = (Guardian*)me;
+
+        g->SetAttackPower(me->GetLevel() * 5 + mainWeap->GetTemplate()->ItemLevel * 4);
+        g->SetBonusDamage(g->GetBonusDamage() + mainWeap->GetTemplate()->ItemLevel * 1.5);
+    }
+    if (offWeap)
+        me->SetVirtualItem(1, offWeap->GetTemplate()->ItemId);
+
+
+    switch (owner->GetClass()) {
+    case CLASS_WARRIOR:
+        if (!offWeap && !mainWeap) {
+            me->SetVirtualItem(0, 1566);
+        }
+        if (offWeap && offWeap->GetTemplate()->InventoryType == INVTYPE_SHIELD) {
+            _class = ASSISTANCE_CLASS::TANK;
+            me->CastSpell(me, 71, true);
+        }
+        else {
+            _class = ASSISTANCE_CLASS::DPS;
+            me->CastSpell(me, 2457, true);
+        }
+        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_MELEE;
+        me->SetPowerType(Powers::POWER_RAGE);
+
+        AddSpellWithLevelLimit(355, 10);
+        AddSpellWithLevelLimit(78, 1);
+        AddSpellWithLevelLimit(87260, 15);
+        if (_class == ASSISTANCE_CLASS::TANK) {
+            me->SetAttackTime(WeaponAttackType::BASE_ATTACK, 1500);
+            AddSpellWithLevelLimit(46968, 60);
+            AddSpellWithLevelLimit(871, 28);
+            AddSpellWithLevelLimit(6343, 6);
+        }
+        else {
+            AddSpellWithLevelLimit(12294, 40);
+            AddSpellWithLevelLimit(12970, 0);
+            AddSpellWithLevelLimit(46924, 60);
+            if (mainWeap && mainWeap->GetTemplate()->InventoryType == INVTYPE_2HWEAPON)
+                me->SetAttackTime(WeaponAttackType::BASE_ATTACK, 3100);
+            else
+                me->SetAttackTime(WeaponAttackType::BASE_ATTACK, 1500);
+        }
+        break;
+    case CLASS_ROGUE:
+        _class = ASSISTANCE_CLASS::DPS;
+        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_MELEE;
+        me->SetPowerType(Powers::POWER_ENERGY);
+        //me->SetVirtualItem(0, 3268);
+        //me->SetVirtualItem(1, 3268);
+        me->m_spells[0] = 1752;
+        me->m_spells[1] = 6774;
+        me->m_spells[2] = 2669;
+        break;
+    case CLASS_PRIEST:
+        _class = ASSISTANCE_CLASS::HEALER;
+        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
+        //me->SetVirtualItem(0, 3415);
+        me->SetPowerType(Powers::POWER_MANA);
+        break;
+    case CLASS_DEATH_KNIGHT:
+        _class = ASSISTANCE_CLASS::DPS;
+        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_MELEE;
+        me->SetPowerType(Powers::POWER_RUNIC_POWER);
+        //me->SetVirtualItem(0, 3822);
+        me->m_spells[0] = 47541;
+        me->m_spells[1] = 81171;
+        me->m_spells[2] = 81174;
+        me->m_spells[3] = 56222;
+        me->m_spells[4] = 81172;
+        me->m_spells[5] = 81173;
+        break;
+    case CLASS_MAGE:
+        _class = ASSISTANCE_CLASS::DPS;
+        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
+        //me->SetVirtualItem(0, 20724);
+        me->SetPowerType(Powers::POWER_MANA);
+        me->m_spells[0] = 120;
+        me->m_spells[1] = 133;
+        me->m_spells[2] = 10193;
+        break;
+    case CLASS_WARLOCK:
+        _class = ASSISTANCE_CLASS::DPS;
+        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
+        //me->SetVirtualItem(0, 2549);
+        me->SetPowerType(Powers::POWER_MANA);
+        me->m_spells[0] = 172;
+        me->m_spells[1] = 348;
+        me->m_spells[2] = 5720;
+        break;
+    }
+
+    owner->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_POWER_TYPE);
+}
+
 void AssistanceAI::JustAppeared() {
     uint32 effSpell = 0;
     bool playerOwner = false;
@@ -815,11 +935,7 @@ void AssistanceAI::JustAppeared() {
     else
         playerOwner = true;
 
-    //  War III heroes
-    if (me->GetEntry() >= 45000 && me->GetEntry() <= 45100) {
-        me->CastSpell(me, 86008);
-    }
-    else if (owner) {
+    if (owner) {
         int crit = 0;
         Aura* aura;
         if (playerOwner)
@@ -856,29 +972,6 @@ void AssistanceAI::JustAppeared() {
 
     // Set class and attack type
     switch (me->GetEntry()) {
-    case 45000: // MK
-        me->SetCanDualWield(true);
-    case 45006: // Tauren Cheif
-    case 45012: // DK
-        _class = ASSISTANCE_CLASS::TANK;
-        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_MELEE;
-        break;
-    case 45001: // watcher
-        // Watcher dont have off hand animation
-        //me->SetCanDualWield(true);
-        me->ApplyAttackTimePercentMod(WeaponAttackType::BASE_ATTACK, 100, true);
-        break;
-    case 45002: // Shadow Shaman
-    case 45010: // Forest Guard
-        _class = ASSISTANCE_CLASS::HEALER;
-        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        break;
-    case 45007: // Paladin
-        _class = ASSISTANCE_CLASS::HEALER;
-        break;
-    case 45011: // BM
-        me->SetCanDualWield(true);
-        break;
     case 46002: // Wild Ghost
         _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
         if (owner && owner->GetRace() == Races::RACE_BLOODELF) {
@@ -888,9 +981,11 @@ void AssistanceAI::JustAppeared() {
     case 46016:
         me->SetCanDualWield(true);
         break;
+    case 45004:
+        handleUndeadRaceTalent();
+        break;
     case 44000:
     case 45003:
-    case 45004:
     case 45005:
     case 45009:
     case 45016:
@@ -1066,6 +1161,7 @@ void AssistanceAI::UpdateAI(uint32 diff/*diff*/)
     }
 
     bool res = AssistantsSpell(diff, victim);
+
     if (isCaster()) {
         if (res == true) {
             // As a caster once we successfully casted one spell. We should stop if we are moving
