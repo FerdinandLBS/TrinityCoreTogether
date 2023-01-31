@@ -1,6 +1,7 @@
 ﻿#include "ScriptMgr.h"
 #include "Containers.h"
 #include "DBCStores.h"
+#include "Group.h"
 #include "Map.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
@@ -408,6 +409,51 @@ public:
     }
 };
 
+class spell_happy_new_year : public SpellScriptLoader
+{
+public:
+    spell_happy_new_year() : SpellScriptLoader("spell_happy_new_year") { }
+
+
+    class spell_happy_new_year_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_happy_new_year_AuraScript);
+
+        bool Validate(SpellInfo const* /*spellInfo*/) override
+        {
+            return true;
+        }
+
+        int GetRandomFireworks() {
+            int ids[] = {
+                26286, 26291, 26292, 26293, 26294, 26295 ,26333 , 26334, 26335, 26336, 26337 ,26338
+            };
+
+            return ids[rand() % 12];
+        }
+
+        void HandleProc(AuraEffect* aurEff)
+        {
+            //PreventDefaultAction();
+            int spellid = GetRandomFireworks();
+
+            Unit* caster = GetCaster();
+            if (!caster) return;
+            caster->CastSpell(caster, spellid, true);
+        }
+
+        void Register() override
+        {
+            OnEffectUpdatePeriodic += AuraEffectUpdatePeriodicFn(spell_happy_new_year_AuraScript::HandleProc, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_happy_new_year_AuraScript();
+    }
+};
+
 class spell_multiple_trigger_aura : public SpellScriptLoader
 {
 public:
@@ -451,6 +497,393 @@ public:
     }
 };
 
+class spell_human_race_talent_aura : public SpellScriptLoader
+{
+public:
+    spell_human_race_talent_aura() : SpellScriptLoader("spell_human_race_talent_aura") { }
+
+
+    class spell_human_race_talent_aura_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_human_race_talent_aura_AuraScript);
+
+        void HandleProc(AuraEffect const* aurEff)
+        {
+            PreventDefaultAction();
+            
+            Unit* actor = GetCaster();
+
+            if (!actor->IsPlayer())
+                return;
+
+            std::list<Creature*> list;
+            Player* player = actor->ToPlayer();
+            Group* group = player->GetGroup();
+            uint32 count = 0;
+            player->GetAllMinionsByEntry(list, 45006);
+            count = (group!=nullptr?group->GetMembersCount():0)/2 + 1;
+            if (count > 10) count = 10;
+
+            player->SetAuraStack(81208, player, count);
+            int n = count/3 + list.size() - 3;
+            if (n < 0) {
+                for (int i = 0; i < -n; i++) {
+                    player->CastSpell(player, 81191, true);
+                }
+            } else {
+                
+                for (std::list<Creature*>::const_iterator i = list.begin(); i != list.end() && n > 0; i++, n--) {
+                    (*i)->CastSpell(*i, 7791, true);
+                    (*i)->DespawnOrUnsummon(Milliseconds(1000));
+                }
+            }
+            
+        }
+
+        void Register() override
+        {
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_human_race_talent_aura_AuraScript::HandleProc, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_human_race_talent_aura_AuraScript();
+    }
+};
+
+
+class spell_gnome_race_talent_aura : public SpellScriptLoader
+{
+public:
+    spell_gnome_race_talent_aura() : SpellScriptLoader("spell_gnome_race_talent_aura") { }
+
+
+    class spell_gnome_race_talent_aura_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_gnome_race_talent_aura_AuraScript);
+
+        void HandleProc(AuraEffect const* aurEff)
+        {
+            PreventDefaultAction();
+            Unit* caster = GetCaster();
+            if (!caster->IsAlive())
+                return;
+
+            uint32 spell = 81252 + rand() % 4;
+            caster->SetAuraStack(spell, caster, caster->GetAuraCount(spell) + 1);
+            if (caster->GetAura(spell)) {
+                caster->GetAura(spell)->RefreshTimers(true);
+            }
+        }
+
+        void Register() override
+        {
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_gnome_race_talent_aura_AuraScript::HandleProc, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_gnome_race_talent_aura_AuraScript();
+    }
+};
+
+class spell_gnome_race_talent_trigger_aura : public SpellScriptLoader
+{
+public:
+    spell_gnome_race_talent_trigger_aura() : SpellScriptLoader("spell_gnome_race_talent_trigger_aura") { }
+
+
+    class spell_gnome_race_talent_trigger_aura_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_gnome_race_talent_trigger_aura_AuraScript);
+
+        void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
+        {
+            PreventDefaultAction();
+            Unit* actor = eventInfo.GetActor();
+            Unit* victim;
+            int spell;
+            DamageInfo* dmgInfo = eventInfo.GetDamageInfo();
+            HealInfo* healInfo = eventInfo.GetHealInfo();
+
+            if (!actor || (!dmgInfo && !healInfo)) return;
+            if (dmgInfo) {
+                if (dmgInfo->GetAbsorb() + dmgInfo->GetDamage() == 0)
+                    return;
+            }
+            if (healInfo) {
+                if (healInfo->GetAbsorb() + healInfo->GetHeal() == 0)
+                    return;
+            }
+
+            spell = aurEff->GetSpellInfo()->Id;
+            switch (spell) {
+            case 81252:
+                victim = actor->GetVictim();
+                if (!victim) {
+                    if (actor->GetThreatManager().GetThreatListSize()) {
+                        victim = actor->GetThreatManager().GetCurrentVictim();
+                    }
+                }
+                if (!victim) {
+                    victim = ObjectAccessor::GetCreature(*actor, actor->GetTarget());
+                }
+                if (!victim)
+                    return;
+
+                if (SpellCastResult::SPELL_CAST_OK != actor->CastSpell(victim, 81256, true))
+                    return;
+                break;
+            case 81253:
+                actor->CastSpell(actor, 81257, true);
+                break;
+            case 81254:
+                SpellCastResult spResult;
+                if (actor->GetTarget() && actor->IsFriendlyTo(ObjectAccessor::GetCreature(*actor, actor->GetTarget()))) {
+                    spResult = actor->CastSpell(ObjectAccessor::GetCreature(*actor, actor->GetTarget()), 81258, true);
+                    if (spResult == SpellCastResult::SPELL_CAST_OK) {
+                        break;
+                    }
+                }
+                actor->CastSpell(actor, 81258, true);
+                break;
+            case 81255:
+                actor->CastSpell(actor, 81259, true);
+                break;
+            default:
+                return;
+            }
+            uint32 auraStack = actor->GetAuraCount(spell);
+            if (auraStack == 1) {
+                actor->RemoveAura(spell);
+            }
+            else {
+                actor->SetAuraStack(spell, actor, auraStack - 1);
+            }
+        }
+
+        void Register() override
+        {
+            OnEffectProc += AuraEffectProcFn(spell_gnome_race_talent_trigger_aura_AuraScript::HandleProc, EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_gnome_race_talent_trigger_aura_AuraScript();
+    }
+};
+
+class spell_bloodelf_race_talent_aura : public SpellScriptLoader
+{
+public:
+    spell_bloodelf_race_talent_aura() : SpellScriptLoader("spell_bloodelf_race_talent_aura") { }
+
+
+    class spell_bloodelf_race_talent_aura_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_bloodelf_race_talent_aura_AuraScript);
+
+        void HandleProc(AuraEffect const* aurEff)
+        {
+            PreventDefaultAction();
+            Unit* caster = GetCaster();
+            if (!caster->IsAlive())
+                return;
+
+            std::list<Creature*> list;
+            caster->GetAllMinionsByEntry(list, 45007);
+            if (list.size() == 0) {
+                caster->CastSpell(nullptr, 81305);
+
+                caster->GetAllMinionsByEntry(list, 45007);
+                if (list.size()) {
+                    int count = caster->GetAuraCount(81306);
+                    Creature* minion = list.front();
+
+                    minion->SetAuraStack(81301, minion, count);
+                }
+            }
+        }
+
+        void Register() override
+        {
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_bloodelf_race_talent_aura_AuraScript::HandleProc, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_bloodelf_race_talent_aura_AuraScript();
+    }
+};
+
+class spell_bloodelf_race_talent_trigger_aura : public SpellScriptLoader
+{
+public:
+    spell_bloodelf_race_talent_trigger_aura() : SpellScriptLoader("spell_bloodelf_race_talent_trigger_aura") { }
+
+
+    class spell_bloodelf_race_talent_trigger_aura_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_bloodelf_race_talent_trigger_aura_AuraScript);
+
+        void HandleCasterDie(Unit* caster) {
+            std::list<Creature*> list;
+            Creature* minion;
+            Position position = caster->GetPosition();
+
+            caster->GetAllMinionsByEntry(list, 45007);
+            if (list.size() == 0)
+                return;
+            minion = list.front();
+            minion->GetMotionMaster()->Clear();
+            minion->GetMotionMaster()->MoveCharge(position.GetPositionX(), position.GetPositionY(), position.GetPositionZ());
+
+            uint32 count = minion->GetAuraCount(81301);
+            if (count == 0) count = 1;
+            minion->CastSpell(minion, 81308, true);
+            minion->CastSpell(caster, 81308, true);
+            minion->KillSelf();
+
+            CastSpellExtraArgs arg;
+            arg.AddSpellBP0(caster->GetLevel() * count);
+            arg.SetTriggerFlags(TriggerCastFlags::TRIGGERED_FULL_MASK);
+            caster->CastSpell(caster, 81307, arg);
+            caster->SetFullPower(caster->GetPowerType());
+            caster->RemoveAura(81306);
+;        }
+
+        void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
+        {
+            PreventDefaultAction();
+            Unit* actor = eventInfo.GetActor();
+            Unit* caster = aurEff->GetCaster();
+            uint32 amount = 0;
+            DamageInfo* dmgInfo = eventInfo.GetDamageInfo();
+            HealInfo* healInfo = eventInfo.GetHealInfo();
+
+            if (!caster || (!dmgInfo && !healInfo)) return;
+            if (caster->IsAlive() == false) return;
+            if (dmgInfo) {
+                if (dmgInfo->GetAbsorb() + dmgInfo->GetDamage() == 0)
+                    return;
+
+                amount = dmgInfo->GetDamage() + dmgInfo->GetAbsorb();
+            }
+            if (healInfo) {
+                if (healInfo->GetAbsorb() + healInfo->GetHeal() == 0)
+                    return;
+
+                amount = (healInfo->GetHeal() + healInfo->GetAbsorb())*2/3;
+            }
+            if (dmgInfo && dmgInfo->GetVictim() == caster) {
+                if (dmgInfo->GetDamage() > caster->GetHealth()) {
+                    dmgInfo->ModifyDamage(-(int)(dmgInfo->GetDamage()));
+                    return HandleCasterDie(caster);
+                }
+
+                return;
+            }
+
+            Creature* minion;
+            std::list<Creature*> list;
+            caster->GetAllMinionsByEntry(list, 45007);
+            if (list.size() == 0)
+                return;
+
+            minion = list.front();
+            if (!minion->IsAlive())
+                return;
+
+            uint32 auraStack = minion->GetAuraCount(81301);
+            if (auraStack < 90) {
+                minion->SetAuraStack(81301, minion, auraStack + 1);
+                caster->SetAuraStack(81306, caster, auraStack + 1);
+            }
+
+            if (rand_chance() < (double)(amount * 100 / caster->GetMaxHealth())) {
+                AssistanceAI* ai = (AssistanceAI*)minion->GetAI();
+                ai->AddOneTimeSpell(81302);
+            }
+        }
+
+        void Register() override
+        {
+            OnEffectProc += AuraEffectProcFn(spell_bloodelf_race_talent_trigger_aura_AuraScript::HandleProc, EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_bloodelf_race_talent_trigger_aura_AuraScript();
+    }
+};
+
+//ARCANE_TORRENT
+class spell_bloodelf_arcane_torrent : public SpellScriptLoader
+{
+public:
+    spell_bloodelf_arcane_torrent() : SpellScriptLoader("spell_bloodelf_arcane_torrent") { }
+
+    class spell_bloodelf_arcane_torrent_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_bloodelf_arcane_torrent_SpellScript);
+
+        void HandleBeforeCast() {
+        }
+
+        void HandleAfterCast()
+        {
+            std::list<Creature*> list;
+            Creature* minion;
+            uint32 auraCount = 0;
+            Unit* owner = GetCaster();
+            if (!owner)
+                return;
+
+            owner->GetAllMinionsByEntry(list, 45007);
+            if (list.size() == 0)
+                return;
+
+            minion = list.front();
+            auraCount = minion->GetAuraCount(81301);
+            if (auraCount == 0)
+                return;
+
+            for (uint32 i = 0; i < auraCount / 5 + 1; i++) {
+                SpellCastTargets targets;
+                Position p = owner->GetPosition();
+                p.Relocate(p.GetPositionX() + (rand_chance() - 50) / 5, p.GetPositionY() + (rand_chance() - 50) / 5);
+                targets.SetDst(p);
+                owner->m_Events.AddEvent(new SpellDelayCastEvent(81304, owner, targets),
+                    owner->m_Events.CalculateTime(Milliseconds(i* 200)));
+            }
+
+            if (rand() % 100 < auraCount *  2) {
+                minion->CastSpell(owner, 81308, true);
+                owner->GetSpellHistory()->ResetAllCooldowns();
+            }
+
+            minion->SetAuraStack(81301, minion, 1);
+            owner->RemoveAura(81306);
+        }
+
+        void Register() override
+        {
+            BeforeCast += SpellCastFn(spell_bloodelf_arcane_torrent_SpellScript::HandleBeforeCast);
+            AfterCast += SpellCastFn(spell_bloodelf_arcane_torrent_SpellScript::HandleAfterCast);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_bloodelf_arcane_torrent_SpellScript();
+    }
+};
+
 void AddSC_TCTogether_script()
 {
     new spell_ud_mage_enhance_aura();
@@ -460,4 +893,11 @@ void AddSC_TCTogether_script()
     new spell_mini_thor_vehicle();
     new spell_mini_thor_nuc();
     new spell_mini_thor_cannon();
+    new spell_happy_new_year();
+    new spell_human_race_talent_aura();
+    new spell_gnome_race_talent_aura();
+    new spell_gnome_race_talent_trigger_aura();
+    new spell_bloodelf_arcane_torrent();
+    new spell_bloodelf_race_talent_aura();
+    new spell_bloodelf_race_talent_trigger_aura();
 }

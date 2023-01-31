@@ -15,14 +15,20 @@ enum eMyWowGossipSender {
 
     MW_GOSSIP_SENDER_CLOSE,
     MW_GOSSIP_SENDER_ACTION_DO_TRANS,
+
+    MW_GOSSIP_HUM_TALENT_MAIN
 };
 
 enum eMyWowGossipAction {
     MW_GOSSIP_ACTION_SUB_MENU = GOSSIP_ACTION_INFO_DEF + 1,
-    MW_GOSSIP_ACTION_TRANS
+    MW_GOSSIP_ACTION_TRANS,
+    MW_GOSSIP_ACTION_DO
 };
 
 void BuildMainMenu(Player* player, Item* item, uint32 sender);
 void GossipSelect_Item(Player* player, Item* item, uint32 sender, uint32 action);
+void GossipTCTogetherCreature(Player* player, Creature* creature, uint32 sender, uint32 action);
+void BuildHumanRaceTalentGossip(Player* player, Creature* creature, uint32 sender);
+void UpgradeHumanRaceTalentMinion(Player* player, Creature* creature, uint32 sender);
 
 #endif

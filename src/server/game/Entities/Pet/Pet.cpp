@@ -883,6 +883,7 @@ void Guardian::InitStatsForAssist(uint8 level) {
 
     armor = (stat * 3.0f + sta * 2) * m_creatureInfo->ModArmor;
     dmgBonus = stat * m_creatureInfo->ModDamage;
+    const CreatureTemplate* ct = GetCreatureTemplate();
 
     // Take care of special creature types
     switch (GetEntry()) {
@@ -907,7 +908,7 @@ void Guardian::InitStatsForAssist(uint8 level) {
         break;
     }
 
-    SetCreateHealth(owner->GetMaxHealth() - ((sta - 20) * 10 + 20));
+    SetCreateHealth((sta* 8 + 20) + GetCreateHealth());
     SetStatFlatModifier(UNIT_MOD_ARMOR, BASE_VALUE, armor);
     SetStatFlatModifier(UNIT_MOD_STAT_STAMINA, BASE_VALUE, sta);
     SetStatFlatModifier(UNIT_MOD_STAT_STRENGTH, BASE_VALUE, stat);

@@ -1,4 +1,5 @@
 ﻿#include "Define.h"
+#include "Group.h"
 #include "ScriptMgr.h"
 #include "SharedDefines.h"
 #include "Item.h"
@@ -7,6 +8,7 @@
 #include "WorldSession.h"
 #include "ScriptedGossip.h"
 #include "TCTogetherHandler.h"
+#include <AI\CoreAI\AssistanceAI.h>
 // .. more includes
 
 #pragma execution_character_set("utf-8")
@@ -190,7 +192,7 @@ void GossipActionDoTrans(Player* player, Item* item, uint32 action) {
         player->TeleportTo(1, 9961, 2055, 1329, 6);
         break;
     case MW_GOSSIP_ACTION_TRANS + 4: // 埃索达
-        player->TeleportTo(530, -3998.3f, -11864.1, 1, 6);
+        player->TeleportTo(530, -3998.3f, -11864.1f, 1, 6);
         break;
     case MW_GOSSIP_ACTION_TRANS + 5: // 奥格瑞玛
         player->TeleportTo(1, 1676.25f, -4313.45f, 62.0f, 6);
@@ -214,19 +216,19 @@ void GossipActionDoTrans(Player* player, Item* item, uint32 action) {
         player->TeleportTo(1, -7156.56f, -3825.1f, 8.7f, 6);
         break;
     case MW_GOSSIP_ACTION_TRANS + 14: // GM岛 
-        player->TeleportTo(1, 16222.1, 16252.1, 12.5872, 6);
+        player->TeleportTo(1, 16222.1f, 16252.1f, 12.5872f, 6);
         break;
     case MW_GOSSIP_ACTION_TRANS + 20: // BE 骑术
         player->TeleportTo(530, 9258.043f, -7472.375f, 35.55f, 4.63f);
         break;
     case MW_GOSSIP_ACTION_TRANS + 51: // 怒焰裂谷
-        player->TeleportTo(389, 3.8, -14.8, -17, 6);
+        player->TeleportTo(389, 3.8f, -14.8f, -17.f, 6.f);
         break;
     case MW_GOSSIP_ACTION_TRANS + 52: // 矿井
-        player->TeleportTo(36, -16, -383, 62, 6);
+        player->TeleportTo(36, -16, -383, 62, 6.f);
         break;
     case MW_GOSSIP_ACTION_TRANS + 53: // 哀嚎
-        player->TeleportTo(43, -163.49f, 132.89f, -73.66, 6);
+        player->TeleportTo(43, -163.49f, 132.89f, -73.66f, 6);
         break;
     case MW_GOSSIP_ACTION_TRANS + 54: // 影牙
         player->TeleportTo(33, -229.1f, 2109.17f, 77, 6);
@@ -250,7 +252,7 @@ void GossipActionDoTrans(Player* player, Item* item, uint32 action) {
         player->TeleportTo(349, 1019.69f, -458.3f, -43, 6);
         break;
     case MW_GOSSIP_ACTION_TRANS + 61: // 奥达曼
-        player->TeleportTo(70, -226.8, 49.1f, -45.9f, 6);
+        player->TeleportTo(70, -226.8f, 49.1f, -45.9f, 6);
         break;
     case MW_GOSSIP_ACTION_TRANS + 62: // 厄运
         player->TeleportTo(429, -201.11f, -328.66f, -2.7f, 6);
@@ -352,6 +354,83 @@ void GossipActionDoTrans(Player* player, Item* item, uint32 action) {
         break;*/
     }
     CloseGossipMenuFor(player);
+}
+
+extern void UnitAddHealthPct(Unit*, int);
+
+void UpgradeHumanRaceTalentMinion(Player* player, Creature* m, uint32 action) {
+    if (!player || !m)
+        return;
+
+    Gender gender = m->GetGender();
+    AssistanceAI* ai = (AssistanceAI*)m->GetAI();
+
+    switch (action) {
+    case MW_GOSSIP_ACTION_DO + 1:
+        m->SetDisplayId(gender == GENDER_FEMALE ? 3257 : 2072);
+        m->SetPowerType(Powers::POWER_RAGE);
+        m->SetVirtualItem(0, 3455);
+        m->SetVirtualItem(1, 1203);
+        ai->SetData(0, 0);
+        m->m_spells[0] = 56222;
+        m->m_spells[1] = 81194;
+        UnitAddHealthPct(m, 160);
+        m->CastSpell(m, 81193, true);
+        break;
+    case MW_GOSSIP_ACTION_DO + 2:
+        m->SetDisplayId(gender == GENDER_FEMALE ? 3292 : 1484);
+        m->SetVirtualItem(0, 812);
+        m->SetPowerType(Powers::POWER_MANA);
+        ai->_type = AssistanceAI::ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
+        m->m_spells[0] = gender == GENDER_FEMALE ? 81199 : 81200;
+        m->m_spells[1] = gender == GENDER_FEMALE ? 81199 : 81200;
+        ai->SetData(0, 1);
+        break;
+    case MW_GOSSIP_ACTION_DO + 3:
+        m->SetDisplayId(gender == GENDER_FEMALE ? 1295 : 3253);
+        m->SetPowerType(Powers::POWER_MANA);
+        ai->_class = AssistanceAI::ASSISTANCE_CLASS::HEALER;
+        ai->_type = AssistanceAI::ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
+        m->m_spells[0] = 81204;
+        m->m_spells[1] = 81205;
+        m->SetVirtualItem(0, 812);
+        ai->SetData(0, 2);
+        break;
+    }
+    m->CastSpell(m, 24312, true);
+    m->RemoveNpcFlag(NPCFlags::UNIT_NPC_FLAG_GOSSIP);
+    m->UpdateDisplayPower();
+    m->RemoveAura(81192);
+    m->UpdateAllStats();
+    m->SetFullHealth();
+    m->SetObjectScale(1);
+    player->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_POWER_TYPE);
+}
+
+void BuildHumanRaceTalentGossip(Player* player, Creature* creature, uint32 sender)
+{
+    if (!player || !player->IsAlive() || !creature->IsAlive())
+        return;
+
+    PlayerMenu* menu = player->PlayerTalkClass;
+    menu->ClearMenus();
+
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, "|cffFF0005晋升 - 卫兵|r", MW_GOSSIP_HUM_TALENT_MAIN, MW_GOSSIP_ACTION_DO + 1);
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, "|cff0500FF晋升 - 魔法士|r", MW_GOSSIP_HUM_TALENT_MAIN, MW_GOSSIP_ACTION_DO + 2);
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, "|cff05C405晋升 - 信徒|r", MW_GOSSIP_HUM_TALENT_MAIN, MW_GOSSIP_ACTION_DO + 3);
+
+    SendGossipMenuFor(player, GOSSIP_ICON_TAXI, creature->GetGUID());
+}
+
+void GossipTCTogetherHumanRaceTalentSelected(Player* player, Creature* creature, uint32 sender, uint32 action) {
+
+}
+
+void GossipTCTogetherCreature(Player* player, Creature* creature, uint32 sender, uint32 action) {
+    switch (sender) {
+    case MW_GOSSIP_HUM_TALENT_MAIN:
+        return UpgradeHumanRaceTalentMinion(player, creature, action);
+    }
 }
 
 void GossipSelect_Item(Player* player, Item* item, uint32 sender, uint32 action)

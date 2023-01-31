@@ -37,6 +37,7 @@
 #include "SpellMgr.h"
 #include "TemporarySummon.h"
 #include "Vehicle.h"
+#include <TCTogetherHandler.h>
 //#include "bot_ai.h"
 
 
@@ -45,35 +46,29 @@
 const char* getCustomGreeting(int entry) {
     switch (entry) {
     case 45000:
-        return "希望这次你准备了烈酒";
+        return "??????????";
     case 45001:
-        return "今天，争议将得到伸张！";
+        return "??,???????!";
     case 45002:
-        return "我，来自虚空";
-    case 45003:
-        return "我到了，让我们速战速决吧";
-    case 45005:
-        return "为了巫妖王！";
-    case 45006:
-        return "为了酋长而战！";
-    case 45007:
-        return "圣光指引着我";
+        return "你好?,????";
+    case 45004:
+        return "为主人效命";
     case 45008:
-        return "你在玩弄危险的力量，凡人！";
+        return "?????????,??!";
     case 45011:
-        return "我听到了自然的呼唤...";
+        return "?????????...";
     case 45012:
-        return "你将感受到传说级别的痛苦";
+        return "????????????";
     case 45013:
-        return "什么事？";
+        return "????";
     case 45014:
-        return "渺小的凡人，何事召唤于我？";
+        return "?????,???????";
     case 45016:
-        return "辛多雷永垂不朽";
+        return "???????";
     case 46000:
-        return "为您效劳";
+        return "????";
     case 46030:
-        return "我到了，请多多指教";
+        return "???,?????";
     }
     return nullptr;
 }
@@ -106,6 +101,14 @@ void UnitAddCriticalRate(Unit* who, int rate) {
     //who->CastSpell(who, 88000, args);
 }
 
+void UnitAddHealthPct(Unit* who, int pct) {
+    if (!who)
+        return;
+
+    CastSpellExtraArgs args;
+    args.AddSpellMod(SpellValueMod::SPELLVALUE_BASE_POINT1, pct - 1);
+    who->CastSpell(who, 19583, args);
+}
 
 //////////////////
 // Assistance AI
@@ -139,13 +142,31 @@ void AssistanceAI::stopCombatWith(Unit* victim) {
     }
 }
 
+// Called when a player opens a gossip dialog with the creature.
+bool AssistanceAI::OnGossipHello(Player* player) {
+    if (me->GetEntry() == 45006) {
+        BuildHumanRaceTalentGossip(player, me, 0);
+        return true;
+    }
+    return false;
+}
+
+// Called when a player selects a gossip item in the creature's gossip menu.
+bool AssistanceAI::OnGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) {
+    return false;
+}
+
+// Called when a player selects a gossip with a code in the creature's gossip menu.
+bool AssistanceAI::OnGossipSelectCode(Player* /*player*/, uint32 /*menuId*/, uint32 /*gossipListId*/, char const* /*code*/) {
+    return false;
+}
+
 bool AssistanceAI::canAttackTarget(Unit const* target)
 {
     if (!target)
         return false;
 
     Unit* master = me->GetOwner();
-
     uint8 followdist = 50;
     float foldist = 36;
 
@@ -326,7 +347,6 @@ bool AssistanceAI::AssistantsSpell(uint32 diff, Unit* victim) {
     Unit* owner = me->GetOwner();
 
     if (me->GetEntry() < 45000) {
-        if (me->GetEntry() < 40000)
             return false;
     }
 
@@ -515,6 +535,95 @@ endloop:
     return false;
 }
 
+void UpdateHumanRaceTalentBuffXP(Creature* me, int changeCount) {
+    Aura* aura = me->GetAura(81192);
+    int count = aura ? aura->GetStackAmount() : 0;
+
+    if (count >= 100) return;
+
+    count += changeCount;
+    if (count >= 100) {
+        // Upgrade
+        if (me->GetVirtualItemId(0) == 1485) {
+            me->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
+            count = 100;
+        }
+        else {
+            Gender gender = me->GetGender();
+            if (me->HasNpcFlag(UNIT_NPC_FLAG_GOSSIP))
+                me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
+
+            switch (((AssistanceAI*)me->GetAI())->GetData(0)) {
+            case 0:
+                me->SetDisplayId(gender == GENDER_FEMALE ? 31953 : 28560);
+                me->SetVirtualItem(0, 29362);
+                me->SetVirtualItem(1, 34676);
+                me->m_spells[2] = 81197;
+                me->m_spells[3] = 81198;
+                me->m_spells[4] = gender == GENDER_FEMALE ? 81195 : 81196;
+
+                UnitAddHealthPct(me, 260);
+                break;
+            case 1:
+                me->SetDisplayId(gender == GENDER_FEMALE ? 26397 : 28149);
+                me->m_spells[0] = gender == GENDER_FEMALE ? 81201 : 81203;
+                me->SetVirtualItem(0, 28188);
+                break;
+            case 2:
+                me->SetDisplayId(gender == GENDER_FEMALE ? 1495 : 5072);
+                me->m_spells[2] = gender == GENDER_FEMALE ? 81207 : 81206;
+                me->SetVirtualItem(0, 22394);
+                break;
+            }
+
+            me->UpdateAllStats();
+            me->CastSpell(me, 24312, true);
+            me->SetFullHealth();
+            me->SetObjectScale(1);
+            count = 100;
+        }
+    }
+    if (count <= 0) {
+        me->RemoveAura(81192);
+    }
+
+    me->SetAuraStack(81192, me, count);
+}
+
+void AssistanceAI::KilledUnit(Unit* /*victim*/) {
+    switch (me->GetEntry()) {
+    case 45006:
+        UpdateHumanRaceTalentBuffXP(me, 10);
+        break;
+    }
+}
+
+void AssistanceAI::DamageDealt(Unit* /*victim*/, uint32& /*damage*/, DamageEffectType /*damageType*/) {
+    switch (me->GetEntry()) {
+    case 45006:
+        UpdateHumanRaceTalentBuffXP(me, 3);
+        break;
+    }
+}
+
+// Called at any Damage from any attacker (before damage apply)
+// Note: it for recalculation damage or special reaction at damage
+void AssistanceAI::DamageTaken(Unit* /*attacker*/, uint32& /*damage*/, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) {
+    switch (me->GetEntry()) {
+    case 45006:
+        UpdateHumanRaceTalentBuffXP(me, 1);
+        break;
+    }
+}
+
+void AssistanceAI::HealDone(Unit* /*done_to*/, uint32& /*addhealth*/) {
+    switch (me->GetEntry()) {
+    case 45006:
+        UpdateHumanRaceTalentBuffXP(me, 5);
+        break;
+    }
+}
+
 float AssistanceAI::getSpecialFollowAngle() {
     uint32 index = 0;
     /*for (uint32 i = 0; i < MAX_CREATURE_SPELL; i++) {
@@ -580,17 +689,8 @@ void AssistanceAI::Reborn(uint32 pct) {
 void AssistanceAI::JustDied(Unit* killer) {
     switch (me->GetEntry()) {
     case 45006:
-    {
-        uint32 index = 0;
-        if (hasSpell(85949, index)) {
-            if (spellsTimer[index][SPELL_TIMER_CURRENT] >= spellsTimer[index][SPELL_TIMER_ORIGIN]) {
-                Reborn(100);
-                spellsTimer[index][SPELL_TIMER_CURRENT] = 0;
-                return;
-            }
-        }
-    }
-    break;
+        me->DespawnOrUnsummon(60s);
+        break;
     case 46000:
     case 46030:
         me->DespawnOrUnsummon(5s);
@@ -798,6 +898,25 @@ void AssistanceAI::OnLevelUp() {
     }
 }
 
+void AssistanceAI::handleOrcRaceTalent() {
+    switch (rand() % 3) {
+    case 0:
+        me->m_spells[0] = 81182;
+        AddOneTimeSpell(56222);
+        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
+        AIFlag = AI_ACTION_HIDE;
+        break;
+    case 1:
+        me->m_spells[0] = 85984;
+        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
+        break;
+    case 2:
+    default:
+        AddOneTimeSpell(31643);
+        break;
+    }
+}
+
 void AssistanceAI::handleUndeadRaceTalent() {
 
     Player* owner = me->GetOwner() ? me->GetOwner()->ToPlayer() : nullptr;
@@ -984,9 +1103,25 @@ void AssistanceAI::JustAppeared() {
     case 45004:
         handleUndeadRaceTalent();
         break;
-    case 44000:
-    case 45003:
     case 45005:
+        handleOrcRaceTalent();
+        break;
+    case 45006:
+        me->SetPowerType(POWER_HEALTH);
+        me->SetVirtualItem(0, 1485);
+        if (me->GetDisplayId() == 3277) {
+            me->SetGender(Gender::GENDER_MALE);
+        }
+        else {
+            me->SetGender(Gender::GENDER_FEMALE);
+        }
+        effSpell = 7791;
+        break;
+    case 45007:
+        _class = ASSISTANCE_CLASS::NONE;
+        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
+        break;
+    case 45003:
     case 45009:
     case 45016:
     case 46000:
@@ -1075,7 +1210,7 @@ void AssistanceAI::JustAppeared() {
     }
 
     if (effSpell > 0) {
-        me->CastSpell(me, effSpell);
+        me->CastSpell(me, effSpell, true);
     }
     AssistantsSpell(0, nullptr);
 
@@ -1163,7 +1298,11 @@ void AssistanceAI::UpdateAI(uint32 diff/*diff*/)
     bool res = AssistantsSpell(diff, victim);
 
     if (isCaster()) {
-        if (res == true) {
+        if (_class == ASSISTANCE_CLASS::NONE && !me->HasUnitState(UNIT_STATE_CHASE)) {
+            me->StopMoving();
+            me->GetMotionMaster()->Clear();
+            me->GetMotionMaster()->MoveFollow(me->GetOwner(), _followDistance, getSpecialFollowAngle());
+        } else if (res == true) {
             // As a caster once we successfully casted one spell. We should stop if we are moving
             me->StopMoving();
             if (me->HasUnitState(UNIT_STATE_CHASE)) {

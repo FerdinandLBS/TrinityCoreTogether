@@ -58,14 +58,29 @@ public:
     static int32 Permissible(Creature const* creature);
     void JustDied(Unit* /*killer*/);
     void JustAppeared() override;
+
+    void KilledUnit(Unit* /*victim*/);
+
+    void DamageDealt(Unit* /*victim*/, uint32& /*damage*/, DamageEffectType /*damageType*/);
+    // Called at any Damage from any attacker (before damage apply)
+    // Note: it for recalculation damage or special reaction at damage
+    void DamageTaken(Unit* /*attacker*/, uint32& /*damage*/, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/);
+
+    void HealDone(Unit* /*done_to*/, uint32& /*addhealth*/);
+    void SetData(uint32 id, uint32 value) {
+        _custm_data.insert(std::pair<uint32, uint32>(id, value));
+    }
+    uint32 GetData(uint32 id) const {
+        return _custm_data.at(id);
+    }
     void Reborn(uint32 pct);
     void ResetPosition(bool force = false);
     bool AddOneTimeSpell(int32 spellId);
     void AddSpellWithLevelLimit(int32 spellid, int32 level);
 
-private:
     ASSISTANCE_CLASS _class;
     ASSISTANCE_ATTACK_TYPE _type;
+private:
     bool timerReady = false;
     bool isInCombat;
     bool isMovable;
@@ -80,13 +95,17 @@ private:
     SpellCastResult _lastSpellResult;
     float _awakeTimer;
     float _updateTimer;
+    std::map<uint32, uint32> _custm_data;
 
 
     Creature* getOwnerPet();
     void stopCombatWith(Unit* a);
+    bool OnGossipHello(Player*);
+    bool OnGossipSelect(Player*, uint32, uint32);
     Unit* GetVictim();
     Unit* getAttackerForHelper(Unit* unit);
     bool IsTargetValid(Unit* target, bool& endCombat);
+    bool OnGossipSelectCode(Player*, uint32, uint32, char const*);
     bool canAttackTarget(Unit const* target);
     bool hasSpell(uint32 id, uint32& index);
     bool castSpell(WorldObject* target, int32 index);
@@ -96,6 +115,7 @@ private:
     void resetLifeTimer();
     void ReadyToDie();
     void handleUndeadRaceTalent();
+    void handleOrcRaceTalent();
     bool isCaster();
     void EngagementStart(Unit* who);
     float GetManaPct();

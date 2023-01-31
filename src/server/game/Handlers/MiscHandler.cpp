@@ -103,6 +103,14 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPacket& recvData)
         recvData.rfinish();
         return;
     }
+    else if (guid == _player->GetTarget()) {
+        Unit* target = _player->GetSelectedUnit();
+        if (target && target->GetEntry() >= 45000 && target->GetEntry() < 70000) {
+            GossipTCTogetherCreature(_player, target->ToCreature(), _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId));
+            recvData.rfinish();
+            return;
+        }
+    }
 
     if (!_player->PlayerTalkClass->GetGossipMenu().GetItem(gossipListId))
     {

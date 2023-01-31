@@ -1350,9 +1350,17 @@ void Guardian::UpdateMaxHealth()
     }
 
     float value = GetFlatModifierValue(unitMod, BASE_VALUE) + GetCreateHealth();
-    value *= GetPctModifierValue(unitMod, BASE_PCT);
-    value += GetFlatModifierValue(unitMod, TOTAL_VALUE) + stamina * multiplicator;
-    value *= GetPctModifierValue(unitMod, TOTAL_PCT);
+    if (GetEntry() >= 45000) {
+        value = GetCreateHealth();
+        value *= m_creatureInfo->ModHealth;
+        value += GetFlatModifierValue(unitMod, TOTAL_VALUE);
+        value *= GetPctModifierValue(unitMod, TOTAL_PCT);
+    }
+    else {
+        value *= GetPctModifierValue(unitMod, BASE_PCT);
+        value += GetFlatModifierValue(unitMod, TOTAL_VALUE) + stamina * multiplicator;
+        value *= GetPctModifierValue(unitMod, TOTAL_PCT);
+    }
 
     SetMaxHealth((uint32)value);
 }
