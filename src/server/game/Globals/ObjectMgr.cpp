@@ -715,8 +715,8 @@ void ObjectMgr::LoadCreatureTemplateAddons()
 {
     uint32 oldMSTime = getMSTime();
 
-    //                                                 0       1       2      3       4       5        6             7              8                  9              10
-    QueryResult result = WorldDatabase.Query("SELECT entry, path_id, mount, bytes1, bytes2, emote, aiAnimKit, movementAnimKit, meleeAnimKit, visibilityDistanceType, auras FROM creature_template_addon");
+    //                                               0      1        2      3           4         5         6            7         8      9          10               11            12                      13
+    QueryResult result = WorldDatabase.Query("SELECT entry, path_id, mount, StandState, AnimTier, VisFlags, SheathState, PvPFlags, emote, aiAnimKit, movementAnimKit, meleeAnimKit, visibilityDistanceType, auras FROM creature_template_addon");
 
     if (!result)
     {
@@ -741,15 +741,18 @@ void ObjectMgr::LoadCreatureTemplateAddons()
 
         creatureAddon.path_id                   = fields[1].GetUInt32();
         creatureAddon.mount                     = fields[2].GetUInt32();
-        creatureAddon.bytes1                    = fields[3].GetUInt32();
-        creatureAddon.bytes2                    = fields[4].GetUInt32();
-        creatureAddon.emote                     = fields[5].GetUInt32();
-        creatureAddon.aiAnimKit                 = fields[6].GetUInt16();
-        creatureAddon.movementAnimKit           = fields[7].GetUInt16();
-        creatureAddon.meleeAnimKit              = fields[8].GetUInt16();
-        creatureAddon.visibilityDistanceType    = VisibilityDistanceType(fields[9].GetUInt8());
+        creatureAddon.standState                = fields[3].GetUInt8();
+        creatureAddon.animTier                  = fields[4].GetUInt8();
+        creatureAddon.visFlags                  = fields[5].GetUInt8();
+        creatureAddon.sheathState               = fields[6].GetUInt8();
+        creatureAddon.pvpFlags                  = fields[7].GetUInt8();
+        creatureAddon.emote                     = fields[8].GetUInt32();
+        creatureAddon.aiAnimKit                 = fields[9].GetUInt16();
+        creatureAddon.movementAnimKit           = fields[10].GetUInt16();
+        creatureAddon.meleeAnimKit              = fields[11].GetUInt16();
+        creatureAddon.visibilityDistanceType    = VisibilityDistanceType(fields[12].GetUInt8());
 
-        for (std::string_view aura : Trinity::Tokenize(fields[10].GetStringView(), ' ', false))
+        for (std::string_view aura : Trinity::Tokenize(fields[13].GetStringView(), ' ', false))
         {
             SpellInfo const* spellInfo = nullptr;
             if (Optional<uint32> spellId = Trinity::StringTo<uint32>(aura))
@@ -787,6 +790,26 @@ void ObjectMgr::LoadCreatureTemplateAddons()
                 creatureAddon.mount = 0;
             }
         }
+
+        if (creatureAddon.standState >= MAX_UNIT_STAND_STATE)
+        {
+            TC_LOG_ERROR("sql.sql", "Creature (Entry: {}) has invalid unit stand state ({}) defined in `creature_template_addon`. Truncated to 0.", entry, creatureAddon.standState);
+            creatureAddon.standState = 0;
+        }
+
+        if (AnimTier(creatureAddon.animTier) >= AnimTier::Max)
+        {
+            TC_LOG_ERROR("sql.sql", "Creature (Entry: {}) has invalid animation tier ({}) defined in `creature_template_addon`. Truncated to 0.", entry, creatureAddon.animTier);
+            creatureAddon.animTier = 0;
+        }
+
+        if (creatureAddon.sheathState >= MAX_SHEATH_STATE)
+        {
+            TC_LOG_ERROR("sql.sql", "Creature (Entry: {}) has invalid sheath state ({}) defined in `creature_template_addon`. Truncated to 0.", entry, creatureAddon.sheathState);
+            creatureAddon.sheathState = 0;
+        }
+
+        // PvPFlags don't need any checking for the time being since they cover the entire range of a byte
 
         if (!sEmotesStore.LookupEntry(creatureAddon.emote))
         {
@@ -1277,8 +1300,8 @@ void ObjectMgr::LoadCreatureAddons()
 {
     uint32 oldMSTime = getMSTime();
 
-    //                                                0       1       2      3       4       5        6             7              8                  9              10
-    QueryResult result = WorldDatabase.Query("SELECT guid, path_id, mount, bytes1, bytes2, emote, aiAnimKit, movementAnimKit, meleeAnimKit, visibilityDistanceType, auras FROM creature_addon");
+    //                                               0     1        2      3           4         5         6            7         8      9          10               11            12                      13
+    QueryResult result = WorldDatabase.Query("SELECT guid, path_id, mount, StandState, AnimTier, VisFlags, SheathState, PvPFlags, emote, aiAnimKit, movementAnimKit, meleeAnimKit, visibilityDistanceType, auras FROM creature_addon");
 
     if (!result)
     {
@@ -1310,15 +1333,18 @@ void ObjectMgr::LoadCreatureAddons()
         }
 
         creatureAddon.mount                     = fields[2].GetUInt32();
-        creatureAddon.bytes1                    = fields[3].GetUInt32();
-        creatureAddon.bytes2                    = fields[4].GetUInt32();
-        creatureAddon.emote                     = fields[5].GetUInt32();
-        creatureAddon.aiAnimKit                 = fields[6].GetUInt16();
-        creatureAddon.movementAnimKit           = fields[7].GetUInt16();
-        creatureAddon.meleeAnimKit              = fields[8].GetUInt16();
-        creatureAddon.visibilityDistanceType    = VisibilityDistanceType(fields[9].GetUInt8());
+        creatureAddon.standState                = fields[3].GetUInt8();
+        creatureAddon.animTier                  = fields[4].GetUInt8();
+        creatureAddon.visFlags                  = fields[5].GetUInt8();
+        creatureAddon.sheathState               = fields[6].GetUInt8();
+        creatureAddon.pvpFlags                  = fields[7].GetUInt8();
+        creatureAddon.emote                     = fields[8].GetUInt32();
+        creatureAddon.aiAnimKit                 = fields[9].GetUInt16();
+        creatureAddon.movementAnimKit           = fields[10].GetUInt16();
+        creatureAddon.meleeAnimKit              = fields[11].GetUInt16();
+        creatureAddon.visibilityDistanceType    = VisibilityDistanceType(fields[12].GetUInt8());
 
-        for (std::string_view aura : Trinity::Tokenize(fields[10].GetStringView(), ' ', false))
+        for (std::string_view aura : Trinity::Tokenize(fields[13].GetStringView(), ' ', false))
         {
             SpellInfo const* spellInfo = nullptr;
             if (Optional<uint32> spellId = Trinity::StringTo<uint32>(aura))
@@ -1356,6 +1382,26 @@ void ObjectMgr::LoadCreatureAddons()
                 creatureAddon.mount = 0;
             }
         }
+
+        if (creatureAddon.standState >= MAX_UNIT_STAND_STATE)
+        {
+            TC_LOG_ERROR("sql.sql", "Creature (GUID: {}) has invalid unit stand state ({}) defined in `creature_addon`. Truncated to 0.", guid, creatureAddon.standState);
+            creatureAddon.standState = 0;
+        }
+
+        if (AnimTier(creatureAddon.animTier) >= AnimTier::Max)
+        {
+            TC_LOG_ERROR("sql.sql", "Creature (GUID: {}) has invalid animation tier ({}) defined in `creature_addon`. Truncated to 0.", guid, creatureAddon.animTier);
+            creatureAddon.animTier = 0;
+        }
+
+        if (creatureAddon.sheathState >= MAX_SHEATH_STATE)
+        {
+            TC_LOG_ERROR("sql.sql", "Creature (GUID: {}) has invalid sheath state ({}) defined in `creature_addon`. Truncated to 0.", guid, creatureAddon.sheathState);
+            creatureAddon.sheathState = 0;
+        }
+
+        // PvPFlags don't need any checking for the time being since they cover the entire range of a byte
 
         if (!sEmotesStore.LookupEntry(creatureAddon.emote))
         {
@@ -6480,7 +6526,7 @@ void ObjectMgr::ReturnOrDeleteOldMails(bool serverUp)
         return;                                             // any mails need to be returned or deleted
     }
 
-    std::map<uint32 /*messageId*/, MailItemInfoVec> itemsCache;
+    std::map<uint64 /*messageId*/, MailItemInfoVec> itemsCache;
     stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_EXPIRED_MAIL_ITEMS);
     stmt->setUInt32(0, curTime);
     if (PreparedQueryResult items = CharacterDatabase.Query(stmt))
@@ -6491,7 +6537,7 @@ void ObjectMgr::ReturnOrDeleteOldMails(bool serverUp)
             Field* fields = items->Fetch();
             item.item_guid = fields[0].GetUInt64();
             item.item_template = fields[1].GetUInt32();
-            uint32 mailId = fields[2].GetUInt32();
+            uint64 mailId = fields[2].GetUInt64();
             itemsCache[mailId].push_back(item);
         } while (items->NextRow());
     }
@@ -6506,7 +6552,7 @@ void ObjectMgr::ReturnOrDeleteOldMails(bool serverUp)
             continue;
 
         Mail* m = new Mail;
-        m->messageID      = fields[0].GetUInt32();
+        m->messageID      = fields[0].GetUInt64();
         m->messageType    = fields[1].GetUInt8();
         m->sender         = fields[2].GetUInt64();
         m->receiver       = receiver;
@@ -6536,7 +6582,7 @@ void ObjectMgr::ReturnOrDeleteOldMails(bool serverUp)
                 }
 
                 stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_MAIL_ITEM_BY_ID);
-                stmt->setUInt32(0, m->messageID);
+                stmt->setUInt64(0, m->messageID);
                 CharacterDatabase.Execute(stmt);
             }
             else
@@ -6548,7 +6594,7 @@ void ObjectMgr::ReturnOrDeleteOldMails(bool serverUp)
                 stmt->setInt64 (2, curTime + 30 * DAY);
                 stmt->setInt64 (3, curTime);
                 stmt->setUInt8 (4, uint8(MAIL_CHECK_MASK_RETURNED));
-                stmt->setUInt32(5, m->messageID);
+                stmt->setUInt64(5, m->messageID);
                 CharacterDatabase.Execute(stmt);
                 for (MailItemInfoVec::iterator itr2 = m->items.begin(); itr2 != m->items.end(); ++itr2)
                 {
@@ -6570,7 +6616,7 @@ void ObjectMgr::ReturnOrDeleteOldMails(bool serverUp)
         }
 
         stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_MAIL_BY_ID);
-        stmt->setUInt32(0, m->messageID);
+        stmt->setUInt64(0, m->messageID);
         CharacterDatabase.Execute(stmt);
         delete m;
         ++deletedCount;
@@ -7466,7 +7512,7 @@ void ObjectMgr::SetHighestGuids()
 
     result = CharacterDatabase.Query("SELECT MAX(id) FROM mail");
     if (result)
-        _mailId = (*result)[0].GetUInt32()+1;
+        _mailId = (*result)[0].GetUInt64()+1;
 
     result = CharacterDatabase.Query("SELECT MAX(arenateamid) FROM arena_team");
     if (result)
@@ -7526,9 +7572,9 @@ uint64 ObjectMgr::GenerateEquipmentSetGuid()
     return _equipmentSetGuid++;
 }
 
-uint32 ObjectMgr::GenerateMailID()
+uint64 ObjectMgr::GenerateMailID()
 {
-    if (_mailId >= 0xFFFFFFFE)
+    if (_mailId >= UI64LIT(0xFFFFFFFFFFFFFFFE))
     {
         TC_LOG_ERROR("misc", "Mail ids overflow!! Can't continue, shutting down server. Search on forum for TCE00007 for more info. ");
         World::StopNow(ERROR_EXIT_CODE);
