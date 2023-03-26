@@ -266,6 +266,7 @@ class TC_GAME_API Aura
         }
 
         std::vector<AuraScript*> m_loadedScripts;
+        bool m_forceStackDisplay;
 
         virtual std::string GetDebugInfo() const;
 

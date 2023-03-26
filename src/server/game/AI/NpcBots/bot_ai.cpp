@@ -1,4 +1,4 @@
-#include "bot_ai.h"
+﻿#include "bot_ai.h"
 #include "bot_Events.h"
 #include "bot_GridNotifiers.h"
 #include "botdatamgr.h"
@@ -18708,4 +18708,19 @@ void bot_ai::InitBotCustomSpells()
 
     TC_LOG_INFO("server.loading", "Re-Loading Spell Proc conditions...");
     sSpellMgr->LoadSpellProcs();
+}
+
+
+
+float bot_ai::GetAttackRange() {
+    uint8 followdist = IAmFree() ? BotMgr::GetBotFollowDistDefault() : master->GetBotMgr()->GetBotFollowDist();
+    uint8 rangeMode = IAmFree() ? uint8(BOT_ATTACK_RANGE_LONG) : master->GetBotMgr()->GetBotAttackRangeMode();
+    uint8 exactRange = rangeMode != BOT_ATTACK_RANGE_EXACT || IAmFree() ? 255 : master->GetBotMgr()->GetBotExactAttackRange();
+    float dist = (rangeMode == BOT_ATTACK_RANGE_EXACT) ? exactRange :
+        followdist >= 40 ? followdist :
+        _botclass == BOT_CLASS_HUNTER ?
+        8 + urand(followdist / 2, followdist / 2 + 5) :/*23-33 at 40, 18-28 at 30*/
+        5 + urand(followdist / 3, followdist / 3 + 5)/*18-23 at 40, 15-20 at 30*/;
+
+    return dist;
 }

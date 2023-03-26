@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -124,6 +124,7 @@ public:
             { "unstuck",          HandleUnstuckCommand,          rbac::RBAC_PERM_COMMAND_UNSTUCK,          Console::Yes },
             { "wchange",          HandleChangeWeather,           rbac::RBAC_PERM_COMMAND_WCHANGE,          Console::No },
             { "mailbox",          HandleMailBoxCommand,          rbac::RBAC_PERM_COMMAND_MAILBOX,          Console::No },
+            //{ "cast",             HandleCastCommand,             rbac::RBAC_PERM_COMMAND_TARGET_CAST,      Console::No },
         };
         return commandTable;
     }
@@ -2700,6 +2701,32 @@ public:
         Player* player = handler->GetSession()->GetPlayer();
 
         handler->GetSession()->SendShowMailBox(player->GetGUID());
+        return true;
+    }
+
+    static bool HandleCastCommand(ChatHandler* handler, uint32 spellId) {
+        Player* player = handler->GetSession()->GetPlayer();
+        Unit* unit = handler->getSelectedUnit();
+        if (!unit)
+            return false;
+
+        const SpellInfo* si = sSpellMgr->GetSpellInfo(spellId);
+        if (!si)
+            return false;
+
+        for (int i = 0; i < 3; i++) {
+            const SpellEffectInfo sei = si->GetEffect((SpellEffIndex)i);
+            if (si->IsTargetingArea()) {
+                unit->CastSpell(player->GetPosition(), spellId, true);
+            }
+            else if (si->IsSelfCast()) {
+                unit->CastSpell(unit, spellId, true);
+            }
+            else  if (si->IsSingleTarget()) {
+                unit->CastSpell(player, spellId, true);
+            }
+        }
+
         return true;
     }
 };

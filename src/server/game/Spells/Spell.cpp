@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -7926,6 +7926,15 @@ void Spell::SetSpellValue(SpellValueMod mod, int32 value)
             break;
         case SPELLVALUE_CRIT_CHANCE:
             m_spellValue->CriticalChance = value / 100.0f; // @todo ugly /100 remove when basepoints are double
+            break;
+        case SPELLVALUE_MISC_VALUE0:
+            m_spellValue->EffectMiscValue[0] = value;
+            break;
+        case SPELLVALUE_MISC_VALUE1:
+            m_spellValue->EffectMiscValue[1] = value;
+            break;
+        case SPELLVALUE_MISC_VALUE2:
+            m_spellValue->EffectMiscValue[2] = value;
             break;
     }
 }

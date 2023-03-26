@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -123,7 +123,6 @@ enum SpellModOp : uint8
     SPELLMOD_RESIST_DISPEL_CHANCE       = 28,
     SPELLMOD_CRIT_DAMAGE_BONUS_2        = 29, //one not used spell
     SPELLMOD_SPELL_COST_REFUND_ON_FAIL  = 30,
-
     MAX_SPELLMOD
 };
 
@@ -135,7 +134,10 @@ enum SpellValueMod : uint8
     SPELLVALUE_RADIUS_MOD,
     SPELLVALUE_MAX_TARGETS,
     SPELLVALUE_AURA_STACK,
-    SPELLVALUE_CRIT_CHANCE
+    SPELLVALUE_CRIT_CHANCE,
+    SPELLVALUE_MISC_VALUE0,
+    SPELLVALUE_MISC_VALUE1,
+    SPELLVALUE_MISC_VALUE2
 };
 
 enum SpellFacingFlags

@@ -53,22 +53,6 @@ const char* getCustomGreeting(int entry) {
         return "你好?,????";
     case 45004:
         return "为主人效命";
-    case 45008:
-        return "?????????,??!";
-    case 45011:
-        return "?????????...";
-    case 45012:
-        return "????????????";
-    case 45013:
-        return "????";
-    case 45014:
-        return "?????,???????";
-    case 45016:
-        return "???????";
-    case 46000:
-        return "????";
-    case 46030:
-        return "???,?????";
     }
     return nullptr;
 }
@@ -142,10 +126,30 @@ void AssistanceAI::stopCombatWith(Unit* victim) {
     }
 }
 
+void BuildDwarfRaceTalentGossip(Player* player, Creature* creature) {
+    if (!player || !player->IsAlive() || !creature->IsAlive())
+        return;
+
+    PlayerMenu* menu = player->PlayerTalkClass;
+    menu->ClearMenus();
+
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, "雇佣", MW_GOSSIP_DWARF_TALENT_MAIN, MW_GOSSIP_ACTION_DO + 1);
+
+    SendGossipMenuFor(player, GOSSIP_ICON_TAXI, creature->GetGUID());
+}
+
 // Called when a player opens a gossip dialog with the creature.
 bool AssistanceAI::OnGossipHello(Player* player) {
-    if (me->GetEntry() == 45006) {
+    switch (me->GetEntry()) {
+    case 45006:
         BuildHumanRaceTalentGossip(player, me, 0);
+        return true;
+    case 45008:
+    case 45009:
+    case 45010:
+    case 45011:
+    case 45012:
+        BuildDwarfRaceTalentGossip(player, me);
         return true;
     }
     return false;
@@ -153,6 +157,21 @@ bool AssistanceAI::OnGossipHello(Player* player) {
 
 // Called when a player selects a gossip item in the creature's gossip menu.
 bool AssistanceAI::OnGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) {
+    uint32 sender = player->PlayerTalkClass->GetGossipOptionSender(gossipListId);
+    uint32 action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
+    switch (sender) {
+    case MW_GOSSIP_HUM_TALENT_MAIN:
+        UpgradeHumanRaceTalentMinion(player, me, action);
+        break;
+    case MW_GOSSIP_DWARF_TALENT_MAIN:
+        if (action == MW_GOSSIP_ACTION_DO + 1) {
+            HireDwarfRaceTalentMinion(player, me, action);
+        }
+        else {
+            BuildDwarfRaceTalentGossip(player, me);
+        }
+        break;
+    }
     return false;
 }
 
@@ -704,6 +723,10 @@ void AssistanceAI::updateTimer(uint32 diff)
     if (entry < 40000)
         return;
 
+    if (!me->GetOwner() || me->GetOwnerGUID().IsGameObject())
+        return;
+
+
     if (me->GetOwner() && me->GetOwner()->ToPlayer() && me->GetDistance(me->GetOwner()) > 50.0f) {
         me->NearTeleportTo(me->GetOwner()->GetPosition(), true);
         return;
@@ -1121,8 +1144,28 @@ void AssistanceAI::JustAppeared() {
         _class = ASSISTANCE_CLASS::NONE;
         _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
         break;
-    case 45003:
+    case 45008:
+        _class = ASSISTANCE_CLASS::DPS;
+        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
+        break;
     case 45009:
+        _class = ASSISTANCE_CLASS::DPS;
+        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
+        me->SetVirtualItem(0, 1664);
+        break;
+    case 45010:
+        _class = ASSISTANCE_CLASS::DPS;
+        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_MELEE;
+        me->SetVirtualItem(0, 12796);
+        me->SetVirtualItem(1, 12796);
+        break;
+    case 45011:
+        _class = ASSISTANCE_CLASS::HEALER;
+        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_MELEE;
+        me->SetVirtualItem(0, 5541);
+        me->SetVirtualItem(1, 2916);
+        break;
+    case 45003:
     case 45016:
     case 46000:
     case 46001:
@@ -1238,6 +1281,9 @@ void AssistanceAI::UpdateAI(uint32 diff/*diff*/)
     else {
         _updateTimer = AAI_DEFAULT_UPDATE_TIMER;
     }
+
+    if (me->GetOwner() == nullptr || me->GetOwnerGUID().IsGameObject())
+        return;
 
     // We are not awaken. Do nothing
     if (_awakeTimer > 0) {

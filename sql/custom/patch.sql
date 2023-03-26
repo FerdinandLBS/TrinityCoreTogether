@@ -21,6 +21,12 @@ delete from world.quest_template_addon where ID >= 27000;
 delete from world.playercreateinfo_item;
 delete from world.playercreateinfo_action where action>=81000;
 delete from world.trainer_spell where SpellId>=81000;
+delete from npc_vendor where entry>45000;
+
+-- bot control
+INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('87003', 'spell_bot_auto_format');
+INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('87004', 'spell_bot_hold_format');
+INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('87001', 'spell_bot_surroud_format');
 
 -- 角色初始优化
 insert into world.playercreateinfo_item (`race`, `class`, `itemid`, `amount`) VALUES ('0', '6', '40582', '-1');
@@ -51,6 +57,7 @@ INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `
 
 -- 召唤可乘坐地狱火alter
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81109', 'spell_hellfire_vehicle_warlock');
+INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('88001', 'spell_hellfire_vehicle_warlock');
 
 -- 多重施法
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81123', 'spell_multiple_trigger_aura');
@@ -150,6 +157,52 @@ INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('506
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('25046', 'spell_bloodelf_arcane_torrent');
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('28730', 'spell_bloodelf_arcane_torrent');
 
+-- 矮人种族技能
+INSERT INTO `world`.`gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconName`, `castBarCaption`, `unk1`, `size`, `Data0`, `Data1`, `Data2`, `Data3`, `Data4`, `Data5`, `Data6`, `Data7`, `Data8`, `Data9`, `Data10`, `Data11`, `Data12`, `Data13`, `Data14`, `Data15`, `Data16`, `Data17`, `Data18`, `Data19`, `Data20`, `Data21`, `Data22`, `Data23`, `AIName`, `ScriptName`, `VerifiedBuild`) VALUES ('250000', '22', '8005', '探险队钻机', '', '', '', '0.3', '81351', '0', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '', '', '12340');
+UPDATE `world`.`gameobject_template` SET `ScriptName` = 'dwarf_race_talent_gameobject_script' WHERE (`entry` = '250000');
+INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES ('45008', '0', '0', '0', '0', '0', '25754', '0', '0', '0', '艾伯特', '钢铁矮人', '', '0', '1', '80', '2', '16', '0', '1', '0.992063', '1', '1', '0', '2000', '2000', '1', '1', '2', '32832', '2048', '0', '0', '7', '8', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '0', '1', '0.5', '0.5', '1', '1', '1', '0', '0', '1', '0', '0', '0', '', '12340');
+INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES ('45009', '0', '0', '0', '0', '0', '8752', '0', '0', '0', '布莱克·斯通', '黑铁矮人', '0', '1', '80', '0', '54', '0', '1', '1.14286', '1', '1', '0', '2000', '2000', '1', '1', '8', '32832', '2048', '0', '0', '7', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '1', '1', '0.5', '0.5', '1', '1', '1', '0', '0', '1', '0', '0', '0', '', '12340');
+INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES ('45010', '0', '0', '0', '0', '0', '7007', '0', '0', '0', '桑德汉莫', '蛮锤矮人', '0', '1', '80', '0', '694', '2', '1', '1.14286', '1', '0', '0', '2000', '2000', '1', '1', '1', '512', '2048', '0', '0', '7', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '0', '1', '0.6', '0', '1', '1', '1', '0', '0', '1', '0', '0', '66', '', '12340');
+INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES ('45011', '0', '0', '0', '0', '0', '3089', '0', '0', '0', '莱特', '铜须矮人', '0', '1', '80', '0', '55', '0', '1', '1.14286', '1', '0', '0', '2000', '2000', '1', '1', '1', '512', '2048', '0', '0', '7', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '0', '1', '0.55', '0.4', '1', '1', '1', '0', '0', '1', '0', '0', '66', '', '12340');
+INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES ('45012', '0', '0', '0', '0', '0', '2049', '0', '0', '0', '爱茉莉', '探险队物资官', '0', '1', '80', '0', '55', '2', '1', '1.14286', '1', '0', '0', '2000', '2000', '1', '1', '1', '512', '2048', '0', '0', '7', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '0', '1', '1.05', '1', '1', '1', '1', '0', '0', '1', '0', '0', '66', '', '12340');
+INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45008', '0', '81352', '12340');
+INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45008', '1', '81353', '12340');
+INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45008', '2', '81355', '12340');
+INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45009', '0', '81356', '12340');
+INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45009', '1', '81108', '12340');
+INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45009', '2', '87261', '12340');
+INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45010', '0', '87260', '12340');
+INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45010', '1', '81357', '12340');
+INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45010', '2', '81197', '12340');
+INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45011', '0', '81358', '12340');
+INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45011', '1', '81359', '12340');
+UPDATE `world`.`creature_template` SET `unit_flags` = '0', `ScriptName` = 'AssistanceAI' WHERE (`entry` = '45008');
+UPDATE `world`.`creature_template` SET `unit_flags` = '0', `ScriptName` = 'AssistanceAI' WHERE (`entry` = '45009');
+UPDATE `world`.`creature_template` SET `unit_flags` = '0', `flags_extra` = '0', `ScriptName` = 'AssistanceAI' WHERE (`entry` = '45010');
+UPDATE `world`.`creature_template` SET `unit_flags` = '0', `flags_extra` = '0', `ScriptName` = 'AssistanceAI' WHERE (`entry` = '45011');
+UPDATE `world`.`creature_template` SET `unit_flags` = '0', `flags_extra` = '0', `ScriptName` = 'AssistanceAI' WHERE (`entry` = '45012');
+UPDATE `world`.`creature_template` SET `npcflag` = '0' WHERE (`entry` = '45010');
+UPDATE `world`.`creature_template` SET `npcflag` = '128' WHERE (`entry` = '45012');
+
+INSERT INTO `world`.`item_template` (`entry`, `class`, `subclass`, `SoundOverrideSubclass`, `name`, `displayid`, `Quality`, `Flags`, `FlagsExtra`, `BuyCount`, `BuyPrice`, `SellPrice`, `InventoryType`, `AllowableClass`, `AllowableRace`, `ItemLevel`, `RequiredLevel`, `RequiredSkill`, `RequiredSkillRank`, `requiredspell`, `requiredhonorrank`, `RequiredCityRank`, `RequiredReputationFaction`, `RequiredReputationRank`, `maxcount`, `stackable`, `ContainerSlots`, `StatsCount`, `stat_type1`, `stat_value1`, `stat_type2`, `stat_value2`, `stat_type3`, `stat_value3`, `stat_type4`, `stat_value4`, `stat_type5`, `stat_value5`, `stat_type6`, `stat_value6`, `stat_type7`, `stat_value7`, `stat_type8`, `stat_value8`, `stat_type9`, `stat_value9`, `stat_type10`, `stat_value10`, `ScalingStatDistribution`, `ScalingStatValue`, `dmg_min1`, `dmg_max1`, `dmg_type1`, `dmg_min2`, `dmg_max2`, `dmg_type2`, `armor`, `holy_res`, `fire_res`, `nature_res`, `frost_res`, `shadow_res`, `arcane_res`, `delay`, `ammo_type`, `RangedModRange`, `spellid_1`, `spelltrigger_1`, `spellcharges_1`, `spellppmRate_1`, `spellcooldown_1`, `spellcategory_1`, `spellcategorycooldown_1`, `spellid_2`, `spelltrigger_2`, `spellcharges_2`, `spellppmRate_2`, `spellcooldown_2`, `spellcategory_2`, `spellcategorycooldown_2`, `spellid_3`, `spelltrigger_3`, `spellcharges_3`, `spellppmRate_3`, `spellcooldown_3`, `spellcategory_3`, `spellcategorycooldown_3`, `spellid_4`, `spelltrigger_4`, `spellcharges_4`, `spellppmRate_4`, `spellcooldown_4`, `spellcategory_4`, `spellcategorycooldown_4`, `spellid_5`, `spelltrigger_5`, `spellcharges_5`, `spellppmRate_5`, `spellcooldown_5`, `spellcategory_5`, `spellcategorycooldown_5`, `bonding`, `description`, `PageText`, `LanguageID`, `PageMaterial`, `startquest`, `lockid`, `Material`, `sheath`, `RandomProperty`, `RandomSuffix`, `block`, `itemset`, `MaxDurability`, `area`, `Map`, `BagFamily`, `TotemCategory`, `socketColor_1`, `socketContent_1`, `socketColor_2`, `socketContent_2`, `socketColor_3`, `socketContent_3`, `socketBonus`, `GemProperties`, `RequiredDisenchantSkill`, `ArmorDamageModifier`, `duration`, `ItemLimitCategory`, `HolidayId`, `ScriptName`, `DisenchantID`, `FoodType`, `minMoneyLoot`, `maxMoneyLoot`, `flagsCustom`, `VerifiedBuild`) VALUES ('60002', '0', '5', '-1', '矮人伏特加', '18085', '3', '0', '0', '1', '120', '30', '0', '-1', '-1', '15', '0', '0', '0', '0', '0', '0', '0', '0', '1', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '11008', '0', '-1', '-1', '0', '59', '1000', '81364', '0', '-1', '-1', '0', '59', '1000', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '喝下它就能充满力量', '0', '0', '0', '0', '0', '-1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '-1', '0', '0', '0', '0', '', '0', '0', '0', '0', '0', '12340');
+INSERT INTO `world`.`item_template` (`entry`, `class`, `subclass`, `SoundOverrideSubclass`, `name`, `displayid`, `Quality`, `Flags`, `FlagsExtra`, `BuyCount`, `BuyPrice`, `SellPrice`, `InventoryType`, `AllowableClass`, `AllowableRace`, `ItemLevel`, `RequiredLevel`, `RequiredSkill`, `RequiredSkillRank`, `requiredspell`, `requiredhonorrank`, `RequiredCityRank`, `RequiredReputationFaction`, `RequiredReputationRank`, `maxcount`, `stackable`, `ContainerSlots`, `StatsCount`, `stat_type1`, `stat_value1`, `stat_type2`, `stat_value2`, `stat_type3`, `stat_value3`, `stat_type4`, `stat_value4`, `stat_type5`, `stat_value5`, `stat_type6`, `stat_value6`, `stat_type7`, `stat_value7`, `stat_type8`, `stat_value8`, `stat_type9`, `stat_value9`, `stat_type10`, `stat_value10`, `ScalingStatDistribution`, `ScalingStatValue`, `dmg_min1`, `dmg_max1`, `dmg_type1`, `dmg_min2`, `dmg_max2`, `dmg_type2`, `armor`, `holy_res`, `fire_res`, `nature_res`, `frost_res`, `shadow_res`, `arcane_res`, `delay`, `ammo_type`, `RangedModRange`, `spellid_1`, `spelltrigger_1`, `spellcharges_1`, `spellppmRate_1`, `spellcooldown_1`, `spellcategory_1`, `spellcategorycooldown_1`, `spellid_2`, `spelltrigger_2`, `spellcharges_2`, `spellppmRate_2`, `spellcooldown_2`, `spellcategory_2`, `spellcategorycooldown_2`, `spellid_3`, `spelltrigger_3`, `spellcharges_3`, `spellppmRate_3`, `spellcooldown_3`, `spellcategory_3`, `spellcategorycooldown_3`, `spellid_4`, `spelltrigger_4`, `spellcharges_4`, `spellppmRate_4`, `spellcooldown_4`, `spellcategory_4`, `spellcategorycooldown_4`, `spellid_5`, `spelltrigger_5`, `spellcharges_5`, `spellppmRate_5`, `spellcooldown_5`, `spellcategory_5`, `spellcategorycooldown_5`, `bonding`, `description`, `PageText`, `LanguageID`, `PageMaterial`, `startquest`, `lockid`, `Material`, `sheath`, `RandomProperty`, `RandomSuffix`, `block`, `itemset`, `MaxDurability`, `area`, `Map`, `BagFamily`, `TotemCategory`, `socketColor_1`, `socketContent_1`, `socketColor_2`, `socketContent_2`, `socketColor_3`, `socketContent_3`, `socketBonus`, `GemProperties`, `RequiredDisenchantSkill`, `ArmorDamageModifier`, `duration`, `ItemLimitCategory`, `HolidayId`, `ScriptName`, `DisenchantID`, `FoodType`, `minMoneyLoot`, `maxMoneyLoot`, `flagsCustom`, `VerifiedBuild`) VALUES ('60003', '4', '0', '-1', '探险队战袍', '54722', '4', '32768', '0', '1', '0', '0', '19', '-1', '-1', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '81365', '1', '-1', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '1', '探险者战袍，对矮人保持友善', '0', '0', '0', '0', '0', '7', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '-1', '0', '0', '0', '0', '', '0', '0', '0', '0', '0', '12340');
+
+INSERT INTO `world`.`npc_vendor` (`entry`, `slot`, `item`, `maxcount`, `incrtime`, `ExtendedCost`, `VerifiedBuild`) VALUES ('45012', '0', '60002', '0', '0', '0', '0');
+INSERT INTO `world`.`npc_vendor` (`entry`, `slot`, `item`, `maxcount`, `incrtime`, `ExtendedCost`, `VerifiedBuild`) VALUES ('45012', '1', '60003', '0', '0', '0', '0');
+
+-- 牛头人种族天赋
+INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81370', 'spell_tauren_race_talent_aura');
+INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81372', 'spell_tauren_race_talent_stack_aura');
+
+
+-- Tank war
+INSERT INTO `world`.`gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconName`, `castBarCaption`, `unk1`, `size`, `Data0`, `Data1`, `Data2`, `Data3`, `Data4`, `Data5`, `Data6`, `Data7`, `Data8`, `Data9`, `Data10`, `Data11`, `Data12`, `Data13`, `Data14`, `Data15`, `Data16`, `Data17`, `Data18`, `Data19`, `Data20`, `Data21`, `Data22`, `Data23`, `AIName`, `ScriptName`, `VerifiedBuild`) VALUES ('250001', '33', '7877', 'wall', '', '', '', '0.1', '50000', '0', '0', '19888', '7897', '50000', '1', '0', '0', '19902', '7874', '1', '0', '0', '19916', '0', '0', '0', '31', '0', '0', '0', '19447', '0', '', '', '12340');
+INSERT INTO `world`.`gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconName`, `castBarCaption`, `unk1`, `size`, `Data0`, `Data1`, `Data2`, `Data3`, `Data4`, `Data5`, `Data6`, `Data7`, `Data8`, `Data9`, `Data10`, `Data11`, `Data12`, `Data13`, `Data14`, `Data15`, `Data16`, `Data17`, `Data18`, `Data19`, `Data20`, `Data21`, `Data22`, `Data23`, `AIName`, `ScriptName`, `VerifiedBuild`) VALUES ('250002', '33', '8590', 'tower', '', '', '', '0.1', '30000', '1', '0', '21293', '0', '30000', '0', '1', '0', '0', '0', '1', '0', '0', '21032', '0', '0', '0', '57', '0', '0', '0', '0', '0', '', '', '12340');
+UPDATE `world`.`gameobject_template` SET `size` = '0.01', `Data0` = '2', `Data5` = '2' WHERE (`entry` = '250001');
+UPDATE `world`.`gameobject_template` SET `size` = '0.01', `Data0` = '4', `Data5` = '4' WHERE (`entry` = '250002');
+INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES ('47000', '0', '0', '0', '0', '0', '15382', '0', '0', '0', 'tank', '', 'vehichleCursor', '0', '1', '1', '0', '35', '0', '1', '1.14286', '1', '0', '0', '2000', '2000', '1', '1', '1', '0', '2048', '0', '0', '72', '0', '0', '0', '0', '0', '780', '0', '0', '', '0', '1', '1', '1', '1', '1', '1', '0', '1', '1', '0', '0', '0', '', '12340');
+INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('47000', '0', '88002', '12340');
+
 -- 烟花
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('82000', 'spell_happy_new_year');
 
@@ -158,3 +211,81 @@ INSERT INTO `world`.`item_template` (`entry`, `class`, `subclass`, `SoundOverrid
 UPDATE `world`.`item_template` SET `spellid_1`='85002', `description`='从你一睁眼开始，这本充满力量的魔典就属于你。' WHERE `entry`='60000';
 
 
+-- Item enhancement
+delete from world.item_enchantment_template where entry=9001 or entry=9002 or entry=9003 or entry=9004;
+-- 非武器
+update world.item_template set RandomSuffix=9001 where Quality>=3 and InventoryType>0 and RandomProperty=0 and InventoryType<>0 and InventoryType<>18 and InventoryType<>24 and InventoryType<>27 and InventoryType<>13 and InventoryType<>14 and InventoryType<>15 and InventoryType<>17 and InventoryType<>21 and InventoryType<>22;
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '110', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '111', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '112', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '113', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '114', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '115', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '116', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '117', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '118', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '119', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '120', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '121', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '122', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '123', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '124', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '125', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '126', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '127', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '128', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '129', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '130', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '131', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '132', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '133', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '134', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '135', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '136', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '137', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '138', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '139', '1.0');
+
+-- lvl4
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '191', '0.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '192', '0.3');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '197', '0.3');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '198', '0.3');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '199', '0.3');
+
+-- 武器
+update world.item_template set RandomSuffix=9002 where Quality>=3 and InventoryType>0 and RandomProperty=0 and InventoryType<>0 and InventoryType<>18 and InventoryType<>24 and InventoryType<>27 and (InventoryType=13 or InventoryType=14 or InventoryType=15 or InventoryType=17 or InventoryType=21 or InventoryType=22);
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '110', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '111', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '112', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '113', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '114', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '115', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '116', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '117', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '118', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '119', '5.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '120', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '121', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '122', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '123', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '124', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '125', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '126', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '127', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '128', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '129', '3.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '130', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '131', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '132', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '133', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '134', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '135', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '136', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '137', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '138', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '139', '1.0');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '193', '0.5');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '194', '0.5');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '195', '0.5');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '196', '0.5');

@@ -123,6 +123,7 @@ struct SpellValue
     float     RadiusMod;
     uint8     AuraStackAmount;
     float     CriticalChance;
+    int32     EffectMiscValue[MAX_SPELL_EFFECTS];
 };
 
 enum SpellState

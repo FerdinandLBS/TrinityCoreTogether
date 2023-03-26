@@ -90,7 +90,7 @@ class bot_ai : public CreatureAI
         Creature* GetBotsPet() const { return botPet; }
 
         void Evade();
-
+        float GetAttackRange();
         EventProcessor* GetEvents() { return &Events; }
         ObjectGuid::LowType GetBotOwnerGuid() const { return _ownerGuid; }
         Player* GetBotOwner() const { return master; }

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -744,6 +744,7 @@ enum RBACPermissions
     // 878-879 previously used, do not reuse
     RBAC_PERM_COMMAND_PDUMP_COPY                             = 880,
     RBAC_PERM_COMMAND_RELOAD_VEHICLE_TEMPLATE                = 881,
+    RBAC_PERM_COMMAND_TARGET_CAST                            = 900,
     //
     // IF YOU ADD NEW PERMISSIONS, ADD THEM IN MASTER BRANCH AS WELL!
     //

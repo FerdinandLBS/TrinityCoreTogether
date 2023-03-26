@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -97,21 +97,28 @@ void WorldSession::HandleGossipSelectOptionOpcode(WorldPacket& recvData)
 
     recvData >> guid >> menuId >> gossipListId;
     Item* pItem = _player->GetItemByGuid(guid);
-    if (pItem && pItem->GetEntry() == 60000)
+    if (pItem && pItem->GetEntry() >= 60000)
     {
         GossipSelect_Item(_player, pItem, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId));
         recvData.rfinish();
         return;
     }
-    else if (guid == _player->GetTarget()) {
-        Unit* target = _player->GetSelectedUnit();
-        if (target && target->GetEntry() >= 45000 && target->GetEntry() < 70000) {
-            GossipTCTogetherCreature(_player, target->ToCreature(), _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId));
+    /*else if (guid.IsCreature()) {
+        Creature* creature = ObjectAccessor::GetCreature(*_player, guid);
+        if (creature && creature->GetEntry() >= 45000 && creature->GetEntry() < 70000) {
+            GossipTCTogetherCreature(_player, creature, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId));
             recvData.rfinish();
             return;
         }
+    }*/
+    else if (guid.IsGameObject()) {
+        GameObject* pObject = ObjectAccessor::GetGameObject(*_player, guid);
+        if (pObject && pObject->GetEntry() >= 250000) {
+            GossipTCTogetherGameObject(_player, pObject, _player->PlayerTalkClass->GetGossipOptionSender(gossipListId), _player->PlayerTalkClass->GetGossipOptionAction(gossipListId));
+            recvData.rfinish();
+        }
     }
-
+    
     if (!_player->PlayerTalkClass->GetGossipMenu().GetItem(gossipListId))
     {
         recvData.rfinish();

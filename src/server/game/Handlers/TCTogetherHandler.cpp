@@ -8,6 +8,7 @@
 #include "WorldSession.h"
 #include "ScriptedGossip.h"
 #include "TCTogetherHandler.h"
+#include "TemporarySummon.h"
 #include <AI\CoreAI\AssistanceAI.h>
 // .. more includes
 
@@ -90,6 +91,7 @@ void BuildMainMenu(Player* player, Item* item, uint32 sender)
     menu->ClearMenus();
 
     AddGossipItemFor(player, GOSSIP_ICON_TAXI, "|cff05E605传送服务|r", MW_GOSSIP_SENDER_TRANS, MW_GOSSIP_ACTION_SUB_MENU);
+    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "|cffeff064迷你游戏|r", MW_GOSSIP_ACTION_MINI_GAME, MW_GOSSIP_ACTION_SUB_MENU);
     AddGossipItemFor(player, GOSSIP_ICON_TALK, "关闭", MW_GOSSIP_SENDER_CLOSE, MW_GOSSIP_ACTION_SUB_MENU);
 
     SendGossipMenuFor(player, GOSSIP_ICON_TAXI, item->GetGUID());
@@ -352,6 +354,17 @@ void GossipActionDoTrans(Player* player, Item* item, uint32 action) {
         case MW_GOSSIP_ACTION_TRANS + 64: //
         player->TeleportTo(, f, f, f, 6);
         break;*/
+
+    /* Transport for Dwarf race talent 500 - 502 */
+    case MW_GOSSIP_ACTION_TRANS + 500:
+        player->TeleportTo(0, 286.153f, -2006.471f, 194.2f, 4.697f);
+        break;
+    case MW_GOSSIP_ACTION_TRANS + 501:
+        player->TeleportTo(0, -6951.664f, -1054.764f, 241.9f, 4.697f);
+        break;
+    case MW_GOSSIP_ACTION_TRANS + 502:
+        player->TeleportTo(571, 7762.9536f, -2138.737f, 1233.33f, 4.697f);
+        break;
     }
     CloseGossipMenuFor(player);
 }
@@ -426,10 +439,121 @@ void GossipTCTogetherHumanRaceTalentSelected(Player* player, Creature* creature,
 
 }
 
+void HireDwarfRaceTalentMinion(Player* player, Creature* creature, uint32 action) {
+    std::list<Creature*> list;
+
+    for (int i = 0; i < 5; i++) {
+        player->GetAllMinionsByEntry(list, 45008 + i);
+        if (list.size() > 0) {
+            creature->Whisper("你已经雇佣了一名矮人探险者", Language::LANG_DWARVISH, player);
+            return;
+        }
+    }
+
+    uint32 entry = creature->GetEntry();
+    Position position = creature->GetPosition();
+    creature->DespawnOrUnsummon();
+    player->CastSpell(creature, entry + 81360 - 45008, true);
+}
+
 void GossipTCTogetherCreature(Player* player, Creature* creature, uint32 sender, uint32 action) {
     switch (sender) {
     case MW_GOSSIP_HUM_TALENT_MAIN:
         return UpgradeHumanRaceTalentMinion(player, creature, action);
+    case MW_GOSSIP_DWARF_TALENT_MAIN:
+        ; //return HireDwarfRaceTalentMinion(player, creature, action);
+    }
+}
+
+void GossipTCTogetherGameObject(Player* player, GameObject* obj, uint32 sender, uint32 action) {
+    switch (obj->GetEntry()) {
+    case 250000:
+        GossipActionDoTrans(player, nullptr, action);
+        break;
+    }
+}
+
+void BuildDwarfRaceTalentMenu(Player* player, GameObject* object, uint32 sender)
+{
+    if (!player || !player->IsAlive() || player->IsInCombat())
+        return;
+
+    PlayerMenu* menu = player->PlayerTalkClass;
+    uint8 level = player->GetLevel();
+    menu->ClearMenus();
+
+    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "铁炉堡", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 2);
+    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "鹰巢山", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 500);
+    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "黑石山", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 501);
+    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "造物者圣台", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 502);
+
+    SendGossipMenuFor(player, GOSSIP_ICON_TAXI, object->GetGUID());
+}
+
+void BuildMiniGameMenu(Player* player, Item* item) {
+    if (!player || !player->IsAlive() || player->IsInCombat())
+        return;
+
+    PlayerMenu* menu = player->PlayerTalkClass;
+    uint8 level = player->GetLevel();
+    menu->ClearMenus();
+
+    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "坦克大战", MW_GOSSIP_ACTION_MINI_GAME, 0);
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, "<<< 后退", MW_GOSSIP_SENDER_MAIN, MW_GOSSIP_ACTION_SUB_MENU);
+
+    SendGossipMenuFor(player, GOSSIP_ICON_TAXI, item->GetGUID());
+}
+
+void TankWar(Player* player) {
+    if (!player || !player->IsAlive() || player->IsInCombat())
+        return;
+
+    uint32 tile[4] = { 0, 250001, 250002, 0 };
+    uint32 mapData[13*13] = {
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //0
+        0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, //1
+        0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, //2
+        0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, //3
+        0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, //4
+        0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, //5
+        4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, //6
+        1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, //7
+        1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, //8
+        0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, //9
+        0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, //10
+        0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, //11
+        0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0 //12
+    };
+
+    player->SetFacingTo(M_PI/2);
+    Position home;
+
+    Position origin = player->GetPosition();
+    for (int i = 0; i < 13; i++) {
+        for (int j = 0; j < 13; j++) {
+            Position p(origin);
+            p.RelocateOffset(Position(i * 1.25f, j * 1.25));
+            if (tile[mapData[i + 13 * j]]) {
+                GameObject* go = player->SummonGameObject(tile[mapData[i + 13 * j]], p, QuaternionData(), 1000s);
+                if (mapData[i + 13 * j] == 2)
+                    go->SetObjectScale(0.1f);
+            }
+            if (i == 160) {
+                home = p;
+            }
+        }
+    }
+
+    player->MovePosition(home, 0, M_PI / 2);
+    player->CastSpell(nullptr, 88001, true);
+}
+
+void StartMiniGame(Player* player, uint32 action) {
+    CloseGossipMenuFor(player);
+    switch (action) {
+    case 0:
+        TankWar(player);
+        break;
     }
 }
 
@@ -443,6 +567,13 @@ void GossipSelect_Item(Player* player, Item* item, uint32 sender, uint32 action)
     switch (sender) {
     case MW_GOSSIP_SENDER_MAIN:
         return BuildMainMenu(player, item, sender);
+    case MW_GOSSIP_ACTION_MINI_GAME:
+        if (action == MW_GOSSIP_ACTION_SUB_MENU) {
+            return BuildMiniGameMenu(player, item);
+        }
+        else {
+            return StartMiniGame(player, action);
+        }
     case MW_GOSSIP_SENDER_TRANS:
         return BuildTransMenu(player, item, sender);
     case MW_GOSSIP_SENDER_TRANS_OUTLAN:

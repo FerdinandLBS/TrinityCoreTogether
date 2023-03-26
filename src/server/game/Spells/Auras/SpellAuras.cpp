@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -236,7 +236,10 @@ void AuraApplication::BuildUpdatePacket(ByteBuffer& data, bool remove) const
     data << uint8(aura->GetCasterLevel());
     // send stack amount for aura which could be stacked (never 0 - causes incorrect display) or charges
     // stack amount has priority over charges (checked on retail with spell 50262)
-    data << uint8(aura->GetSpellInfo()->StackAmount ? aura->GetStackAmount() : aura->GetCharges());
+    if (aura->m_forceStackDisplay)
+        data << uint8(aura->GetStackAmount());
+    else
+        data << uint8(aura->GetSpellInfo()->StackAmount ? aura->GetStackAmount() : aura->GetCharges());
 
     if (!(flags & AFLAG_CASTER))
         data << aura->GetCasterGUID().WriteAsPacked();
@@ -426,7 +429,7 @@ Aura::Aura(AuraCreateInfo const& createInfo) :
 m_spellInfo(createInfo._spellInfo), m_casterGuid(createInfo.CasterGUID),
 m_castItemGuid(createInfo.CastItemGUID), m_applyTime(GameTime::GetGameTime()),
 m_owner(createInfo._owner), m_timeCla(0), m_updateTargetMapInterval(0),
-_casterInfo(), m_procCharges(0), m_stackAmount(1),
+_casterInfo(), m_procCharges(0), m_stackAmount(1), m_forceStackDisplay(false),
 m_isRemoved(false), m_isSingleTarget(false), m_isUsingCharges(false), m_dropEvent(nullptr),
 m_procCooldown(TimePoint::min())
 {
