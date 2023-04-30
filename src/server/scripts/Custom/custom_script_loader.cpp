@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -20,10 +20,40 @@
 extern void AddSC_telebook_script();
 extern void AddSC_TCTogether_script();
 
+class SpellScriptName : public SpellScriptLoader
+{
+public:
+    SpellScriptName() : SpellScriptLoader("ScriptNameInDB") { }
+
+
+    class SpellScriptName_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(SpellScriptName_SpellScript);
+
+        void HandleBeforeCast()
+        {
+            Unit* caster = GetCaster();
+            if (!caster) return;
+
+            caster->RemoveAurasWithMechanic((1 << 7 | 1 << 11));
+        }
+
+        void Register() override
+        {
+            BeforeCast += SpellCastFn(SpellScriptName_SpellScript::HandleBeforeCast);
+        }
+    };
+    SpellScript* GetSpellScript() const override
+    {
+        return new SpellScriptName_SpellScript();
+    }
+};
+
 // The name of this function should match:
 // void Add${NameOfDirectory}Scripts()
 void AddCustomScripts()
 {
+    new SpellScriptName();
     AddSC_telebook_script();
     AddSC_TCTogether_script();
 }

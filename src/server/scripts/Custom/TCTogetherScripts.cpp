@@ -766,7 +766,7 @@ public:
             caster->RemoveAura(81306);
             Player* player = caster->GetCharmerOrOwnerPlayerOrPlayerItself();
             if (player) {
-                player->GetSession()->SendNotification("法力浮龙因保护%s而牺牲了", player->GetName());
+                player->GetSession()->SendNotification("???????%s????", player->GetName());
             }
 ;        }
 
@@ -1023,22 +1023,46 @@ public:
 
 #define SPELL_CANDIDATE_TARGET_TARGET 0 
 #define SPELL_CANDIDATE_TARGET_CASTER 1
+#define SPELL_CANDIDATE_TARGET_PET    2
 
         typedef struct __spell_candidate_st {
             uint32 id;
             uint32 target;
+            uint32 amount;
+            bool isCharged;
         }spell_candidate_t;
 
         bool ProcessBuffAndTriggeredBuff(const SpellInfo* procSpell, spell_candidate_t* candidates) {
             bool isAura = false;
+            uint32 amount = 0;
+            bool isCharged = false;
             uint32 i = 0;
+
+            if (procSpell->ProcCharges != 0) {
+                isCharged = true;
+            }
+            amount = procSpell->StackAmount;
+            if (amount == 0 && !isCharged) {
+                amount = 2;
+            }
+            else {
+                amount = -1;
+            }
+
             for (auto eff : procSpell->GetEffects()) {
                 if (eff.Effect == SPELL_EFFECT_APPLY_AURA) {
                     isAura = true;
-                    if (eff.TargetA.GetTarget() == TARGET_UNIT_CASTER) {
+                    if (eff.TargetA.GetTarget() == TARGET_UNIT_CASTER || eff.TargetA.GetTarget() == TARGET_UNIT_CASTER_AREA_RAID) {
                         candidates[i].target = SPELL_CANDIDATE_TARGET_CASTER;
                     }
+                    else if (eff.TargetA.GetTarget() == TARGET_UNIT_PET) {
+                        candidates[i].target = SPELL_CANDIDATE_TARGET_PET;
+                    }
+                    
                     candidates[i].id = procSpell->Id;
+                    candidates[i].amount = amount;
+                    candidates[i].isCharged = isCharged;
+                    i++;
                 }
                 else if (eff.Effect == SPELL_EFFECT_TRIGGER_SPELL) {
                     const SpellInfo* triggeredSpell = sSpellMgr->GetSpellInfo(eff.TriggerSpell);
@@ -1049,6 +1073,9 @@ public:
                             isAura = true;
                             candidates[i].id = c[0].id;
                             candidates[i].target = c[0].target;
+                            candidates[i].amount = c[0].amount;
+                            candidates[i].isCharged = c[0].isCharged;
+                            i++;
                         }
                     }  
                 }
@@ -1061,9 +1088,6 @@ public:
             PreventDefaultAction();
             Unit* caster = aurEff->GetCaster();
             Unit* target;
-            uint32 amount = 0;
-            bool isCharged = false;
-            bool isSelfTarget = false;
             spell_candidate_t spellIds[3] = { 0 };
 
             if (!caster || caster->IsAlive() == false) return;
@@ -1072,27 +1096,10 @@ public:
             if (!spell) return;
             procSpell = eventInfo.GetSpellInfo();
 
-            if (procSpell->ProcCharges != 0) {
-                isCharged = true;
-            }
-            amount = procSpell->StackAmount;
-            if (amount == 0 && !isCharged) {
-                amount = 2;
-            }
-            else {
-                amount = -1;
-            }
             if (!ProcessBuffAndTriggeredBuff(procSpell, spellIds))
                 return;
 
             switch (procSpell->Id) {
-            /*case 16166: // Elementel Master
-                SetStackAmount(16166, caster, 2);
-                SetStackAmount(64701, caster, 2);
-                break;
-            case 55198: // 
-                SetStackAmount(55166, caster, 2);
-                break;*/
             case 2825: { // Blood Thirsty
                 UnitList list;
                 caster->GetPartyMembers(list);
@@ -1109,10 +1116,18 @@ public:
                 for (auto can : spellIds) {
                     if (can.id) {
                         if (can.target == SPELL_CANDIDATE_TARGET_CASTER) {
-                            SetStackAmount(can.id, caster, amount, isCharged);
+                            SetStackAmount(can.id, caster, can.amount, can.isCharged);
+                        }
+                        else if (can.target == SPELL_CANDIDATE_TARGET_PET) {
+                            if (caster->GetPetGUID()) {
+                                target = ObjectAccessor::GetCreature(*caster, caster->GetPetGUID());
+                                if (target) {
+                                    SetStackAmount(can.id, target, can.amount, can.isCharged);
+                                }
+                            }
                         }
                         else if (target) {
-                            SetStackAmount(can.id, target, amount, isCharged);
+                            SetStackAmount(can.id, target, can.amount, can.isCharged);
                         }
                     }
                 }
@@ -1213,7 +1228,7 @@ public:
                 if (owner->GetBotMgr()->GetBot(target->GetGUID()))
                     ((bot_ai*)target->GetAI())->SetBotCommandState(BOT_COMMAND_FOLLOW);
                 else
-                    target->Whisper("你不是我的雇主", Language::LANG_UNIVERSAL, owner, false);
+                    target->Whisper("???????", Language::LANG_UNIVERSAL, owner, false);
             }
         }
 
@@ -1263,7 +1278,7 @@ public:
             p = sp->m_targets.GetDstPos()->GetPosition();
             if (target && target->ToCreature() && target->ToCreature()->IsNPCBot()) {
                 if (!target->GetOwner() || (target->GetOwner()->ToPlayer() != owner)) {
-                    owner->GetSession()->SendAreaTriggerMessage("无效的目标");
+                    owner->GetSession()->SendAreaTriggerMessage("?????");
                     return;
                 }
                 ((bot_ai*)target->GetAI())->SetBotCommandState(BOT_COMMAND_STAY);
