@@ -671,18 +671,18 @@ void WorldSession::HandleMirrorImageDataRequest(WorldPacket& recvData)
         Creature const* bot = unit->ToCreature();
         if (!bot->IsNPCBot() && unit->HasAuraType(SPELL_AURA_CLONE_CASTER))
             if (Unit const* creator = unit->GetAuraEffectsByType(SPELL_AURA_CLONE_CASTER).front()->GetCaster())
-                if (creator->GetTypeId() == TYPEID_UNIT && creator->ToCreature()->IsNPCBot())
+                if (creator->IsNPCBot())
                     bot = creator->ToCreature();
 
         if (bot->IsNPCBot())
         {
-            NpcBotAppearanceData const* appearData = BotDataMgr::SelectNpcBotAppearance(unit->GetEntry());
+            NpcBotAppearanceData const* appearData = BotDataMgr::SelectNpcBotAppearance(bot->GetEntry());
 
             WorldPacket data(SMSG_MIRRORIMAGE_DATA, 68);
             data << uint64(guid);
-            data << uint32(unit->GetDisplayId());                                      // displayId
-            data << uint8(unit->GetRace());                                            // race
-            data << uint8(appearData ? appearData->gender : (uint8)unit->GetGender()); // gender
+            data << uint32(bot->GetDisplayId());                                       // displayId
+            data << uint8(bot->GetRace());                                             // race
+            data << uint8(appearData ? appearData->gender : (uint8)bot->GetGender());  // gender
             data << uint8(bot->GetBotAI()->GetPlayerClass());                          // class
             data << uint8(appearData ? appearData->skin : 0);                          // skin
             data << uint8(appearData ? appearData->face : 0);                          // face

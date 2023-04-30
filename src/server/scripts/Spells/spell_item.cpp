@@ -3659,7 +3659,7 @@ class spell_item_death_choice : public AuraScript
         float agi = caster->GetStat(STAT_AGILITY);
 
         //npcbot: try get stats
-        if (caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->IsNPCBot())
+        if (caster->IsNPCBot())
         {
             str = BotMgr::GetBotStat(caster->ToCreature(), BOT_STAT_MOD_STRENGTH);
             agi = BotMgr::GetBotStat(caster->ToCreature(), BOT_STAT_MOD_AGILITY);
@@ -3814,7 +3814,7 @@ class spell_item_darkmoon_card_greatness : public AuraScript
         float spi = caster->GetStat(STAT_SPIRIT);
 
         //npcbot: try get stats
-        if (caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->IsNPCBot())
+        if (caster->IsNPCBot())
         {
             str = BotMgr::GetBotStat(caster->ToCreature(), BOT_STAT_MOD_STRENGTH);
             agi = BotMgr::GetBotStat(caster->ToCreature(), BOT_STAT_MOD_AGILITY);

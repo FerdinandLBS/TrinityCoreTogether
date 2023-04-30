@@ -48,6 +48,9 @@ enum NecromancerSpecial
     CORPSE_EXPLOSION_COST   = 100 * 5,
     //ATTRACT_COST            = 200 * 5,
 
+    //get 80% mana back if casting on a skeleton
+    UNHOLY_FRENZY_REFUND    = UNHOLY_FRENZY_COST / 10 * 8,
+
     MAX_MINIONS             = 6,
 
     SPELL_SPAWN_ANIM        = 25035,
@@ -132,7 +135,7 @@ public:
 
             _corpseExplosionCheckTimer = 500;
 
-            SpellInfo const* ceinfo = sSpellMgr->GetSpellInfo(GetSpell(CORPSE_EXPLOSION_1));
+            SpellInfo const* ceinfo = AssertBotSpellInfoOverride(GetSpell(CORPSE_EXPLOSION_1));
             float ceradius = ceinfo->GetEffect(EFFECT_0).RadiusEntry->Radius;
             ApplyBotSpellRadiusMods(ceinfo, ceradius);
 
@@ -140,10 +143,10 @@ public:
             if ((IAmFree() || !master->GetGroup() || master->GetGroup()->GetMembersCount() <= 3) &&
                 me->GetVictim() && me->GetVictim()->GetHealth() <= me->GetMaxHealth() * 3)
             {
-                auto corpse_pred = [this, mtar = me->GetVictim(), mindist = ceradius](Creature const* c) mutable {
-                    if (_isUsableCorpse(c) && c->GetDistance(mtar) < mindist)
+                auto corpse_pred = [this, mindist = ceradius](Creature const* c) mutable {
+                    if (_isUsableCorpse(c) && c->GetDistance(me->GetVictim()) < mindist)
                     {
-                        mindist = c->GetDistance(mtar);
+                        mindist = c->GetDistance(me->GetVictim());
                         return true;
                     }
                     return false;
@@ -164,7 +167,7 @@ public:
 
             //2. Find a corpse with enough idiots around it (this one in n^2 so open for reviews)
             {
-                auto corpse_pred = [&, this, me = me, maxmob = std::size_t(CE_MIN_TARGETS-1)](Creature const* c) mutable {
+                auto corpse_pred = [this, ceradius = ceradius, maxmob = std::size_t(CE_MIN_TARGETS-1)](Creature const* c) mutable {
                     if (_isUsableCorpse(c))
                     {
                         std::list<Unit*> units;
@@ -204,7 +207,7 @@ public:
 
             _raiseDeadCheckTimer = 500;
 
-            auto corpse_pred = [&, me = me, mindist = 25.f](Creature const* c) mutable {
+            auto corpse_pred = [this, mindist = 25.f](Creature const* c) mutable {
                 if (_isUsableCorpse(c) && c->GetDistance(me) < mindist)
                 {
                     mindist = c->GetDistance(me);
@@ -229,7 +232,7 @@ public:
                 me->GetLevel() < 30 || me->GetPower(POWER_MANA) < UNHOLY_FRENZY_COST || Rand() > 35)
                 return;
 
-            static auto frenzy_pred_player = [=](Unit const* pl) -> bool {
+            static auto frenzy_pred_player = [this](Unit const* pl) -> bool {
                 return (pl->GetVictim() && pl->IsInCombat() && IsMeleeClass(pl->GetClass()) && !IsTank(pl) &&
                     me->GetDistance(pl) < 30 && pl->GetDistance(pl->GetVictim()) < 15 &&
                     pl->getAttackers().empty() && !CCed(pl, true) &&
@@ -241,6 +244,20 @@ public:
             //master
             if (frenzy_pred_player(master))
                 target = master;
+
+            //minions
+            if (!target && HasRole(BOT_ROLE_DPS) && !_minions.empty())
+            {
+                for (Unit* minion : _minions)
+                {
+                    if (minion->GetVictim() && GetHealthPCT(minion) > 80 && me->GetDistance(minion) < 30 && !CCed(minion, true) &&
+                        !minion->HasAuraType(SPELL_AURA_PERIODIC_DAMAGE))
+                    {
+                        target = minion;
+                        break;
+                    }
+                }
+            }
 
             //group (players + bots)
             if (!target)
@@ -280,20 +297,6 @@ public:
 
                         if (target)
                             break;
-                    }
-                }
-            }
-
-            //minions
-            if (!target && HasRole(BOT_ROLE_DPS) && !_minions.empty())
-            {
-                for (Unit* minion : _minions)
-                {
-                    if (minion->GetVictim() && GetHealthPCT(minion) > 80 && me->GetDistance(minion) < 30 && !CCed(minion, true) &&
-                        !minion->HasAuraType(SPELL_AURA_PERIODIC_DAMAGE))
-                    {
-                        target = minion;
-                        break;
                     }
                 }
             }
@@ -350,6 +353,8 @@ public:
             CheckRaiseDead(diff);
             CheckUnholyFrenzy(diff);
 
+            CheckUsableItems(diff);
+
             Attack(diff);
         }
 
@@ -389,22 +394,22 @@ public:
             }
         }
 
-        void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool iscrit) const override
-        {
-            uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
-            //uint8 lvl = me->GetLevel();
-            float fdamage = float(damage);
+        //void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool iscrit) const override
+        //{
+        //    uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
+        //    //uint8 lvl = me->GetLevel();
+        //    float fdamage = float(damage);
 
-            //apply bonus damage mods
-            float pctbonus = 1.0f;
-            if (iscrit)
-                pctbonus *= 1.333f;
+        //    //apply bonus damage mods
+        //    float pctbonus = 1.0f;
+        //    if (iscrit)
+        //        pctbonus *= 1.333f;
 
-            if (baseId == MAIN_ATTACK_1)
-                fdamage += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * (spellInfo->_effects[0].BonusMultiplier - 1.f) * me->CalculateDefaultCoefficient(spellInfo, SPELL_DIRECT_DAMAGE) * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo);
+        //    if (baseId == MAIN_ATTACK_1)
+        //        fdamage += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * (spellInfo->_effects[0].BonusMultiplier - 1.f) * me->CalculateDefaultCoefficient(spellInfo, SPELL_DIRECT_DAMAGE) * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo);
 
-            damage = int32(fdamage * pctbonus);
-        }
+        //    damage = int32(fdamage * pctbonus);
+        //}
 
         void ApplyClassSpellRadiusMods(SpellInfo const* spellInfo, float& radius) const override
         {
@@ -420,18 +425,15 @@ public:
             radius = radius * pctbonus;
         }
 
-        void ApplyClassEffectMods(WorldObject const* wtarget, SpellInfo const* spellInfo, uint8 effIndex, float& value) const override
+        void ApplyClassEffectMods(SpellInfo const* spellInfo, uint8 effIndex, float& value) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //uint8 lvl = me->GetLevel();
             float pctbonus = 1.0f;
 
-            //Set damage for Unholy Frenzy: 45 sec 2% per second (out of average max health: bot and target)
+            //Set damage for Unholy Frenzy: 45 sec, 15 ticks, total damage is 125% if Necromancer's max health
             if (baseId == UNHOLY_FRENZY_1 && effIndex == EFFECT_1)
-            {
-                if (Unit const* target = wtarget ? wtarget->ToUnit() : nullptr)
-                    value = CalculatePct(float((target->GetMaxHealth() + me->GetMaxHealth()) / 2), 2.f);
-            }
+                value += (me->GetMaxHealth() * 1.25f) / std::max<uint32>(1, spellInfo->GetMaxTicks());
 
             value = value * pctbonus;
         }
@@ -497,6 +499,15 @@ public:
                     {
                         target->CastSpell(target, SPELL_BLOODY_EXPLOSION, true);
                         target->SetDisplayId(MODEL_BLOODY_BONES);
+                    }
+                }
+
+                if (baseId == UNHOLY_FRENZY_1)
+                {
+                    if (target->GetEntry() == BOT_PET_NECROSKELETON && _minions.find(target) != _minions.end())
+                    {
+                        //get 80% mana back if casting on a skeleton
+                        me->EnergizeBySpell(me, UNHOLY_FRENZY_1, UNHOLY_FRENZY_REFUND, POWER_MANA);
                     }
                 }
 
@@ -596,9 +607,9 @@ public:
 
             Position pos = from->GetPosition();
 
-            Creature* myPet = me->SummonCreature(BOT_PET_NECROSKELETON, pos, TEMPSUMMON_MANUAL_DESPAWN);
-            myPet->SetCreatorGUID(master->GetGUID());
-            myPet->SetOwnerGUID(master->GetGUID());
+            Creature* myPet = me->SummonCreature(BOT_PET_NECROSKELETON, pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 1s);
+            myPet->SetCreator(master);
+            myPet->SetOwnerGUID(me->GetGUID());
             myPet->SetFaction(master->GetFaction());
             myPet->SetControlledByPlayer(!IAmFree());
             myPet->SetPvP(me->IsPvP());

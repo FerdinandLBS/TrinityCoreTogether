@@ -160,8 +160,7 @@ struct boss_najentus : public BossAI
                 }
                 //npcbot: try selecting npcbot
                 else if (Unit* bottarget = SelectTarget(SelectTargetMethod::Random, 1, [=](Unit const* target) -> bool {
-                    if (!target || target->GetTypeId() != TYPEID_UNIT || !target->ToCreature()->IsNPCBot() ||
-                        target->ToCreature()->IsFreeBot() ||
+                    if (!target || !target->IsNPCBot() || target->ToCreature()->IsFreeBot() ||
                         !me->IsWithinCombatRange(target, 200.0f))
                         return false;
 

@@ -8,6 +8,9 @@ NpcBot System by Trickerer (onlysuffering@gmail.com)
 Original patch from: LordPsyan https://bitbucket.org/lordpsyan/trinitycore-patches/src/3b8b9072280e/Individual/11185-BOTS-NPCBots.patch
 */
 
+class SpellInfo;
+struct SpellProcEntry;
+
 enum BotSpells : uint32
 {
 //COMMON SPELLS
@@ -16,6 +19,7 @@ enum BotSpells : uint32
     MODEL_TRANSITION                    = 24753,//"Trick" cannot cast or attack
     SUMMONING_DISORIENTATION            = 32752,
     ACTIVATE_SPEC                       = 63645,//Activate Primary Spec
+    WANDERER_HEARTHSTONE                = 54318,//"Hearthsone" no CD
     SHOOT_WAND                          = 5019,
 ///Passives
     DAMAGE_REDUCTION                    = 68066,//Vigilance, Blessing of Sanctuary, etc.
@@ -60,6 +64,7 @@ enum BotSpells : uint32
   //common
   //modify
     SPELL_TRIGGERED_HEAL                = 25155,//hidden
+    SPELL_TELEPORT_LOCAL                = 7794,//Teleport, no log
   //unmodify
     SPELL_ATTACK_MELEE_1H               = 42880,
     SPELL_TRIGGERED_ENERGIZE            = 60628,//hidden
@@ -111,6 +116,7 @@ enum BotSpells : uint32
   //modify
     SPELL_STEAL_MAGIC                   = 30036, //used by Ethereal Spellfilcher
     SPELL_FEEDBACK                      = 32897,
+    SPELL_STEAL_MAGIC_VISUAL            = 11084, // "Shock"
   //unmodify
 //DARK RANGER
   //modify
@@ -145,6 +151,25 @@ enum BotSpells : uint32
     SPELL_SHOOT_BOW                     = 41188,
   //unmodify
     SPELL_TORNADO_LIGHTNING_VISUAL      = 45869, //periodic, 1 sec
+
+    //SPELL_SUMMON_FELBLAZE_PREVISUAL     = 46350,//green splash impact head/torso
+
+//OTHER
+    BASE_MANA_SPHYNX                    = 400 * 5,
+    BASE_MANA_SPELLBREAKER              = 250 * 5,
+    BASE_MANA_NECROMANCER               = 400 * 5,
+    //base mana at 10
+    BASE_MANA_10_BM                     = 540 * 5,
+    BASE_MANA_10_ARCHMAGE               = 705 * 5,
+    BASE_MANA_10_DREADLORD              = 600 * 5,
+    BASE_MANA_10_DARK_RANGER            = 570 * 5,
+    BASE_MANA_10_SEA_WITCH              = 735 * 5,
+    //base mana at 1
+    BASE_MANA_1_BM                      = 240 * 5,
+    BASE_MANA_1_ARCHMAGE                = 285 * 5,
+    BASE_MANA_1_DREADLORD               = 270 * 5,
+    BASE_MANA_1_DARK_RANGER             = 225 * 5,
+    BASE_MANA_1_SEA_WITCH               = 330 * 5,
 };
 
 enum BotMountSpells : uint32
@@ -242,5 +267,18 @@ enum BotMountSpells : uint32
     BOT_MOUNT_FLY_HORDE_280_3           = 32296
 };
 constexpr std::size_t NUM_MOUNTS_PER_SPEED = 3;
+
+enum BotItemUseSpellTargeting : uint8
+{
+    BOT_ITEM_USE_SPELL_TARGET_NONE         = 0,
+    BOT_ITEM_USE_SPELL_TARGET_SELF         = 1,
+    BOT_ITEM_USE_SPELL_TARGET_ATTACKTARGET = 2,
+    BOT_ITEM_USE_SPELL_TARGET_ALLY         = 3
+};
+
+SpellInfo const* GetBotSpellInfoOverride(uint32 spellId);
+SpellInfo const* AssertBotSpellInfoOverride(uint32 spellId);
+SpellProcEntry const* GetBotSpellProceEntryOverride(uint32 spellId);
+void GenerateBotCustomSpells();
 
 #endif //_BOTSPELL_H

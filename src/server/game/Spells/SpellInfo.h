@@ -239,6 +239,10 @@ public:
                         ItemType(0), TriggerSpell(0), ImplicitTargetConditions(nullptr) {}
     SpellEffectInfo(SpellEntry const* spellEntry, SpellInfo const* spellInfo, uint8 effIndex);
 
+    //npcbot
+    void OverrideSpellInfo(SpellInfo const* spellInfo) { ASSERT_NOTNULL(spellInfo); _spellInfo = spellInfo; }
+    //end npcbot
+
     bool IsEffect() const;
     bool IsEffect(SpellEffects effectName) const;
     bool IsAura() const;
@@ -505,6 +509,10 @@ class TC_GAME_API SpellInfo
         uint32 GetAllowedMechanicMask() const;
 
         uint32 GetMechanicImmunityMask(Unit* caster) const;
+
+        //npcbot
+        SpellInfo const* TryGetSpellInfoOverride(WorldObject const* caster) const;
+        //end npcbot
 
     private:
         // loading helpers

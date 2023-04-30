@@ -51,6 +51,10 @@
 #include "World.h"
 #include <G3D/Vector3.h>
 
+//npcbot
+#include "botdatamgr.h"
+//end npcbot
+
 constexpr float VisibilityDistances[AsUnderlyingType(VisibilityDistanceType::Max)] =
 {
     DEFAULT_VISIBILITY_DISTANCE,
@@ -1002,7 +1006,7 @@ void WorldObject::setActive(bool on)
         return;
 
     //npcbot: bots should never be removed from active
-    if (on == false && GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBot())
+    if (on == false && IsNPCBotOrPet())
         return;
     //end npcbot
 
@@ -1548,12 +1552,12 @@ float WorldObject::GetSightRange(WorldObject const* target) const
     return 0.0f;
 }
 
-bool WorldObject::CanSeeOrDetect(WorldObject const* obj, bool ignoreStealth, bool distanceCheck, bool checkAlert) const
+bool WorldObject::CanSeeOrDetect(WorldObject const* obj, bool implicitDetect, bool distanceCheck, bool checkAlert) const
 {
     if (this == obj)
         return true;
 
-    if (obj->IsNeverVisible() || CanNeverSee(obj))
+    if (obj->IsNeverVisible(implicitDetect) || CanNeverSee(obj))
         return false;
 
     if (obj->IsAlwaysVisibleFor(this) || CanAlwaysSee(obj))
@@ -1635,7 +1639,7 @@ bool WorldObject::CanSeeOrDetect(WorldObject const* obj, bool ignoreStealth, boo
     if (obj->IsInvisibleDueToDespawn())
         return false;
 
-    if (!CanDetect(obj, ignoreStealth, checkAlert))
+    if (!CanDetect(obj, implicitDetect, checkAlert))
         return false;
 
     return true;
@@ -1646,12 +1650,12 @@ bool WorldObject::CanNeverSee(WorldObject const* obj) const
     return GetMap() != obj->GetMap() || !InSamePhase(obj);
 }
 
-bool WorldObject::CanDetect(WorldObject const* obj, bool ignoreStealth, bool checkAlert) const
+bool WorldObject::CanDetect(WorldObject const* obj, bool implicitDetect, bool checkAlert) const
 {
     WorldObject const* seer = this;
 
     //npcbot: master's invisibility should not affect bots' sight
-    if (!(GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBot()))
+    if (!IsNPCBot())
     //end npcbot
     // Pets don't have detection, they use the detection of their masters
     if (Unit const* thisUnit = ToUnit())
@@ -1668,10 +1672,10 @@ bool WorldObject::CanDetect(WorldObject const* obj, bool ignoreStealth, bool che
     if (obj->IsAlwaysDetectableFor(seer))
         return true;
 
-    if (!ignoreStealth && !seer->CanDetectInvisibilityOf(obj))
+    if (!implicitDetect && !seer->CanDetectInvisibilityOf(obj))
         return false;
 
-    if (!ignoreStealth && !seer->CanDetectStealthOf(obj, checkAlert))
+    if (!implicitDetect && !seer->CanDetectStealthOf(obj, checkAlert))
         return false;
 
     return true;
@@ -1936,7 +1940,7 @@ TempSummon* Map::SummonCreature(uint32 entry, Position const& pos, SummonPropert
             break;
         case UNIT_MASK_TOTEM:
             //npcbot: totem emul step 1
-            if (summoner && summoner->GetTypeId() == TYPEID_UNIT && summoner->ToCreature()->IsNPCBot())
+            if (summoner && summoner->IsNPCBot())
                 summon = new Totem(properties, summoner->ToCreature()->GetBotOwner());
             else
             //end npcbot
@@ -1954,7 +1958,7 @@ TempSummon* Map::SummonCreature(uint32 entry, Position const& pos, SummonPropert
     }
 
     //npcbot: totem emul step 2
-    if (summoner && summoner->GetTypeId() == TYPEID_UNIT && summoner->ToCreature()->IsNPCBot())
+    if (summoner && summoner->IsNPCBot())
         summon->SetCreatorGUID(summoner->GetGUID()); // see TempSummon::InitStats()
     //end npcbot
 
@@ -1970,7 +1974,7 @@ TempSummon* Map::SummonCreature(uint32 entry, Position const& pos, SummonPropert
     summon->InitSummon();
 
     //npcbot: totem emul step 3
-    if (summoner && summoner->GetTypeId() == TYPEID_UNIT && summoner->ToCreature()->IsNPCBot())
+    if (summoner && summoner->IsNPCBot())
         summoner->ToCreature()->OnBotSummon(summon);
     //end npcbot
 
@@ -2216,6 +2220,12 @@ Player* WorldObject::GetCharmerOrOwnerPlayerOrPlayerItself() const
 
 Player* WorldObject::GetAffectingPlayer() const
 {
+    //npcbot: affecting player is creator
+    if (GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBotOrPet())
+        if (Unit* creator = ToUnit()->GetCreator())
+            return creator->ToPlayer();
+    //end npcbot
+
     if (!GetCharmerOrOwnerGUID())
         return const_cast<WorldObject*>(this)->ToPlayer();
 
@@ -2303,8 +2313,8 @@ float WorldObject::ApplyEffectModifiers(SpellInfo const* spellInfo, uint8 effInd
     }
 
     //npcbot: handle effect mods
-    if (GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBot())
-        ToCreature()->ApplyCreatureEffectMods(this, spellInfo, effIndex, value);
+    if (IsNPCBot())
+        ToCreature()->ApplyCreatureEffectMods(spellInfo, effIndex, value);
     //end npcbot
 
     return value;
@@ -2314,7 +2324,7 @@ int32 WorldObject::CalcSpellDuration(SpellInfo const* spellInfo) const
 {
     uint8 comboPoints = 0;
     //npcbot
-    if (ToCreature() && ToCreature()->IsNPCBot())
+    if (IsNPCBot())
         comboPoints = ToCreature()->GetCreatureComboPoints();
     else
     //npcbot: combo points support for spell duration (vehicle)
@@ -2322,7 +2332,7 @@ int32 WorldObject::CalcSpellDuration(SpellInfo const* spellInfo) const
         spellInfo->GetDuration() != spellInfo->GetMaxDuration())
     {
         Unit const* bot = ToCreature()->GetCharmer();
-        if (bot && bot->ToCreature()->IsNPCBot())
+        if (bot && bot->IsNPCBot())
         {
             comboPoints = bot->ToCreature()->GetCreatureComboPoints();
             //TC_LOG_ERROR("scripts", "CalcSpellDuration bot %s veh spell %u cp %u",
@@ -2450,7 +2460,7 @@ void WorldObject::ModSpellCastTime(SpellInfo const* spellInfo, int32& castTime, 
         modOwner->ApplySpellMod(spellInfo->Id, SPELLMOD_CASTING_TIME, castTime, spell);
 
     //npcbot - apply bot spell cast time mods
-    if (castTime > 0 && GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBot())
+    if (castTime > 0 && IsNPCBot())
         ToCreature()->ApplyCreatureSpellCastTimeMods(spellInfo, castTime);
     //end npcbot
 
@@ -2480,7 +2490,7 @@ void WorldObject::ModSpellDurationTime(SpellInfo const* spellInfo, int32& durati
         modOwner->ApplySpellMod(spellInfo->Id, SPELLMOD_CASTING_TIME, duration, spell);
 
     //npcbot - apply bot spell cast time mods
-    if (duration > 0 && GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBot())
+    if (duration > 0 && IsNPCBot())
         ToCreature()->ApplyCreatureSpellCastTimeMods(spellInfo, duration);
     //end npcbot
 
@@ -2553,7 +2563,7 @@ SpellMissInfo WorldObject::MagicSpellHitResult(Unit* victim, SpellInfo const* sp
         HitChance += int32(unit->m_modSpellHitChance * 100.0f);
 
     //npcbot: spell hit chance bonus
-    if (GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBot())
+    if (IsNPCBot())
         HitChance -= int32(ToCreature()->GetCreatureMissChance() * 100.f);
     //end npcbot
 
@@ -2882,20 +2892,15 @@ SpellCastResult WorldObject::CastSpell(CastSpellTargetArg const& targets, uint32
         return SPELL_FAILED_SPELL_UNAVAILABLE;
     }
 
+    //npcbot: try override
+    info = info->TryGetSpellInfoOverride(this);
+    //end npcbot
+
     if (!targets.Targets)
     {
         TC_LOG_ERROR("entities.unit", "CastSpell: Invalid target passed to spell cast %u by %s", spellId, GetGUID().ToString().c_str());
         return SPELL_FAILED_BAD_TARGETS;
     }
-
-    //npcbot
-    if (Creature::IsBotCustomSpell(spellId) && !(ToCreature() && (ToCreature()->IsNPCBot() || ToCreature()->IsNPCBotPet())))
-    {
-        TC_LOG_ERROR("entities.unit", "CastSpell: NpcBot system custom spell %u by caster: %s), aborted. Please report",
-            spellId, GetGUID().ToString().c_str());
-        return SPELL_FAILED_SPELL_UNAVAILABLE;
-    }
-    //end npcbot
 
     Spell* spell = new Spell(this, info, args.TriggerFlags, args.OriginalCaster);
     for (auto const& pair : args.SpellValueOverrides)
@@ -2983,11 +2988,18 @@ bool WorldObject::IsValidAttackTarget(WorldObject const* target, SpellInfo const
     }
 
     //npcbot: CvC case fix for bots, still a TODO
-    if (unit && unitTarget && !unit->HasUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED) &&
-        !unitTarget->HasUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED) &&
-        ((GetTypeId() == TYPEID_UNIT && (ToCreature()->IsNPCBot() || ToCreature()->IsNPCBotPet())) ||
-        (target->GetTypeId() == TYPEID_UNIT && (target->ToCreature()->IsNPCBot() || target->ToCreature()->IsNPCBotPet()))))
-        return GetReactionTo(target) <= REP_NEUTRAL || target->GetReactionTo(this) <= REP_NEUTRAL;
+    if (unit && unitTarget &&
+        ((IsNPCBotOrPet() && ToCreature()->IsFreeBot()) || (target->IsNPCBotOrPet() && target->ToCreature()->IsFreeBot())) &&
+        !IsFriendlyTo(unitTarget) && !unitTarget->IsFriendlyTo(this))
+    {
+        auto const* ft1 = sFactionTemplateStore.LookupEntry(unit->GetFaction());
+        auto const* ft2 = sFactionTemplateStore.LookupEntry(unitTarget->GetFaction());
+        auto const* fe1 = ft1 ? sFactionStore.LookupEntry(ft1->Faction) : nullptr;
+        auto const* fe2 = ft2 ? sFactionStore.LookupEntry(ft2->Faction) : nullptr;
+        if ((IsNPCBotOrPet() && fe2 && fe2->CanHaveReputation() && ReputationMgr::ReputationToRank(BotDataMgr::GetBotBaseReputation(unit->ToCreature(), fe2)) >= REP_NEUTRAL) ||
+            (target->IsNPCBotOrPet() && fe1 && fe1->CanHaveReputation() && ReputationMgr::ReputationToRank(BotDataMgr::GetBotBaseReputation(unitTarget->ToCreature(), fe1)) >= REP_NEUTRAL))
+            return false;
+    }
     //end npcbot
 
     // CvC case - can attack each other only when one of them is hostile
@@ -3296,7 +3308,7 @@ Position WorldObject::GetNearPosition(float dist, float angle)
     return pos;
 }
 
-Position WorldObject::GetFirstCollisionPosition(float dist, float angle)
+Position WorldObject::GetFirstCollisionPosition(float dist, float angle) const
 {
     Position pos = GetPosition();
     MovePositionToFirstCollision(pos, dist, angle);
@@ -3362,7 +3374,7 @@ void WorldObject::MovePosition(Position &pos, float dist, float angle)
     pos.SetOrientation(GetOrientation());
 }
 
-void WorldObject::MovePositionToFirstCollision(Position &pos, float dist, float angle)
+void WorldObject::MovePositionToFirstCollision(Position &pos, float dist, float angle) const
 {
     angle += GetOrientation();
     float destx, desty, destz;

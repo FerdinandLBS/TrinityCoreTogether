@@ -270,8 +270,7 @@ class spell_warr_deep_wounds_aura : public AuraScript
             return false;
 
         //npcbot: allow for bots
-        if (eventInfo.GetActor()->GetTypeId() == TYPEID_UNIT &&
-            eventInfo.GetActor()->ToCreature()->IsNPCBot())
+        if (eventInfo.GetActor()->IsNPCBot())
             return true;
         //end npcbot
 

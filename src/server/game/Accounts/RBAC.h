@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -784,7 +784,7 @@ enum RBACPermissions
     RBAC_PERM_COMMAND_NPCBOT_DUMP_LOAD                       = 70032,
     RBAC_PERM_COMMAND_NPCBOT_DUMP_WRITE                      = 70033,
     RBAC_PERM_COMMAND_NPCBOT_SPAWNED                         = 70034,
-    RBAC_PERM_COMMAND_NPCBOT_COMMAND_WALK                    = 70035,
+    RBAC_PERM_COMMAND_NPCBOT_COMMAND_MISC                    = 70035,
     RBAC_PERM_COMMAND_NPCBOT_CREATENEW                       = 70036,
     RBAC_PERM_COMMAND_NPCBOT_SEND                            = 70037,
     //End NPCBot

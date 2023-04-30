@@ -162,6 +162,12 @@ class TC_GAME_API Object
         // FG: some hacky helpers
         void ForceValuesUpdateAtIndex(uint32);
 
+        //npcbot
+        virtual bool IsNPCBot() const { return false; }
+        virtual bool IsNPCBotPet() const { return false; }
+        virtual bool IsNPCBotOrPet() const { return false; }
+        //end npcbot
+
         inline bool IsPlayer() const { return GetTypeId() == TYPEID_PLAYER; }
         static Player* ToPlayer(Object* o) { return o ? o->ToPlayer() : nullptr; }
         static Player const* ToPlayer(Object const* o) { return o ? o->ToPlayer() : nullptr; }
@@ -294,8 +300,8 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         void GetClosePoint(float& x, float& y, float& z, float size, float distance2d = 0, float relAngle = 0) const;
         void MovePosition(Position &pos, float dist, float angle);
         Position GetNearPosition(float dist, float angle);
-        void MovePositionToFirstCollision(Position &pos, float dist, float angle);
-        Position GetFirstCollisionPosition(float dist, float angle);
+        void MovePositionToFirstCollision(Position &pos, float dist, float angle) const;
+        Position GetFirstCollisionPosition(float dist, float angle) const;
         Position GetRandomNearPosition(float radius);
         void GetContactPoint(WorldObject const* obj, float& x, float& y, float& z, float distance2d = CONTACT_DISTANCE) const;
 
@@ -377,7 +383,7 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         float GetGridActivationRange() const;
         float GetVisibilityRange() const;
         float GetSightRange(WorldObject const* target = nullptr) const;
-        bool CanSeeOrDetect(WorldObject const* obj, bool ignoreStealth = false, bool distanceCheck = false, bool checkAlert = false) const;
+        bool CanSeeOrDetect(WorldObject const* obj, bool implicitDetect = false, bool distanceCheck = false, bool checkAlert = false) const;
 
         FlaggedValuesArray32<int32, uint32, StealthType, TOTAL_STEALTH_TYPES> m_stealth;
         FlaggedValuesArray32<int32, uint32, StealthType, TOTAL_STEALTH_TYPES> m_stealthDetect;
@@ -550,7 +556,7 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         void SetLocationMapId(uint32 _mapId) { m_mapId = _mapId; }
         void SetLocationInstanceId(uint32 _instanceId) { m_InstanceId = _instanceId; }
 
-        virtual bool IsNeverVisible() const { return !IsInWorld(); }
+        virtual bool IsNeverVisible([[maybe_unused]] bool allowServersideObjects = false) const { return !IsInWorld(); }
         virtual bool IsAlwaysVisibleFor(WorldObject const* /*seer*/) const { return false; }
         virtual bool IsInvisibleDueToDespawn() const { return false; }
         //difference from IsAlwaysVisibleFor: 1. after distance check; 2. use owner or charmer as seer

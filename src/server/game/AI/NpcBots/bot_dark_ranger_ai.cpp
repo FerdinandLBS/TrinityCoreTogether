@@ -177,6 +177,8 @@ public:
             if (IsCasting())
                 return;
 
+            CheckUsableItems(diff);
+
             DoRangedAttack(diff);
         }
 
@@ -298,7 +300,7 @@ public:
             damage = int32(fdamage * pctbonus + flat_mod);
         }
 
-        void ApplyClassEffectMods(WorldObject const* /*wtarget*/, SpellInfo const* spellInfo, uint8 effIndex, float& value) const override
+        void ApplyClassEffectMods(SpellInfo const* spellInfo, uint8 effIndex, float& value) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             //uint8 lvl = me->GetLevel();
@@ -464,9 +466,9 @@ public:
 
             Position pos = from->GetPosition();
 
-            Creature* myPet = me->SummonCreature(entry, pos, TEMPSUMMON_MANUAL_DESPAWN);
-            myPet->SetCreatorGUID(master->GetGUID());
-            myPet->SetOwnerGUID(master->GetGUID());
+            Creature* myPet = me->SummonCreature(entry, pos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 1s);
+            myPet->SetCreator(master);
+            myPet->SetOwnerGUID(me->GetGUID());
             myPet->SetFaction(master->GetFaction());
             myPet->SetControlledByPlayer(!IAmFree());
             myPet->SetPvP(me->IsPvP());

@@ -501,7 +501,7 @@ void Spell::EffectSchoolDMG()
                     damage += int32(CalculatePct(unitCaster->ToPlayer()->GetComboPoints() * ap, 7));
                 }
                 //npcbot: Ferocious Bite support
-                else if (unitCaster->GetTypeId() == TYPEID_UNIT && unitCaster->ToCreature()->IsNPCBot() && (m_spellInfo->SpellFamilyFlags[0] & 0x800000) && m_spellInfo->SpellVisual[0] == 6587)
+                else if (unitCaster->IsNPCBot() && (m_spellInfo->SpellFamilyFlags[0] & 0x800000) && m_spellInfo->SpellVisual[0] == 6587)
                 {
                     // converts each extra point of energy into ($f1+$AP/410) additional damage
                     float ap = unitCaster->GetTotalAttackPowerValue(BASE_ATTACK);
@@ -574,7 +574,7 @@ void Spell::EffectSchoolDMG()
                         }
                     }
                     //npcbot: Envenom support
-                    else if (unitCaster->GetTypeId() == TYPEID_UNIT && unitCaster->ToCreature()->IsNPCBot())
+                    else if (unitCaster->IsNPCBot())
                     {
                         // consume from stack dozes not more that have combo-points
                         if (uint8 combo = unitCaster->ToCreature()->GetCreatureComboPoints())
@@ -636,7 +636,7 @@ void Spell::EffectSchoolDMG()
                         }
                     }
                     //npcbot: Eviscerate support
-                    else if (unitCaster->GetTypeId() == TYPEID_UNIT && unitCaster->ToCreature()->IsNPCBot())
+                    else if (unitCaster->IsNPCBot())
                     {
                         if (uint32 combo = unitCaster->ToCreature()->GetCreatureComboPoints())
                         {
@@ -700,7 +700,7 @@ void Spell::EffectSchoolDMG()
                         damage += int32(caster->GetAmmoDPS() * caster->GetAttackTime(RANGED_ATTACK) * 0.001f);
                     }
                     //npcbot: calculate bot weapon damage
-                    if (unitCaster->GetTypeId() == TYPEID_UNIT && unitCaster->ToCreature()->IsNPCBot())
+                    if (unitCaster->IsNPCBot())
                     {
                         if (Item* item = unitCaster->ToCreature()->GetBotEquips(2/*BOT_SLOT_RANGED*/))
                         {
@@ -942,6 +942,10 @@ void Spell::EffectTriggerSpell()
         return;
     }
 
+    //npcbot: override spellInfo
+    spellInfo = spellInfo->TryGetSpellInfoOverride(GetCaster());
+    //end npcbot
+
     SpellCastTargets targets;
     if (effectHandleMode == SPELL_EFFECT_HANDLE_LAUNCH_TARGET)
     {
@@ -998,6 +1002,10 @@ void Spell::EffectTriggerMissileSpell()
         TC_LOG_ERROR("spells.effect.nospell", "Spell::EffectTriggerMissileSpell spell %u tried to trigger unknown spell %u.", m_spellInfo->Id, triggered_spell_id);
         return;
     }
+
+    //npcbot: override spellInfo
+    spellInfo = spellInfo->TryGetSpellInfoOverride(GetCaster());
+    //end npcbot
 
     SpellCastTargets targets;
     if (effectHandleMode == SPELL_EFFECT_HANDLE_HIT_TARGET)
@@ -1928,6 +1936,43 @@ void Spell::EffectOpenLock()
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
         return;
 
+    //npcbot
+    if (m_caster->IsNPCBot() && gameObjTarget)
+    {
+        GameObjectTemplate const* botGoInfo = gameObjTarget->GetGOInfo();
+        Creature* bot = m_caster->ToCreature();
+
+        if (botGoInfo->CannotBeUsedUnderImmunity() && bot->HasUnitFlag(UNIT_FLAG_IMMUNE))
+            return;
+
+        // Arathi Basin banner opening. /// @todo Verify correctness of this check
+        if ((botGoInfo->type == GAMEOBJECT_TYPE_BUTTON && botGoInfo->button.noDamageImmune) ||
+            (botGoInfo->type == GAMEOBJECT_TYPE_GOOBER && botGoInfo->goober.losOK))
+        {
+            //CanUseBattlegroundObject() already called in CheckCast()
+            // in battleground check
+            if (Battleground* bg = bot->GetBotBG())
+            {
+                bg->EventBotClickedOnFlag(bot, gameObjTarget);
+                return;
+            }
+        }
+        else if (botGoInfo->type == GAMEOBJECT_TYPE_FLAGSTAND)
+        {
+            //CanUseBattlegroundObject() already called in CheckCast()
+            // in battleground check
+            if (Battleground* bg = bot->GetBotBG())
+            {
+                if (bg->GetTypeID(true) == BATTLEGROUND_EY)
+                    bg->EventBotClickedOnFlag(bot, gameObjTarget);
+                return;
+            }
+        }
+
+        return;
+    }
+    //end npcbot
+
     if (m_caster->GetTypeId() != TYPEID_PLAYER)
     {
         TC_LOG_DEBUG("spells", "WORLD: Open Lock - No Player Caster!");
@@ -2022,9 +2067,11 @@ void Spell::EffectOpenLock()
             if (gameObjTarget)
             {
                 // Allow one skill-up until respawned
-                if (!gameObjTarget->IsInSkillupList(player->GetGUID()) &&
-                    player->UpdateGatherSkill(skillId, pureSkillValue, reqSkillValue))
+                if (!gameObjTarget->IsInSkillupList(player->GetGUID()))
+                {
+                    player->UpdateGatherSkill(skillId, pureSkillValue, reqSkillValue);
                     gameObjTarget->AddToSkillupList(player->GetGUID());
+                }
             }
             else if (itemTarget)
             {
@@ -3220,7 +3267,7 @@ void Spell::EffectWeaponDmg()
 
                 //npcbot: handle bot weapons
                 // 50% more damage with daggers
-                if (unitCaster->GetTypeId() == TYPEID_UNIT && unitCaster->ToCreature()->IsNPCBot())
+                if (unitCaster->IsNPCBot())
                     if (Item const* weapon = unitCaster->ToCreature()->GetBotEquips(m_attackType))
                         if (weapon->GetTemplate()->SubClass == ITEM_SUBCLASS_WEAPON_DAGGER)
                             totalDamagePercentMod *= 1.5f;
@@ -3567,6 +3614,14 @@ void Spell::EffectSummonObjectWild()
         if (Player* player = m_caster->ToPlayer())
             if (Battleground* bg = player->GetBattleground())
                 bg->SetDroppedFlagGUID(pGameObj->GetGUID(), player->GetTeam() == ALLIANCE ? TEAM_HORDE: TEAM_ALLIANCE);
+
+    //npcbot
+    if (m_caster->IsNPCBot() && pGameObj->GetGoType() == GAMEOBJECT_TYPE_FLAGDROP)
+    {
+        if (Battleground* bg = m_caster->ToCreature()->GetBotBG())
+            bg->SetDroppedFlagGUID(pGameObj->GetGUID(), bg->GetOtherTeamId(bg->GetPlayerTeamId(m_caster->GetGUID())));
+    }
+    //end npcbot
 
     if (GameObject* linkedTrap = pGameObj->GetLinkedTrap())
     {

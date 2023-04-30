@@ -44,6 +44,7 @@
 
 //npcbot
 #include "botdatamgr.h"
+#include "botmgr.h"
 //end npcbot
 
 Roll::Roll(ObjectGuid _guid, LootItem const& li) : itemGUID(_guid), itemid(li.itemid),
@@ -150,6 +151,38 @@ void Group::SelectNewPartyOrRaidLeader()
         SendUpdate();
     }
 }
+
+//npcbot
+bool Group::Create(Creature* leader)
+{
+    ASSERT(isBGGroup());
+
+    ObjectGuid leaderGuid = leader->GetGUID();
+    ObjectGuid::LowType lowguid = sGroupMgr->GenerateGroupId();
+
+    m_guid = ObjectGuid(HighGuid::Group, lowguid);
+    m_leaderGuid = leaderGuid;
+    m_leaderName = leader->GetName();
+
+    m_groupType = GROUPTYPE_BGRAID;
+
+    _initRaidSubGroupsCounter();
+
+    m_lootMethod = FREE_FOR_ALL;
+
+    m_lootThreshold = ITEM_QUALITY_UNCOMMON;
+    m_looterGuid = leaderGuid;
+    m_masterLooterGuid.Clear();
+
+    m_dungeonDifficulty = DUNGEON_DIFFICULTY_NORMAL;
+    m_raidDifficulty = RAID_DIFFICULTY_10MAN_NORMAL;
+
+    if (!AddMember(leader))
+        return false;
+
+    return true;
+}
+//end npcbot
 
 bool Group::Create(Player* leader)
 {
@@ -436,6 +469,43 @@ Player* Group::GetInvited(const std::string& name) const
     return nullptr;
 }
 
+//npcbot
+bool Group::AddMember(Creature* creature)
+{
+    // Get first not-full group
+    uint8 subGroup = 0;
+    if (m_subGroupsCounts)
+    {
+        bool groupFound = false;
+        for (; subGroup < MAX_RAID_SUBGROUPS; ++subGroup)
+        {
+            if (m_subGroupsCounts[subGroup] < MAXGROUPSIZE)
+            {
+                groupFound = true;
+                break;
+            }
+        }
+        // We are raid group and no one slot is free
+        if (!groupFound)
+            return false;
+    }
+
+    MemberSlot member;
+    member.guid      = creature->GetGUID();
+    member.name      = creature->GetName();
+    member.group     = subGroup;
+    member.flags     = 0;
+    member.roles     = 0;
+    m_memberSlots.push_back(member);
+
+    SubGroupCounterIncrease(subGroup);
+    SendUpdate();
+    sScriptMgr->OnGroupAddMember(this, creature->GetGUID());
+
+    return true;
+}
+//end npcbot
+
 bool Group::AddMember(Player* player)
 {
     // Get first not-full group
@@ -610,6 +680,11 @@ bool Group::AddMember(Player* player)
     }
     //end npcbot
 
+    //npcbot: if player has been added to bot BG raid switch leader to it
+    if (isBGGroup() && !m_leaderGuid.IsPlayer())
+        ChangeLeader(player->GetGUID());
+    //end npcbot
+
     return true;
 }
 
@@ -670,7 +745,7 @@ bool Group::RemoveMember(ObjectGuid guid, RemoveMethod const& method /*= GROUP_R
             if (!(map && map->IsDungeon() && player && player->GetSession()->PlayerLogout()))
                 Disband();
         }
-        else if (GetMembersCount() < 2 && !(isLFGGroup() || isBGGroup() || isBFGroup()))
+        else if (GetMembersCount() < ((isLFGGroup() || isBGGroup() || isBFGroup()) ? 1u : 2u))
         {
             Disband();
             return false;
@@ -1754,6 +1829,33 @@ void Group::SetTargetIcon(uint8 id, ObjectGuid whoGuid, ObjectGuid targetGuid)
                 SetTargetIcon(i, ObjectGuid::Empty, ObjectGuid::Empty);
 
     m_targetIcons[id] = targetGuid;
+
+    //npcbot: name cache
+    bool need_cache_name = false;
+    Player const* setter = nullptr;
+    for (GroupReference const* itr = GetFirstMember(); itr != nullptr; itr = itr->next())
+    {
+        if (itr->GetSource())
+        {
+            if (!need_cache_name && itr->GetSource()->GetBotMgr())
+                need_cache_name = true;
+            if (!setter && itr->GetSource()->GetGUID() == whoGuid)
+                setter = itr->GetSource();
+        }
+    }
+
+    if (need_cache_name && setter)
+    {
+        Unit const* newtarget = targetGuid ? ObjectAccessor::GetUnit(*setter, targetGuid) : nullptr;
+        std::string const& newname = newtarget ? newtarget->GetName() : "";
+        for (GroupReference const* itr = GetFirstMember(); itr != nullptr; itr = itr->next())
+        {
+            Player const* member = itr->GetSource();
+            if (member && member->GetBotMgr())
+                member->GetBotMgr()->UpdateTargetIconName(id, newname);
+        }
+    }
+    //end npcbot
 
     WorldPacket data(MSG_RAID_TARGET_UPDATE, (1+8+1+8));
     data << uint8(0);                                       // set targets
