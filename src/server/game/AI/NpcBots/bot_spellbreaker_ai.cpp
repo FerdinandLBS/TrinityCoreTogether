@@ -32,7 +32,8 @@ enum SpellbreakerSpecial
     FEEDBACK_EFFECT         = SPELL_FEEDBACK,
 
     MH_ATTACK_VISUAL        = SPELL_ATTACK_MELEE_1H,
-    SPELLSTEAL_VISUAL       = 34396,// Zap selfcast
+    SPELLSTEAL_VISUAL_1     = 34396,// Zap selfcast
+    SPELLSTEAL_VISUAL_2     = SPELL_STEAL_MAGIC_VISUAL,
     ENERGY_SYPHON_ENERGIZE  = 27287 // Only for combat log spell message
 };
 
@@ -149,6 +150,8 @@ public:
             if (IsCasting())
                 return;
 
+            CheckUsableItems(diff);
+
             Attack(diff);
         }
 
@@ -192,7 +195,7 @@ public:
             damageinfo.Damages[0].Damage *= pctbonus;
         }
 
-        void ApplyClassEffectMods(WorldObject const* /*wtarget*/, SpellInfo const* spellInfo, uint8 effIndex, float& value) const override
+        void ApplyClassEffectMods(SpellInfo const* spellInfo, uint8 effIndex, float& value) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             float pctbonus = 1.0f;
@@ -507,11 +510,12 @@ public:
                 {
                     //target->RemoveAurasDueToSpellBySteal(itr->first, itr->second, randomTarget);
                     TransferAura(itr->GetAura()->GetId(), itr->GetAura()->GetCasterGUID(), target, randomTarget);
-                    randomTarget->CastSpell(randomTarget, SPELLSTEAL_VISUAL, true);
+                    randomTarget->CastSpell(randomTarget, SPELLSTEAL_VISUAL_1, true);
                 }
                 else
                     target->RemoveAurasDueToSpellByDispel(itr->GetAura()->GetId(), SPELLSTEAL_1, itr->GetAura()->GetCasterGUID(), me, uint8(-1));
             }
+            me->CastSpell(target, SPELLSTEAL_VISUAL_2, true);
 
             me->SendMessageToSet(&dataSuccess, true);
         }

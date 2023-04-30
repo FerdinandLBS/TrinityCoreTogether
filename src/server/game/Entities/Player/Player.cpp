@@ -406,7 +406,7 @@ Player::Player(WorldSession* session): Unit(true)
     m_groupUpdateTimer.Reset(5000);
 
     /////////////// NPCBot System //////////////////
-    _botMgr = nullptr;
+    _botMgr = new BotMgr(this);
     ///////////// End NPCBot System ////////////////
 }
 
@@ -445,11 +445,7 @@ Player::~Player()
     delete _cinematicMgr;
 
     //npcbot
-    if (_botMgr)
-    {
-        delete _botMgr;
-        _botMgr = nullptr;
-    }
+    delete _botMgr;
     //end npcbot
 
     sWorld->DecreasePlayerCount();
@@ -1363,9 +1359,9 @@ void Player::Update(uint32 p_time)
     //because we don't want player's ghost teleported from graveyard
     if (IsHasDelayedTeleport() && IsAlive())
         TeleportTo(m_teleport_dest, m_teleport_options);
+
     //NpcBot mod: Update
-    if (_botMgr)
-        _botMgr->Update(p_time);
+    _botMgr->Update(p_time);
     //end Npcbot
 }
 
@@ -2020,19 +2016,19 @@ bool Player::IsImmunedToSpellEffect(SpellInfo const* spellInfo, SpellEffectInfo 
 //NPCBOT
 bool Player::HaveBot() const
 {
-    return _botMgr && _botMgr->HaveBot();
+    return _botMgr->HaveBot();
 }
 uint8 Player::GetNpcBotsCount() const
 {
-    return _botMgr ? _botMgr->GetNpcBotsCount() : 0;
+    return _botMgr->GetNpcBotsCount();
 }
 void Player::RemoveAllBots(uint8 removetype)
 {
-    if (_botMgr) _botMgr->RemoveAllBots(removetype);
+    _botMgr->RemoveAllBots(removetype);
 }
 void Player::UpdatePhaseForBots()
 {
-    if (_botMgr) _botMgr->UpdatePhaseForBots();
+    _botMgr->UpdatePhaseForBots();
 }
 //END NPCBOT
 
@@ -2467,8 +2463,7 @@ void Player::SetGameMaster(bool on)
     }
 
     //npcbot: pet is handled already, bots are not, so do it
-    if (HaveBot())
-        _botMgr->OnOwnerSetGameMaster(on);
+    _botMgr->OnOwnerSetGameMaster(on);
     //end npcbot
 
     UpdateObjectVisibility();
@@ -2780,8 +2775,7 @@ void Player::GiveLevel(uint8 level)
     sScriptMgr->OnPlayerLevelChanged(this, oldLevel);
 
     //npcbot: force bots to update stats
-    if (HaveBot())
-        _botMgr->SetBotsShouldUpdateStats();
+    _botMgr->SetBotsShouldUpdateStats();
     //end npcbot
 }
 
@@ -6482,12 +6476,12 @@ void Player::SendMessageToSetInRange(WorldPacket const* data, float dist, bool s
     Cell::VisitWorldObjects(this, notifier, dist);
 }
 
-void Player::SendMessageToSetInRange(WorldPacket const* data, float dist, bool self, bool own_team_only) const
+void Player::SendMessageToSetInRange(WorldPacket const* data, float dist, bool self, bool own_team_only, bool required3dDist /*= false*/) const
 {
     if (self)
         SendDirectMessage(data);
 
-    Trinity::MessageDistDeliverer notifier(this, data, dist, own_team_only);
+    Trinity::MessageDistDeliverer notifier(this, data, dist, own_team_only, nullptr, required3dDist);
     Cell::VisitWorldObjects(this, notifier, dist);
 }
 
@@ -6938,7 +6932,7 @@ bool Player::RewardHonor(Unit* victim, uint32 groupsize, int32 honor, bool pvpto
             UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_SPECIAL_PVP_KILL, 1, 0, victim);
         }
         //npcbot: honor for bots
-        else if (victim->ToCreature()->IsNPCBot() && !victim->ToCreature()->IsTempBot())
+        else if (victim->IsNPCBot() && !victim->ToCreature()->IsTempBot())
         {
             Creature const* bot = victim->ToCreature();
 
@@ -7778,8 +7772,10 @@ void Player::_ApplyWeaponDamage(uint8 slot, ItemTemplate const* proto, bool appl
             if (extraDPS)
             {
                 float average = extraDPS * proto->Delay / 1000.0f;
-                minDamage = 0.7f * average;
-                maxDamage = 1.3f * average;
+                float mod = ssv->isTwoHand(proto->ScalingStatValue) ? 0.2f : 0.3f;
+
+                minDamage = (1.0f - mod) * average;
+                maxDamage = (1.0f + mod) * average;
             }
         }
 
@@ -8590,6 +8586,14 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type)
             if (go->GetLootMode() > 0)
                 if (GameObjectTemplateAddon const* addon = go->GetTemplateAddon())
                     loot->generateMoneyLoot(addon->Mingold, addon->Maxgold);
+
+            //npcbot: fill wandering bot kill reward
+            if (lootid)
+            {
+                if (go->GetEntry() == GO_BOT_MONEY_BAG)
+                    BotMgr::OnBotWandererKilled(go);
+            }
+            //end npcbot
 
             if (loot_type == LOOT_FISHING)
                 go->getFishLoot(loot, this);
@@ -20936,7 +20940,7 @@ void Player::Say(std::string_view text, Language language, WorldObject const* /*
 
     WorldPacket data;
     ChatHandler::BuildChatPacket(data, CHAT_MSG_SAY, language, this, this, _text);
-    SendMessageToSetInRange(&data, sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_SAY), true);
+    SendMessageToSetInRange(&data, sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_SAY), true, false, true);
 }
 
 void Player::Say(uint32 textId, WorldObject const* target /*= nullptr*/)
@@ -20951,7 +20955,7 @@ void Player::Yell(std::string_view text, Language language, WorldObject const* /
 
     WorldPacket data;
     ChatHandler::BuildChatPacket(data, CHAT_MSG_YELL, language, this, this, _text);
-    SendMessageToSetInRange(&data, sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_YELL), true);
+    SendMessageToSetInRange(&data, sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_YELL), true, false, true);
 }
 
 void Player::Yell(uint32 textId, WorldObject const* target /*= nullptr*/)
@@ -20966,7 +20970,7 @@ void Player::TextEmote(std::string_view text, WorldObject const* /*= nullptr*/, 
 
     WorldPacket data;
     ChatHandler::BuildChatPacket(data, CHAT_MSG_EMOTE, LANG_UNIVERSAL, this, this, _text);
-    SendMessageToSetInRange(&data, sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_TEXTEMOTE), true, !GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHAT));
+    SendMessageToSetInRange(&data, sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_TEXTEMOTE), true, !GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHAT), true);
 }
 
 void Player::TextEmote(uint32 textId, WorldObject const* target /*= nullptr*/, bool /*isBossEmote = false*/)
@@ -22164,8 +22168,7 @@ void Player::UpdatePvP(bool state, bool _override)
     }
 
     //npcbot: update pvp flags for bots
-    if (HaveBot())
-        _botMgr->UpdatePvPForBots();
+    _botMgr->UpdatePvPForBots();
     //end npcbot
 }
 
@@ -22514,9 +22517,9 @@ bool Player::HaveAtClient(Object const* u) const
     return u == this || m_clientGUIDs.find(u->GetGUID()) != m_clientGUIDs.end();
 }
 
-bool Player::IsNeverVisible() const
+bool Player::IsNeverVisible(bool allowServersideObjects) const
 {
-    if (Unit::IsNeverVisible())
+    if (Unit::IsNeverVisible(allowServersideObjects))
         return true;
 
     if (GetSession()->PlayerLogout() || GetSession()->PlayerLoading())
@@ -22985,7 +22988,6 @@ void Player::SendInitialPacketsAfterAddToMap()
         SendDirectMessage(&setCompoundState);
     }
 
-    SendAurasForTarget(this);
     SendEnchantmentDurations();                             // must be after add to map
     SendItemDurations();                                    // must be after add to map
     SendQuestGiverStatusMultiple();
@@ -23379,9 +23381,9 @@ void Player::LearnSkillRewardedSpells(uint32 skillId, uint32 skillValue)
     }
 }
 
-void Player::SendAurasForTarget(Unit* target) const
+void Player::SendAurasForTarget(Unit* target, bool force /*= false*/) const
 {
-    if (!target || target->GetVisibleAuras().empty())                  // speedup things
+    if (!target || (!force && target->GetVisibleAuras().empty()))                  // speedup things
         return;
 
     WorldPacket data(SMSG_AURA_UPDATE_ALL);
@@ -24450,11 +24452,12 @@ void Player::SetBattlegroundOrBattlefieldRaid(Group* group, int8 subgroup)
         BotMap const* map = GetBotMgr()->GetBotMap();
         for (BotMap::const_iterator itr = map->begin(); itr != map->end(); ++itr)
         {
-            Creature const* bot = itr->second;
+            Creature* bot = itr->second;
             if (!bot || !GetGroup()->IsMember(bot->GetGUID()))
                 continue;
 
-            ASSERT(group->AddMember((Player*)bot));
+            if (!group->IsMember(itr->first))
+                group->AddMember(bot);
         }
     }
     //end npcbot

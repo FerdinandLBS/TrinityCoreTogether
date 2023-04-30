@@ -280,6 +280,8 @@ public:
             if (!CheckAttackTarget())
                 return;
 
+            CheckUsableItems(diff);
+
             Attack(diff);
         }
 
@@ -490,9 +492,10 @@ public:
                     continue;
 
                 if (!IAmFree())
-                    master->GetBotMgr()->AddBot(illusion, false);
+                    ASSERT(master->GetBotMgr()->AddBot(illusion));
 
-                illusion->SetCreatorGUID(me->GetGUID()); //TempSummon* Map::SummonCreature()
+                illusion->SetCreator(master); //TempSummon* Map::SummonCreature()
+                illusion->SetOwnerGUID(me->GetGUID());
 
                 //copy visuals
                 //illusion->SetEntry(me->GetEntry());
@@ -785,7 +788,7 @@ public:
             if (IsTempBot())
                 if (me->GetCreatorGUID().IsCreature())
                     if (Unit* bot = ObjectAccessor::GetUnit(*me, me->GetCreatorGUID()))
-                        if (bot->ToCreature()->IsNPCBot())
+                        if (bot->IsNPCBot())
                             bot->ToCreature()->OnBotDespawn(me);
 
             bot_ai::JustDied(u);

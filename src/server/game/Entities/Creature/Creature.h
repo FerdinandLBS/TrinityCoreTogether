@@ -31,6 +31,7 @@
 // npcbot
 class bot_ai;
 class bot_pet_ai;
+class Battleground;
 //end npcbot
 
 class CreatureAI;
@@ -380,13 +381,15 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         void ExitVehicle(Position const* exitPosition = nullptr) override;
 
         //NPCBots
-        bool LoadBotCreatureFromDB(uint32 guid, Map* map, bool addToMap = true);
+        bool LoadBotCreatureFromDB(ObjectGuid::LowType guid, Map* map, bool addToMap = true, bool generated = false, uint32 entry = 0, Position const* pos = nullptr);
         Player* GetBotOwner() const;
         Unit* GetBotsPet() const;
-        bool IsNPCBot() const;
-        bool IsNPCBotPet() const;
-        bool IsNPCBotOrPet() const;
+        bool IsNPCBot() const override;
+        bool IsNPCBotPet() const override;
+        bool IsNPCBotOrPet() const override;
         bool IsFreeBot() const;
+        bool IsWandererBot() const;
+        Battleground* GetBotBG() const;
         uint8 GetBotClass() const;
         uint32 GetBotRoles() const;
         bot_ai* GetBotAI() const { return bot_AI; }
@@ -404,7 +407,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         void ApplyCreatureSpellRangeMods(SpellInfo const* spellInfo, float& maxrange) const;
         void ApplyCreatureSpellMaxTargetsMods(SpellInfo const* spellInfo, uint32& targets) const;
         void ApplyCreatureSpellChanceOfSuccessMods(SpellInfo const* spellInfo, float& chance) const;
-        void ApplyCreatureEffectMods(WorldObject const* wtarget, SpellInfo const* spellInfo, uint8 effIndex, float& value) const;
+        void ApplyCreatureEffectMods(SpellInfo const* spellInfo, uint8 effIndex, float& value) const;
         void OnBotSummon(Creature* summon);
         void OnBotDespawn(Creature* summon);
         void BotStopMovement();
@@ -444,8 +447,6 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         Item* GetBotEquips(uint8 slot) const;
         Item* GetBotEquipsByGuid(ObjectGuid itemGuid) const;
         float GetBotAverageItemLevel() const;
-
-        static bool IsBotCustomSpell(uint32 spellId);
         //End NPCBots
 
     protected:

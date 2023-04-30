@@ -257,8 +257,102 @@ GroupQueueInfo* BattlegroundQueue::AddGroup(Player* leader, Group* grp, Battlegr
         //release mutex
     }
 
+    //npcbot: try to queue wandering bots
+    if (!isRated && !ArenaType && !arenateamid && !sBattlegroundMgr->isTesting() && BotMgr::IsBotGenerationEnabledBGs() &&
+        (BgTypeId == BATTLEGROUND_WS || BgTypeId == BATTLEGROUND_AB))
+    {
+        if (!BotDataMgr::GenerateBattlegroundBots(leader, grp, this, bracketEntry, ginfo))
+        {
+            TC_LOG_WARN("npcbots", "Did NOT generate bots for BG %u for leader %s (%u members)",
+                BgTypeId, leader->GetDebugInfo().c_str(), grp ? grp->GetMembersCount() : 0u);
+        }
+    }
+    //end npcbot
+
     return ginfo;
 }
+
+//npcbot
+GroupQueueInfo* BattlegroundQueue::AddBotAsGroup(ObjectGuid guid, uint32 team, BattlegroundTypeId BgTypeId, PvPDifficultyEntry const* bracketEntry, uint8 ArenaType, bool isRated, uint32 ArenaRating, uint32 MatchmakerRating, uint32 arenateamid, uint32 PreviousOpponentsArenaTeamId)
+{
+    ASSERT(guid.IsCreature());
+
+    BattlegroundBracketId bracketId = bracketEntry->GetBracketId();
+
+    // create new ginfo
+    GroupQueueInfo* ginfo            = new GroupQueueInfo;
+    ginfo->BgTypeId                  = BgTypeId;
+    ginfo->ArenaType                 = ArenaType;
+    ginfo->ArenaTeamId               = arenateamid;
+    ginfo->IsRated                   = isRated;
+    ginfo->IsInvitedToBGInstanceGUID = 0;
+    ginfo->JoinTime                  = GameTime::GetGameTimeMS();
+    ginfo->RemoveInviteTime          = 0;
+    ginfo->Team                      = team;
+    ginfo->ArenaTeamRating           = ArenaRating;
+    ginfo->ArenaMatchmakerRating     = MatchmakerRating;
+    ginfo->PreviousOpponentsTeamId   = PreviousOpponentsArenaTeamId;
+    ginfo->OpponentsTeamRating       = 0;
+    ginfo->OpponentsMatchmakerRating = 0;
+
+    ginfo->Players.clear();
+
+    //compute index (if group is premade or joined a rated match) to queues
+    uint32 index = 0;
+    if (!isRated)
+        index += PVP_TEAMS_COUNT;
+    if (ginfo->Team == HORDE)
+        index++;
+
+    TC_LOG_DEBUG("npcbots", "Adding NPCBot %u to BattlegroundQueue bgTypeId : %u, bracket_id : %u, index : %u", guid.GetEntry(), BgTypeId, bracketId, index);
+
+    uint32 lastOnlineTime = GameTime::GetGameTimeMS();
+
+    //announce world (this don't need mutex)
+    if (isRated && sWorld->getBoolConfig(CONFIG_ARENA_QUEUE_ANNOUNCER_ENABLE))
+    {
+        ArenaTeam* team = sArenaTeamMgr->GetArenaTeamById(arenateamid);
+        if (team)
+            sWorld->SendWorldText(LANG_ARENA_QUEUE_ANNOUNCE_WORLD_JOIN, team->GetName().c_str(), ginfo->ArenaType, ginfo->ArenaType, ginfo->ArenaTeamRating);
+    }
+
+    PlayerQueueInfo& pl_info = m_QueuedPlayers[guid];
+    pl_info.LastOnlineTime   = lastOnlineTime;
+    pl_info.GroupInfo        = ginfo;
+    ginfo->Players[guid]     = &pl_info;
+
+    m_QueuedGroups[bracketId][index].push_back(ginfo);
+
+    //announce to world, this code needs mutex
+    if (!isRated && sWorld->getBoolConfig(CONFIG_BATTLEGROUND_QUEUE_ANNOUNCER_ENABLE))
+    {
+        if (Battleground const* bg = sBattlegroundMgr->GetBattlegroundTemplate(ginfo->BgTypeId))
+        {
+            uint32 MinPlayers = bg->GetMinPlayersPerTeam();
+            uint32 qHorde = 0;
+            uint32 qAlliance = 0;
+            uint32 q_min_level = bracketEntry->MinLevel;
+            uint32 q_max_level = bracketEntry->MaxLevel;
+            GroupsQueueType::const_iterator itr;
+            for (itr = m_QueuedGroups[bracketId][BG_QUEUE_NORMAL_ALLIANCE].begin(); itr != m_QueuedGroups[bracketId][BG_QUEUE_NORMAL_ALLIANCE].end(); ++itr)
+                if (!(*itr)->IsInvitedToBGInstanceGUID)
+                    qAlliance += (*itr)->Players.size();
+            for (itr = m_QueuedGroups[bracketId][BG_QUEUE_NORMAL_HORDE].begin(); itr != m_QueuedGroups[bracketId][BG_QUEUE_NORMAL_HORDE].end(); ++itr)
+                if (!(*itr)->IsInvitedToBGInstanceGUID)
+                    qHorde += (*itr)->Players.size();
+
+            // Show queue status to player only (when joining queue)
+            if (!sWorld->getBoolConfig(CONFIG_BATTLEGROUND_QUEUE_ANNOUNCER_PLAYERONLY))
+            {
+                sWorld->SendWorldText(LANG_BG_QUEUE_ANNOUNCE_WORLD, bg->GetName().c_str(), q_min_level, q_max_level,
+                    qAlliance, (MinPlayers > qAlliance) ? MinPlayers - qAlliance : (uint32)0, qHorde, (MinPlayers > qHorde) ? MinPlayers - qHorde : (uint32)0);
+            }
+        }
+    }
+
+    return ginfo;
+}
+//end npcbot
 
 void BattlegroundQueue::PlayerInvitedToBGUpdateAverageWaitTime(GroupQueueInfo* ginfo, BattlegroundBracketId bracket_id)
 {
@@ -400,20 +494,27 @@ void BattlegroundQueue::RemovePlayer(ObjectGuid guid, bool decreaseInvitedCount)
         }
     }
 
-    //npcbot: removing bot: return
-    if (!guid.IsPlayer())
-        return;
-
-    //npcbot: remove player's bots if queued
-    if (!group->Players.empty())
+    //npcbot: remove player's bots
+    if (!group->Players.empty() && guid.IsPlayer())
     {
         std::vector<ObjectGuid> botguids;
         botguids.reserve(BotMgr::GetMaxNpcBots() / 2);
         BotDataMgr::GetNPCBotGuidsByOwner(botguids, guid);
         for (std::vector<ObjectGuid>::const_iterator ci = botguids.begin(); ci != botguids.end() && !group->Players.empty(); ++ci)
         {
-            if (m_QueuedPlayers.find(*ci) != m_QueuedPlayers.end())
-                RemovePlayer(*ci, decreaseInvitedCount);
+            auto bqpitr = m_QueuedPlayers.find(*ci);
+            if (bqpitr != m_QueuedPlayers.end())
+            {
+                auto bgpitr = group->Players.find(*ci);
+                if (bgpitr != group->Players.end())
+                    group->Players.erase(bgpitr);
+
+                if (decreaseInvitedCount && group->IsInvitedToBGInstanceGUID)
+                    if (Battleground* bg = sBattlegroundMgr->GetBattleground(group->IsInvitedToBGInstanceGUID, group->BgTypeId))
+                        bg->DecreaseInvitedCount(group->Team);
+
+                m_QueuedPlayers.erase(bqpitr);
+            }
         }
     }
     //end npcbot
@@ -458,6 +559,15 @@ bool BattlegroundQueue::IsPlayerInvited(ObjectGuid pl_guid, const uint32 bgInsta
         && qItr->second.GroupInfo->RemoveInviteTime == removeTime);
 }
 
+//npcbot
+bool BattlegroundQueue::IsBotInvited(ObjectGuid guid, uint32 bgInstanceGuid) const
+{
+    ASSERT(guid.IsCreature());
+    QueuedPlayersMap::const_iterator qItr = m_QueuedPlayers.find(guid);
+    return (qItr != m_QueuedPlayers.end() && qItr->second.GroupInfo->IsInvitedToBGInstanceGUID == bgInstanceGuid);
+}
+//end npcbot
+
 bool BattlegroundQueue::GetPlayerGroupInfoData(ObjectGuid guid, GroupQueueInfo* ginfo)
 {
     QueuedPlayersMap::const_iterator qItr = m_QueuedPlayers.find(guid);
@@ -499,9 +609,8 @@ bool BattlegroundQueue::InviteGroupToBG(GroupQueueInfo* ginfo, Battleground* bg,
             //npcbot: invite bots
             if (itr->first.IsCreature())
             {
-                bg->IncreaseInvitedCount(ginfo->Team);
-                TC_LOG_DEBUG("bg.battleground", "Battleground: invited NPCBot %s to BG instance %u bgtype %u",
-                    itr->first.ToString().c_str(), bg->GetInstanceID(), bg->GetTypeID());
+                PlayerInvitedToBGUpdateAverageWaitTime(ginfo, bracket_id);
+                BotMgr::InviteBotToBG(itr->first, ginfo, bg);
                 continue;
             }
             //end npcbot

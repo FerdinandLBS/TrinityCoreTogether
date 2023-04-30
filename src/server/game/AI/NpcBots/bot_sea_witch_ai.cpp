@@ -150,7 +150,7 @@ public:
                 if (!spell)
                     spell = target->GetCurrentSpell(CURRENT_CHANNELED_SPELL);
 
-                if (spell && spell->GetTimer() > int32(sSpellMgr->GetSpellInfo(GetSpell(FORKED_LIGHTNING_1))->CalcCastTime() + 250))
+                if (spell && spell->GetTimer() > int32(AssertBotSpellInfoOverride(GetSpell(FORKED_LIGHTNING_1))->CalcCastTime() + 250))
                 {
                     me->SetFacingTo(me->GetAbsoluteAngle(target));
                     if (doCast(target, GetSpell(FORKED_LIGHTNING_1)))
@@ -175,7 +175,10 @@ public:
                 if (!me->IsInCombat() && baseId == TORNADO_1)
                     me->InterruptSpell(CURRENT_GENERIC_SPELL);
                 else if (baseId == FORKED_LIGHTNING_1 && (!me->GetVictim() || !me->HasInArc(float(M_PI) / 2.f, me->GetVictim())))
+                {
                     me->InterruptSpell(CURRENT_GENERIC_SPELL);
+                    SetSpellCooldown(FORKED_LIGHTNING_1, 500);
+                }
                 else if (_spell_preact && spell->GetTimer() < 400)
                 {
                     _spell_preact = false;
@@ -217,6 +220,8 @@ public:
             if (IsCasting())
                 return;
 
+            CheckUsableItems(diff);
+
             DoRangedAttack(diff);
         }
 
@@ -257,7 +262,7 @@ public:
             {
                 //Frost Arrow / Autoshot
                 if (IsSpellReady(FROST_ARROW_1, diff) && me->GetPower(POWER_MANA) >= FROSTARROW_COST &&
-                    !mytar->IsImmunedToDamage(sSpellMgr->GetSpellInfo(FROST_ARROW_1)))
+                    !mytar->IsImmunedToDamage(AssertBotSpellInfoOverride(FROST_ARROW_1)))
                 {
                     if (doCast(mytar, GetSpell(FROST_ARROW_1)))
                         return;
@@ -331,7 +336,7 @@ public:
         void ApplyClassDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& /*damageinfo*/, SpellInfo const* spellInfo, WeaponAttackType /*attackType*/, bool iscrit) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
-            //uint8 lvl = me->GetLevel();
+            uint8 lvl = me->GetLevel();
             float fdamage = float(damage);
             float flat_mod = 0.f;
 
@@ -349,6 +354,13 @@ public:
                 //so we should put here bonus damage mult /1.5
                 if (/*baseId == FROST_ARROW_1 || */baseId == FORKED_LIGHTNING_1)
                     pctbonus *= 1.33f;
+            }
+
+            if (baseId == FORKED_LIGHTNING_1)
+            {
+                constexpr float basecoef = 2.5f / 80.f;
+                float coef = basecoef * (lvl - 3);
+                fdamage += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * coef * me->CalculateDefaultCoefficient(spellInfo, SPELL_DIRECT_DAMAGE) * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo);
             }
 
             damage = int32(fdamage * pctbonus + flat_mod);
@@ -402,7 +414,7 @@ public:
             }
         }
 
-        void ApplyClassEffectMods(WorldObject const* /*wtarget*/, SpellInfo const* spellInfo, uint8 effIndex, float& value) const override
+        void ApplyClassEffectMods(SpellInfo const* spellInfo, uint8 effIndex, float& value) const override
         {
             uint32 baseId = spellInfo->GetFirstRankSpell()->Id;
             uint8 lvl = me->GetLevel();
@@ -540,7 +552,7 @@ public:
 
         void OnBotDamageDealt(Unit* victim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType /*damagetype*/, SpellInfo const* /*spellInfo*/) override
         {
-            if (damage && victim && (cleanDamage->attackType == BASE_ATTACK || cleanDamage->attackType == OFF_ATTACK) &&
+            if (damage && victim && cleanDamage && (cleanDamage->attackType == BASE_ATTACK || cleanDamage->attackType == OFF_ATTACK) &&
                 victim->IsWithinCombatRange(me, ATTACK_DISTANCE))
             {
                 if (urand(0, 100) < 5)
@@ -597,9 +609,9 @@ public:
             else
                 me->GetNearPoint(me, spos.m_positionX, spos.m_positionY, spos.m_positionZ, 10.f, 0.f);
 
-            Creature* myPet = me->SummonCreature(BOT_PET_TORNADO, spos, TEMPSUMMON_MANUAL_DESPAWN);
-            myPet->SetCreatorGUID(master->GetGUID());
-            myPet->SetOwnerGUID(master->GetGUID());
+            Creature* myPet = me->SummonCreature(BOT_PET_TORNADO, spos, TEMPSUMMON_CORPSE_DESPAWN);
+            myPet->SetCreator(master);
+            myPet->SetOwnerGUID(me->GetGUID());
             myPet->SetFaction(master->GetFaction());
             myPet->SetControlledByPlayer(!IAmFree());
             myPet->SetPvP(me->IsPvP());
@@ -709,7 +721,7 @@ public:
         void FillAbilitiesSpecifics(Player const* player, std::list<std::string> &specList) override
         {
             bool amount_is_mana = true;
-            float amount = sSpellMgr->AssertSpellInfo(MANA_SHIELD_1)->GetEffect(EFFECT_0).CalcValueMultiplier(me); //mana per damage
+            float amount = AssertBotSpellInfoOverride(MANA_SHIELD_1)->GetEffect(EFFECT_0).CalcValueMultiplier(me); //mana per damage
             if (amount < 1.0f)
             {
                 amount_is_mana = false;

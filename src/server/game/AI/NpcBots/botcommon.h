@@ -1,6 +1,7 @@
 #ifndef _BOTCOMMON_H
 #define _BOTCOMMON_H
 
+#include "ObjectGuid.h"
 #include "SharedDefines.h"
 #include "SpellAuraDefines.h"
 
@@ -34,11 +35,16 @@ enum BotCommonValues
     GO_REFRESHMENT_TABLE_2              = 193061,//lvl 80 req80
     GO_SOULWELL_1                       = 181621,//lvl 60 req68
     GO_SOULWELL_2                       = 193169,//lvl 69 req80
+    GO_BOT_MONEY_BAG                    = 186736,
 //COMMON CDs
     POTION_CD                           = 60000,//default 60sec potion cd
     REGEN_CD                            = 1000, //update hp/mana every X milliseconds
 //COMMON TIMERS
     ITEM_ENCHANTMENT_EXPIRE_TIMER       = 3600000, //1 Hour
+    REVIVE_TIMER_DEFAULT                = 180000, //3 Minutes
+    REVIVE_TIMER_MEDIUM                 = 90000, //1.5 Minutes
+    REVIVE_TIMER_SHORT                  = 60000, //1 Minute
+    INOUTDOORS_ENSURE_TIMER             = 1000,
 //VEHICLE CREATURES
     CREATURE_NEXUS_SKYTALON_1           = 32535, // [Q] Aces High
     CREATURE_EOE_SKYTALON_N             = 30161, // Eye of Eternity
@@ -149,24 +155,6 @@ enum BotCommonValues
     SOUND_MISS_WHOOSH_2H                = 7081,
 
 //UNUSED
-    //SPELL_SUMMON_FELBLAZE_PREVISUAL     = 46350,//green splash impact head/torso
-
-//OTHER
-    BASE_MANA_SPHYNX                    = 400 * 5,
-    BASE_MANA_SPELLBREAKER              = 250 * 5,
-    BASE_MANA_NECROMANCER               = 400 * 5,
-    //base mana at 10
-    BASE_MANA_10_BM                     = 540 * 5,
-    BASE_MANA_10_ARCHMAGE               = 705 * 5,
-    BASE_MANA_10_DREADLORD              = 600 * 5,
-    BASE_MANA_10_DARK_RANGER            = 570 * 5,
-    BASE_MANA_10_SEA_WITCH              = 735 * 5,
-    //base mana at 1
-    BASE_MANA_1_BM                      = 240 * 5,
-    BASE_MANA_1_ARCHMAGE                = 285 * 5,
-    BASE_MANA_1_DREADLORD               = 270 * 5,
-    BASE_MANA_1_DARK_RANGER             = 225 * 5,
-    BASE_MANA_1_SEA_WITCH               = 330 * 5,
 
     //MAX_LOOT_ITEMS                      = 18 // Client limitation 3.3.5 code confirmed
 };
@@ -198,6 +186,12 @@ enum BotClasses : uint8
 
     BOT_CLASS_EX_START                  = BOT_CLASS_BM
 };
+
+constexpr uint32 ALL_BOT_CLASSES_MASK =
+    ((1 << BOT_CLASS_WARRIOR)|(1 << BOT_CLASS_PALADIN)|(1 << BOT_CLASS_HUNTER)|(1 << BOT_CLASS_ROGUE)|(1 << BOT_CLASS_PRIEST)|
+    (1 << BOT_CLASS_DEATH_KNIGHT)|(1 << BOT_CLASS_SHAMAN)|(1 << BOT_CLASS_MAGE)|(1 << BOT_CLASS_WARLOCK)|(1 << BOT_CLASS_DRUID)|
+    (1 << BOT_CLASS_BM)|(1 << BOT_CLASS_SPHYNX)|(1 << BOT_CLASS_ARCHMAGE)|(1 << BOT_CLASS_DREADLORD)|(1 << BOT_CLASS_SPELLBREAKER)|
+    (1 << BOT_CLASS_DARK_RANGER)|(1 << BOT_CLASS_NECROMANCER)|(1 << BOT_CLASS_SEA_WITCH));
 
 enum BotStances
 {
@@ -502,8 +496,9 @@ enum BotAIResetType
 {
     BOTAI_RESET_INIT                    = 0x01,
     BOTAI_RESET_DISMISS                 = 0x02,
-    BOTAI_RESET_LOST                    = 0x04,
+    BOTAI_RESET_UNBIND                  = 0x04,
     BOTAI_RESET_LOGOUT                  = 0x08,
+    BOTAI_RESET_FORCERECALL             = 0x10,
 
     BOTAI_RESET_MASK_ABANDON_MASTER     = (BOTAI_RESET_INIT | BOTAI_RESET_DISMISS)
 };
@@ -515,15 +510,17 @@ enum BotMovementType
     BOT_MOVE_CHASE
 };
 
-enum BotCommandStates
+enum BotCommandStates : uint32
 {
-    BOT_COMMAND_STAY                    = 0x01,
-    BOT_COMMAND_FOLLOW                  = 0x02,
-    BOT_COMMAND_ATTACK                  = 0x04,
-    BOT_COMMAND_COMBATRESET             = 0x08,
-    BOT_COMMAND_FULLSTOP                = 0x10,
-    BOT_COMMAND_ISSUED_ORDER            = 0x20,
-    BOT_COMMAND_WALK                    = 0x40,
+    BOT_COMMAND_STAY                    = 0x00000001,
+    BOT_COMMAND_FOLLOW                  = 0x00000002,
+    BOT_COMMAND_ATTACK                  = 0x00000004,
+    BOT_COMMAND_COMBATRESET             = 0x00000008,
+    BOT_COMMAND_FULLSTOP                = 0x00000010,
+    BOT_COMMAND_ISSUED_ORDER            = 0x00000020,
+    BOT_COMMAND_WALK                    = 0x00000040,
+    BOT_COMMAND_NOGOSSIP                = 0x00000080,
+    BOT_COMMAND_UNBIND                  = 0x00000100,
 
     BOT_COMMAND_MASK_UNCHASE            = BOT_COMMAND_STAY | BOT_COMMAND_FOLLOW | BOT_COMMAND_FULLSTOP,
     BOT_COMMAND_MASK_UNMOVING           = BOT_COMMAND_STAY | BOT_COMMAND_FULLSTOP | BOT_COMMAND_ISSUED_ORDER
@@ -535,6 +532,8 @@ enum BotAwaitStates
     BOT_AWAIT_SEND                      = 0x01
 };
 
+constexpr size_t MAX_SEND_POINTS = 5u;
+
 #define FROM_ARRAY(arr) arr, arr + sizeof(arr) / sizeof(arr[0])
 
 //Only non-persistent types are allowed
@@ -543,8 +542,8 @@ enum BotOrderTypes
     BOT_ORDER_NONE          = 0,
     BOT_ORDER_SPELLCAST     = 1
 };
-#define DEBUG_BOT_ORDERS 0
-#define MAX_BOT_ORDERS_QUEUE_SIZE 3
+constexpr bool DEBUG_BOT_ORDERS = false;
+constexpr size_t MAX_BOT_ORDERS_QUEUE_SIZE = 3u;
 
 enum BotVehicleStrats
 {

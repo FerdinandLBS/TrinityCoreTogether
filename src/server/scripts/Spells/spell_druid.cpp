@@ -1201,7 +1201,7 @@ class spell_dru_rip : public AuraScript
     {
         Unit* caster = GetCaster();
         //npcbot
-        if (caster && caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->IsNPCBot())
+        if (caster && caster->IsNPCBot())
             return true;
         //end npcbot
         return caster && GetCaster()->GetTypeId() == TYPEID_PLAYER;
@@ -1214,7 +1214,7 @@ class spell_dru_rip : public AuraScript
         if (Unit* caster = GetCaster())
         {
             //npcbot
-            if (caster && caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->IsNPCBot())
+            if (caster && caster->IsNPCBot())
             {
                 uint8 botcp = caster->ToCreature()->GetCreatureComboPoints();
                 // Idol of Feral Shadows. Can't be handled as SpellMod due its dependency from CPs
@@ -1864,8 +1864,7 @@ class spell_dru_t10_restoration_4p_bonus_dummy : public AuraScript
             return false;
 
         //npcbot: support for Item - Druid T10 Restoration 4P Bonus (Rejuvenation)
-        Creature* creCaster = eventInfo.GetActor()->ToCreature();
-        if (creCaster && creCaster->IsNPCBot())
+        if (eventInfo.GetActor()->IsNPCBot())
             return true;
         //end npcbot
 

@@ -33,6 +33,7 @@
 
 //npcbot
 #include "botmgr.h"
+#include "botspell.h"
 //end npcbot
 
 uint32 GetTargetFlagMask(SpellTargetObjectTypes objType)
@@ -452,7 +453,7 @@ int32 SpellEffectInfo::CalcValue(WorldObject const* caster /*= nullptr*/, int32 
             pointsPerComboPoint = 2500.f;
         }
         //npcbot: bonus amount from combo points and specific mods
-        if (casterUnit->GetTypeId() == TYPEID_UNIT && casterUnit->ToCreature()->IsNPCBot())
+        if (casterUnit->IsNPCBot())
         {
             if (uint8 comboPoints = casterUnit->ToCreature()->GetCreatureComboPoints())
                 value += pointsPerComboPoint * comboPoints;
@@ -462,7 +463,7 @@ int32 SpellEffectInfo::CalcValue(WorldObject const* caster /*= nullptr*/, int32 
             PointsPerComboPoint)
         {
             Unit const* bot = casterUnit->GetCharmer();
-            if (bot && bot->ToCreature()->IsNPCBot())
+            if (bot && bot->IsNPCBot())
                 if (uint8 comboPoints = bot->ToCreature()->GetCreatureComboPoints())
                     value += pointsPerComboPoint * comboPoints;
         }
@@ -553,7 +554,7 @@ float SpellEffectInfo::CalcValueMultiplier(WorldObject* caster, Spell* spell /*=
         modOwner->ApplySpellMod(_spellInfo->Id, SPELLMOD_VALUE_MULTIPLIER, multiplier, spell);
 
     //npcbot - apply bot spell effect value mult mods
-    if (caster && caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->IsNPCBot())
+    if (caster && caster->IsNPCBot())
         BotMgr::ApplyBotEffectValueMultiplierMods(caster->ToCreature(), _spellInfo, EffectIndex, multiplier);
     //end npcbot
 
@@ -898,6 +899,12 @@ SpellInfo::SpellInfo(SpellEntry const* spellEntry)
 SpellInfo::~SpellInfo()
 {
     _UnloadImplicitTargetConditionLists();
+}
+
+SpellInfo const* SpellInfo::TryGetSpellInfoOverride(WorldObject const* caster) const
+{
+    SpellInfo const* spellInfoOverride = (caster && caster->IsNPCBot()) ? GetBotSpellInfoOverride(Id) : nullptr;
+    return spellInfoOverride ? spellInfoOverride : this;
 }
 
 uint32 SpellInfo::GetCategory() const
@@ -1652,7 +1659,7 @@ SpellCastResult SpellInfo::CheckTarget(WorldObject const* caster, WorldObject co
     if (HasAttribute(SPELL_ATTR1_CANT_TARGET_SELF) && caster == target)
         return SPELL_FAILED_BAD_TARGETS;
 
-    // check visibility - ignore stealth for implicit (area) targets
+    // check visibility - ignore invisibility/stealth for implicit (area) targets
     if (!HasAttribute(SPELL_ATTR6_CAN_TARGET_INVISIBLE) && !caster->CanSeeOrDetect(target, implicit))
         return SPELL_FAILED_BAD_TARGETS;
 
@@ -1726,7 +1733,7 @@ SpellCastResult SpellInfo::CheckTarget(WorldObject const* caster, WorldObject co
     // corpseOwner and unit specific target checks
     if (HasAttribute(SPELL_ATTR3_ONLY_TARGET_PLAYERS) && unitTarget->GetTypeId() != TYPEID_PLAYER)
         //npcbot: allow to target bots
-        if (!(unitTarget->GetTypeId() == TYPEID_UNIT && unitTarget->ToCreature()->IsNPCBot()))
+        if (!unitTarget->IsNPCBot())
         //end npcbot
        return SPELL_FAILED_TARGET_NOT_PLAYER;
 
@@ -2907,15 +2914,19 @@ void SpellInfo::ApplyAllSpellImmunitiesTo(Unit* target, uint8 effIndex, bool app
                 target->RemoveAurasWithMechanic(mechanicImmunity, AURA_REMOVE_BY_DEFAULT, Id);
             else
             {
-                target->RemoveAppliedAuras([mechanicImmunity](AuraApplication const* aurApp)
+                std::vector<Aura*> aurasToUpdateTargets;
+                target->RemoveAppliedAuras([mechanicImmunity, &aurasToUpdateTargets](AuraApplication const* aurApp)
                 {
                     Aura* aura = aurApp->GetBase();
                     if (aura->GetSpellInfo()->GetAllEffectsMechanicMask() & mechanicImmunity)
-                        aura->UpdateTargetMap(aura->GetCaster());
+                        aurasToUpdateTargets.push_back(aura);
 
                     // only update targets, don't remove anything
                     return false;
                 });
+
+                for (Aura* aura : aurasToUpdateTargets)
+                    aura->UpdateTargetMap(aura->GetCaster());
             }
         }
     }
@@ -3286,7 +3297,7 @@ int32 SpellInfo::CalcPowerCost(WorldObject const* caster, SpellSchoolMask school
     }
 
     //npcbot - apply bot spell cost mods
-    if (powerCost > 0 && caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->IsNPCBot())
+    if (powerCost > 0 && caster->IsNPCBot())
         caster->ToCreature()->ApplyCreatureSpellCostMods(this, powerCost);
     //end npcbot
 

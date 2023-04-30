@@ -53,10 +53,10 @@ float constexpr NecromancerPetPositionAnglesByPosNumber[NECROMANCER_MAX_PET_POSI
 {
     0.f,
     float(M_PI),
-    float(M_PI) / 5.f * 1.f,
-    float(M_PI) / 5.f * 4.f,
-    float(M_PI) / 5.f * 2.f,
-    float(M_PI) / 5.f * 3.f
+    0.6283185f,//1*M_PI/5
+    2.5132741f,//4*M_PI/5
+    1.2566370f,//2*M_PI/5
+    1.8849555f //3*M_PI/5
 };
 
 extern uint8 GroupIconsFlags[TARGETICONCOUNT];
@@ -71,12 +71,16 @@ bot_pet_ai::bot_pet_ai(Creature* creature) : CreatureAI(creature)
     m_botCommandState = BOT_COMMAND_FOLLOW;
     regenTimer = 0;
     waitTimer = 0;
+    indoorsTimer = 0;
+    outdoorsTimer = 0;
     GC_Timer = 0;
     lastdiff = 0;
     _energyFraction = 0.f;
     _updateTimerMedium = 0;
     _updateTimerEx1 = urand(12000, 15000);
     checkAurasTimer = 0;
+
+    _wanderer = false;
 
     myType = 0;
     petOwner = nullptr;
@@ -111,7 +115,7 @@ void bot_pet_ai::_calculatePos(Position& pos) const
 {
     float x,y,z;
     //destination
-    if (petOwner->GetTransport() || !petOwner->GetMotionMaster()->GetDestination(x, y, z))
+    if (!petOwner->GetMotionMaster()->GetDestination(x, y, z) || petOwner->GetTransport())
         petOwner->GetPosition(x, y, z);
     //relative angle
     float o = petOwner->GetOrientation() + PET_FOLLOW_ANGLE;
@@ -1214,10 +1218,7 @@ void bot_pet_ai::OnOwnerDamagedBy(Unit* attacker)
 {
     if (petOwner->GetBotAI()->HasBotCommandState(BOT_COMMAND_MASK_UNMOVING))
         return;
-    if (me->GetVictim() && (!IAmFree() || me->GetDistance(me->GetVictim()) < me->GetDistance(attacker)))
-        return;
-
-    if (!me->IsValidAttackTarget(attacker) || !attacker->isTargetableForAttack() || IsInBotParty(attacker))
+    if (!petOwner->GetBotAI()->CanBotAttack(attacker))
         return;
 
     SetBotCommandState(BOT_COMMAND_COMBATRESET);
@@ -1252,7 +1253,7 @@ bool bot_pet_ai::IsInBotParty(Unit const* unit) const
             return false;
 
         return
-            (unit->GetTypeId() == TYPEID_PLAYER || unit->ToCreature()->IsPet() || unit->ToCreature()->IsNPCBot() || unit->ToCreature()->IsNPCBotPet()) &&
+            (unit->GetTypeId() == TYPEID_PLAYER || unit->ToCreature()->IsPet() || unit->IsNPCBot() || unit->IsNPCBotPet()) &&
             (unit->GetFaction() == me->GetFaction() ||
             (me->GetReactionTo(unit) >= REP_FRIENDLY && unit->GetReactionTo(me) >= REP_FRIENDLY));
     }
@@ -1275,7 +1276,7 @@ bool bot_pet_ai::IsInBotParty(Unit const* unit) const
     //Player-controlled creature case
     if (Creature const* cre = unit->ToCreature())
     {
-        ObjectGuid ownerGuid = unit->GetOwnerGUID();
+        ObjectGuid ownerGuid = unit->GetOwnerGUID() ? unit->GetOwnerGUID() : unit->GetCreatorGUID();
         //controlled by master
         if (ownerGuid == petOwner->GetBotOwner()->GetGUID())
             return true;
@@ -1373,7 +1374,7 @@ Unit* bot_pet_ai::_getTarget(bool &reset) const
     {
         dropTarget = IAmFree() ?
             petOwner->GetDistance(mytar) > foldist :
-            (petOwner->GetBotOwner()->GetDistance(mytar) > foldist || (petOwner->GetBotOwner()->GetDistance(mytar) > foldist * 0.75f && !mytar->IsWithinLOSInMap(petOwner)));
+            (petOwner->GetBotOwner()->GetDistance(mytar) > foldist || (petOwner->GetBotOwner()->GetDistance(mytar) > foldist * 0.75f && !mytar->IsWithinLOSInMap(petOwner, LINEOFSIGHT_ALL_CHECKS, VMAP::ModelIgnoreFlags::M2)));
     }
     if (dropTarget)
         return nullptr;
@@ -1494,7 +1495,7 @@ void bot_pet_ai::GetInPosition(bool force, Unit* newtarget, Position* mypos)
             attackpos.m_positionY = mypos->m_positionY;
             attackpos.m_positionZ = mypos->m_positionZ;
         }
-        if (me->GetExactDist2d(&attackpos) > 4.f || !me->IsWithinLOSInMap(newtarget))
+        if (me->GetExactDist2d(&attackpos) > 4.f || !me->IsWithinLOSInMap(newtarget, LINEOFSIGHT_ALL_CHECKS, VMAP::ModelIgnoreFlags::M2))
         {
             me->GetMotionMaster()->MovePoint(newtarget->GetMapId(), attackpos);
             if (!me->HasUnitState(UNIT_STATE_MELEE_ATTACKING))
@@ -1974,7 +1975,7 @@ bool bot_pet_ai::Wait()
         return true;
 
     if (IAmFree())
-        waitTimer = me->IsInCombat() ? 500 : urand(750, 1250);
+        waitTimer = me->IsInCombat() ? 250 : ((__rand + 100) * 20);
     else if (!me->GetMap()->IsRaid())
         waitTimer = std::min<uint32>(uint32(50 * (petOwner->GetBotOwner()->GetNpcBotsCount() - 1) + __rand + __rand), 500);
     else
@@ -2068,6 +2069,11 @@ void bot_pet_ai::JustDied(Unit*)
     KillEvents(false);
 }
 
+void bot_pet_ai::KilledUnit(Unit* u)
+{
+    GetPetsOwner()->GetBotAI()->KilledUnit(u);
+}
+
 void bot_pet_ai::AttackStart(Unit* /*u*/)
 {
 }
@@ -2101,6 +2107,7 @@ void bot_pet_ai::IsSummonedBy(WorldObject* summoner)
     myType = me->GetEntry();
     //myType = petOwner->GetBotAI()->GetAIMiscValue(BOTAI_MISC_PET_TYPE);
     //ASSERT(myType);
+    me->setActive(true);
     ASSERT(!me->GetBotAI());
     ASSERT(!me->GetBotPetAI());
     me->SetBotPetAI(this);
@@ -2169,6 +2176,9 @@ bool bot_pet_ai::GlobalUpdate(uint32 diff)
         TC_LOG_ERROR("entities.unit", "botpet:GlobalUpdate(): no owner!");
         return false;
     }
+
+    if (!BotMgr::IsNpcBotModEnabled())
+        return false;
 
     ReduceCD(diff);
 
@@ -2365,7 +2375,7 @@ bool bot_pet_ai::GlobalUpdate(uint32 diff)
             else
             {
                 CalculateAttackPos(victim, attackpos);
-                if (me->GetExactDist2d(&attackpos) > 4.f || !me->IsWithinLOSInMap(victim))
+                if (me->GetExactDist2d(&attackpos) > 4.f || !me->IsWithinLOSInMap(victim, LINEOFSIGHT_ALL_CHECKS, VMAP::ModelIgnoreFlags::M2))
                     GetInPosition(true, victim, &attackpos);
             }
         }
@@ -2425,6 +2435,14 @@ bool bot_pet_ai::JumpingOrFalling() const
 bool bot_pet_ai::Jumping() const
 {
     return me->HasUnitState(UNIT_STATE_JUMPING);
+}
+bool bot_pet_ai::IsIndoors() const
+{
+    return indoorsTimer >= INOUTDOORS_ENSURE_TIMER && outdoorsTimer == 0;
+}
+bool bot_pet_ai::IsOutdoors() const
+{
+    return outdoorsTimer >= INOUTDOORS_ENSURE_TIMER && indoorsTimer == 0;
 }
 
 uint32 bot_pet_ai::GetLostHP(Unit const* unit)

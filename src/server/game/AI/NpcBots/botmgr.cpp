@@ -9,6 +9,7 @@
 #include "bottext.h"
 #include "bpet_ai.h"
 #include "Chat.h"
+#include "CombatPackets.h"
 #include "Config.h"
 #include "GroupMgr.h"
 #include "GridNotifiers.h"
@@ -32,6 +33,18 @@ Player NpcBots management
 TODO: Move creature hooks here
 */
 
+#ifdef _MSC_VER
+# pragma warning(push, 4)
+#endif
+
+#ifdef AC_COMPILER
+# define GetBoolDefault GetOption<bool>
+# define GetIntDefault GetOption<int32>
+# define GetFloatDefault GetOption<float>
+#endif
+
+static std::list<BotMgr::delayed_teleport_callback_type> delayed_bot_teleports;
+
 //config
 uint8 _basefollowdist;
 uint8 _maxNpcBots;
@@ -49,6 +62,7 @@ uint32 _npcBotUpdateDelayBase;
 uint32 _npcBotEngageDelayDPS_default;
 uint32 _npcBotEngageDelayHeal_default;
 uint32 _npcBotOwnerExpireTime;
+uint32 _desiredWanderingBotsCount;
 bool _enableNpcBots;
 bool _enableNpcBotsDungeons;
 bool _enableNpcBotsRaids;
@@ -79,6 +93,7 @@ bool _enableclass_necromancer;
 bool _enableclass_seawitch;
 bool _enrageOnDismiss;
 bool _botStatLimits;
+bool _enableWanderingBotsBG;
 float _botStatLimits_dodge;
 float _botStatLimits_parry;
 float _botStatLimits_block;
@@ -87,6 +102,28 @@ float _mult_dmg_physical;
 float _mult_dmg_spell;
 float _mult_healing;
 float _mult_hp;
+float _mult_dmg_wanderer;
+float _mult_healing_wanderer;
+float _mult_hp_wanderer;
+float _mult_speed_wanderer;
+float _mult_dmg_warrior;
+float _mult_dmg_paladin;
+float _mult_dmg_hunter;
+float _mult_dmg_rogue;
+float _mult_dmg_priest;
+float _mult_dmg_deathknight;
+float _mult_dmg_shaman;
+float _mult_dmg_mage;
+float _mult_dmg_warlock;
+float _mult_dmg_druid;
+float _mult_dmg_blademaster;
+float _mult_dmg_obsidiandestroyer;
+float _mult_dmg_archmage;
+float _mult_dmg_dreadlord;
+float _mult_dmg_spellbreaker;
+float _mult_dmg_darkranger;
+float _mult_dmg_necromancer;
+float _mult_dmg_seawitch;
 
 bool __firstload = true;
 
@@ -122,6 +159,7 @@ void AddSC_mage_bot_pets();
 void AddSC_druid_bot_pets();
 void AddSC_script_bot_commands();
 void AddSC_script_bot_giver();
+void AddSC_wandering_bot_xp_gain_script();
 
 void AddNpcBotScripts()
 {
@@ -157,6 +195,7 @@ void AddNpcBotScripts()
     AddSC_druid_bot_pets();
     AddSC_script_bot_commands();
     AddSC_script_bot_giver();
+    AddSC_wandering_bot_xp_gain_script();
 }
 
 BotMgr::BotMgr(Player* const master) : _owner(master), _dpstracker(new DPSTracker())
@@ -172,9 +211,6 @@ BotMgr::BotMgr(Player* const master) : _owner(master), _dpstracker(new DPSTracke
 
     _botsHidden = false;
     _quickrecall = false;
-
-    _dpstracker->SetOwner(master->GetGUID().GetCounter());
-    master->SetBotMgr(this);
 }
 BotMgr::~BotMgr()
 {
@@ -184,9 +220,6 @@ BotMgr::~BotMgr()
 void BotMgr::Initialize()
 {
     LoadConfig();
-
-    if (!_enableNpcBots)
-        return;
 
     BotDataMgr::LoadNpcBots();
     BotDataMgr::LoadNpcBotGroupData();
@@ -220,6 +253,28 @@ void BotMgr::LoadConfig(bool reload)
     _mult_dmg_spell                 = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Spell", 1.0f);
     _mult_healing                   = sConfigMgr->GetFloatDefault("NpcBot.Mult.Healing", 1.0f);
     _mult_hp                        = sConfigMgr->GetFloatDefault("NpcBot.Mult.HP", 1.0f);
+    _mult_dmg_wanderer              = sConfigMgr->GetFloatDefault("NpcBot.Mult.Wanderer.Damage", 1.0f);
+    _mult_healing_wanderer          = sConfigMgr->GetFloatDefault("NpcBot.Mult.Wanderer.Healing", 1.0f);
+    _mult_hp_wanderer               = sConfigMgr->GetFloatDefault("NpcBot.Mult.Wanderer.HP", 1.0f);
+    _mult_speed_wanderer            = sConfigMgr->GetFloatDefault("NpcBot.Mult.Wanderer.Speed", 1.0f);
+    _mult_dmg_warrior               = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Warrior", 1.0f);
+    _mult_dmg_paladin               = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Paladin", 1.0f);
+    _mult_dmg_hunter                = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Hunter", 1.0f);
+    _mult_dmg_rogue                 = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Rogue", 1.0f);
+    _mult_dmg_priest                = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Priest", 1.0f);
+    _mult_dmg_deathknight           = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.DeathKnight", 1.0f);
+    _mult_dmg_shaman                = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Shaman", 1.0f);
+    _mult_dmg_mage                  = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Mage", 1.0f);
+    _mult_dmg_warlock               = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Warlock", 1.0f);
+    _mult_dmg_druid                 = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Druid", 1.0f);
+    _mult_dmg_blademaster           = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Blademaster", 1.0f);
+    _mult_dmg_obsidiandestroyer     = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.ObsidianDestroyer", 1.0f);
+    _mult_dmg_archmage              = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Archmage", 1.0f);
+    _mult_dmg_dreadlord             = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Dreadlord", 1.0f);
+    _mult_dmg_spellbreaker          = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.SpellBreaker", 1.0f);
+    _mult_dmg_darkranger            = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.DarkRanger", 1.0f);
+    _mult_dmg_necromancer           = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.Necromancer", 1.0f);
+    _mult_dmg_seawitch              = sConfigMgr->GetFloatDefault("NpcBot.Mult.Damage.SeaWitch", 1.0f);
     _enableNpcBotsDungeons          = sConfigMgr->GetBoolDefault("NpcBot.Enable.Dungeon", true);
     _enableNpcBotsRaids             = sConfigMgr->GetBoolDefault("NpcBot.Enable.Raid", false);
     _enableNpcBotsBGs               = sConfigMgr->GetBoolDefault("NpcBot.Enable.BG", false);
@@ -258,12 +313,36 @@ void BotMgr::LoadConfig(bool reload)
     _botStatLimits_parry            = sConfigMgr->GetFloatDefault("NpcBot.Stats.Limits.Parry", 95.0f);
     _botStatLimits_block            = sConfigMgr->GetFloatDefault("NpcBot.Stats.Limits.Block", 95.0f);
     _botStatLimits_crit             = sConfigMgr->GetFloatDefault("NpcBot.Stats.Limits.Crit", 95.0f);
+    _desiredWanderingBotsCount      = sConfigMgr->GetIntDefault("NpcBot.WanderingBots.Continents.Count", 0);
+    _enableWanderingBotsBG          = sConfigMgr->GetBoolDefault("NpcBot.WanderingBots.BG.Enable", false);
 
     //limits
     RoundToInterval(_mult_dmg_physical, 0.1f, 10.f);
     RoundToInterval(_mult_dmg_spell, 0.1f, 10.f);
     RoundToInterval(_mult_healing, 0.1f, 10.f);
     RoundToInterval(_mult_hp, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_wanderer, 0.1f, 10.f);
+    RoundToInterval(_mult_healing_wanderer, 0.1f, 10.f);
+    RoundToInterval(_mult_hp_wanderer, 0.1f, 10.f);
+    RoundToInterval(_mult_speed_wanderer, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_warrior, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_paladin, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_hunter, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_rogue, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_priest, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_deathknight, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_shaman, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_mage, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_warlock, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_druid, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_blademaster, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_obsidiandestroyer, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_archmage, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_dreadlord, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_spellbreaker, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_darkranger, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_necromancer, 0.1f, 10.f);
+    RoundToInterval(_mult_dmg_seawitch, 0.1f, 10.f);
 
     //exclusions
     uint8 dpsFlags = /*_tankingTargetIconFlags | _offTankingTargetIconFlags | */_dpsTargetIconFlags | _rangedDpsTargetIconFlags;
@@ -273,8 +352,6 @@ void BotMgr::LoadConfig(bool reload)
         TC_LOG_ERROR("scripts", "BotMgr::LoadConfig: NoDPSTargetIconMask intersects with dps targets flags 0x%02X! Removed, new mask: 0x%02X",
             uint32(interFlags), uint32(_noDpsTargetIconFlags));
     }
-
-    bot_ai::InitBotCustomSpells();
 }
 
 uint8 BotMgr::GetNpcBotsCount() const
@@ -443,6 +520,10 @@ bool BotMgr::FilterRaces()
 {
     return _filterRaces;
 }
+bool BotMgr::IsBotGenerationEnabledBGs()
+{
+    return _enableWanderingBotsBG;
+}
 uint8 BotMgr::GetMaxClassBots()
 {
     return _maxClassNpcBots;
@@ -478,6 +559,10 @@ uint32 BotMgr::GetBaseUpdateDelay()
 uint32 BotMgr::GetOwnershipExpireTime()
 {
     return _npcBotOwnerExpireTime;
+}
+uint32 BotMgr::GetDesiredWanderingBotsCount()
+{
+    return _desiredWanderingBotsCount;
 }
 float BotMgr::GetBotStatLimitDodge()
 {
@@ -535,6 +620,11 @@ bool BotMgr::CanBotParryWhileCasting(Creature const* bot)
     }
 }
 
+bool BotMgr::IsWanderingWorldBot(Creature const* bot)
+{
+    return (bot->IsWandererBot() && !(bot->GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_NO_XP));
+}
+
 void BotMgr::Update(uint32 diff)
 {
     //remove temp bots from bot map before updating it
@@ -579,14 +669,14 @@ void BotMgr::Update(uint32 diff)
             continue;
         }
 
-        if (partyCombat == false)
+        if (partyCombat == false || _owner->InBattleground())
             ai->UpdateReviveTimer(diff);
 
         //bot->IsAIEnabled = true;
 
         if (ai->GetReviveTimer() <= diff)
         {
-            if (bot->IsInWorld() && !bot->IsAlive() && _owner->IsAlive() && !_owner->IsInCombat() &&
+            if (bot->IsInMap(_owner) && !bot->IsAlive() && !ai->IsDuringTeleport() && _owner->IsAlive() && !_owner->IsInCombat() &&
                 !_owner->IsBeingTeleported() && !_owner->InArena() && !_owner->IsInFlight() &&
                 !_owner->HasUnitFlag2(UNIT_FLAG2_FEIGN_DEATH) &&
                 !_owner->HasInvisibilityAura() && !_owner->HasStealthAura())
@@ -754,7 +844,7 @@ bool BotMgr::IsBeingResurrected(WorldObject const* corpse) const
 
 void BotMgr::_reviveBot(Creature* bot, WorldLocation* dest)
 {
-    if (bot->IsAlive())
+    if (bot->IsAlive() || !bot->IsInWorld())
         return;
 
     if (!bot->GetBotAI()->IAmFree())
@@ -773,17 +863,21 @@ void BotMgr::_reviveBot(Creature* bot, WorldLocation* dest)
 
     bot->SetDisplayId(bot->GetNativeDisplayId());
     bot->ReplaceAllNpcFlags(NPCFlags(bot->GetCreatureTemplate()->npcflag));
-    bot->ClearUnitState(uint32(UNIT_STATE_ALL_STATE));
+    bot->ClearUnitState(UNIT_STATE_ALL_ERASABLE);
     bot->ReplaceAllUnitFlags(UnitFlags(0));
+    bot->SetLootRecipient(nullptr);
+    bot->ResetPlayerDamageReq();
     bot->SetPvP(bot->GetBotOwner()->IsPvP());
     bot->SetUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED);
+    bot->Motion_Initialize();
     bot->setDeathState(ALIVE);
     //bot->GetBotAI()->Reset();
     bot->GetBotAI()->SetShouldUpdateStats();
 
-    bot->SetHealth(bot->GetMaxHealth() / 4); //25% of max health
+    uint8 restore_factor = (bot->IsWandererBot() || (!bot->GetBotAI()->IAmFree() && bot->GetBotOwner()->InBattleground())) ? 1 : 4;
+    bot->SetHealth(bot->GetMaxHealth() / restore_factor); //25% of max health
     if (bot->GetMaxPower(POWER_MANA) > 1)
-        bot->SetPower(POWER_MANA, bot->GetMaxPower(POWER_MANA) / 4); //25% of max mana
+        bot->SetPower(POWER_MANA, bot->GetMaxPower(POWER_MANA) / restore_factor); //25% of max mana
 
     if (!bot->GetBotAI()->IAmFree() && !bot->GetBotAI()->HasBotCommandState(BOT_COMMAND_MASK_UNMOVING))
         bot->GetBotAI()->SetBotCommandState(BOT_COMMAND_FOLLOW, true);
@@ -890,74 +984,134 @@ void BotMgr::OnTeleportFar(uint32 mapId, float x, float y, float z, float ori)
     }
 }
 
-void BotMgr::_teleportBot(Creature* bot, Map* newMap, float x, float y, float z, float ori, bool quick)
+void BotMgr::_teleportBot(Creature* bot, Map* newMap, float x, float y, float z, float ori, bool quick, bool reset)
 {
     ASSERT(bot->GetBotAI());
     bot->GetBotAI()->AbortTeleport();
-
+    bot->GetBotAI()->SetIsDuringTeleport(true);
     bot->GetBotAI()->KillEvents(true);
 
-    if (bot->GetVehicle())
-        bot->ExitVehicle();
+    BotMgr::AddDelayedTeleportCallback([bot, newMap, x, y, z, ori, quick, reset]() {
+        if (bot->GetVehicle())
+            bot->ExitVehicle();
 
-    if (bot->GetTransport())
-    {
-        bot->ClearUnitState(UNIT_STATE_IGNORE_PATHFINDING);
-        bot->GetTransport()->RemovePassenger(bot);
-    }
-
-    if (bot->IsInWorld())
-        bot->CastSpell(bot, COSMETIC_TELEPORT_EFFECT, true);
-
-    if (Map* mymap = bot->FindMap())
-    {
-        bot->BotStopMovement();
-        bot->GetBotAI()->UnsummonAll();
-
-        bot->InterruptNonMeleeSpells(true);
-        if (bot->IsInWorld())
+        if (bot->GetTransport())
         {
-            if (!bot->IsFreeBot())
-                if (InstanceScript* iscr = bot->GetBotOwner()->GetInstanceScript())
-                    iscr->OnNPCBotLeave(bot);
-
-            bot->RemoveFromWorld();
+            bot->ClearUnitState(UNIT_STATE_IGNORE_PATHFINDING);
+            bot->GetTransport()->RemovePassenger(bot);
         }
 
-        ASSERT(bot->GetGUID());
+        Map* mymap = bot->FindMap();
+        if (mymap)
+        {
+            bot->BotStopMovement();
+            bot->GetBotAI()->UnsummonAll();
 
-        bot->RemoveAllGameObjects();
+            bot->InterruptNonMeleeSpells(true);
 
-        bot->m_Events.KillAllEvents(false);
-        bot->CombatStop();
-        bot->ClearComboPoints();
-        bot->ClearComboPointHolders();
+            if (bot->IsInWorld())
+            {
+                if (Battleground* bg = bot->GetBotBG())
+                    bg->EventBotDroppedFlag(bot);
 
-        mymap->RemoveFromMap(bot, false);
-    }
+                bot->CastSpell(bot, COSMETIC_TELEPORT_EFFECT, true);
 
-    if (bot->IsFreeBot())
-    {
-        bot->Relocate(x, y, z, ori);
-        bot->SetMap(newMap);
-        bot->GetMap()->AddToMap(bot);
-        return;
-    }
+                if (!bot->IsFreeBot())
+                    if (InstanceScript* iscr = bot->GetBotOwner()->GetInstanceScript())
+                        iscr->OnNPCBotLeave(bot);
 
-    //update group member online state
-    if (Group* gr = bot->GetBotOwner()->GetGroup())
-        if (gr->IsMember(bot->GetGUID()))
-            gr->SendUpdate();
+                bot->RemoveFromWorld();
+            }
 
-    TeleportFinishEvent* finishEvent = new TeleportFinishEvent(bot->GetBotAI());
-    std::chrono::milliseconds delay(quick ? urand(500, 1500) : urand(5000, 8000));
-    bot->GetBotAI()->GetEvents()->AddEvent(finishEvent, bot->GetBotAI()->GetEvents()->CalculateTime(delay));
-    bot->GetBotAI()->SetTeleportFinishEvent(finishEvent);
+            ASSERT(bot->GetGUID());
+
+            bot->RemoveAllGameObjects();
+
+            bot->m_Events.KillAllEvents(false);
+            bot->CombatStop();
+            bot->ClearComboPoints();
+            bot->ClearComboPointHolders();
+
+            mymap->RemoveFromMap(bot, false);
+        }
+
+        if (bot->IsFreeBot())
+        {
+            bot->Relocate(x, y, z, ori);
+            bot->SetMap(newMap);
+            newMap->AddToMap(bot);
+            if (reset)
+                bot->GetBotAI()->Reset();
+            bot->GetBotAI()->SetIsDuringTeleport(false);
+
+            if (newMap->IsBattleground())
+            {
+                Battleground* bg = bot->GetBotAI()->GetBG();
+                if (!bg)
+                {
+                    BotDataMgr::DespawnWandererBot(bot->GetEntry());
+                    return;
+                }
+
+                if (newMap != mymap)
+                {
+                    //we teleport from base non-instanced map which normally doesn't exist
+                    ASSERT(mymap->GetPlayersCountExceptGMs() == 0);
+
+                    bg->AddBot(bot);
+                }
+
+                if (!bot->IsAlive())
+                {
+                    ObjectGuid shGuid = ObjectGuid::Empty;
+                    float mindist = 0.0f;
+                    for (ObjectGuid bgCreGuid : bg->BgCreatures)
+                    {
+                        if (Creature const* bgCre = newMap->GetCreature(bgCreGuid))
+                        {
+                            if (bgCre->IsSpiritService())
+                            {
+                                float dist = bot->GetExactDist2d(bgCre);
+                                if (shGuid == ObjectGuid::Empty || dist < mindist)
+                                {
+                                    mindist = dist;
+                                    shGuid = bgCreGuid;
+                                }
+                            }
+                        }
+                    }
+                    if (shGuid)
+                        bg->AddPlayerToResurrectQueue(shGuid, bot->GetGUID());
+                    else
+                    {
+                        TC_LOG_ERROR("npcbots", "TeleportBot: Bot %u '%s' can't find SpiritHealer in bg %s!",
+                            bot->GetEntry(), bot->GetName().c_str(), bg->GetName().c_str());
+                    }
+                }
+            }
+
+            bot->GetBotAI()->canUpdate = true;
+
+            return;
+        }
+
+        bot->GetBotAI()->AbortTeleport();
+
+        //update group member online state
+        if (Group* gr = bot->GetBotOwner()->GetGroup())
+            if (gr->IsMember(bot->GetGUID()))
+                gr->SendUpdate();
+
+        TeleportFinishEvent* finishEvent = new TeleportFinishEvent(bot->GetBotAI(), reset);
+        std::chrono::milliseconds delay(quick ? urand(500, 1500) : urand(5000, 8000));
+        bot->GetBotAI()->GetEvents()->AddEvent(finishEvent, bot->GetBotAI()->GetEvents()->CalculateTime(delay));
+        bot->GetBotAI()->SetTeleportFinishEvent(finishEvent);
+    });
 }
 
-void BotMgr::TeleportBot(Creature* bot, Map* newMap, Position* pos, bool quick)
+void BotMgr::TeleportBot(Creature* bot, Map* newMap, Position const* pos, bool quick, bool reset)
 {
-    _teleportBot(bot, newMap, pos->GetPositionX(), pos->GetPositionY(), pos->GetPositionZ(), pos->GetOrientation(), quick);
+    _teleportBot(bot, newMap, pos->GetPositionX(), pos->GetPositionY(), pos->GetPositionZ(), pos->GetOrientation(), quick, reset);
 }
 
 void BotMgr::CleanupsBeforeBotDelete(ObjectGuid guid, uint8 removetype)
@@ -968,6 +1122,17 @@ void BotMgr::CleanupsBeforeBotDelete(ObjectGuid guid, uint8 removetype)
 
     Creature* bot = itr->second;
 
+    ASSERT(bot->GetCreatorGUID() == _owner->GetGUID());
+
+    RemoveBotFromBGQueue(bot);
+    if (removetype != BOT_REMOVE_LOGOUT)
+        RemoveBotFromGroup(bot);
+
+    CleanupsBeforeBotDelete(bot);
+}
+
+void BotMgr::CleanupsBeforeBotDelete(Creature* bot)
+{
     //don't allow removing bots while they are teleporting
     if (!bot->IsInWorld())
         bot->GetBotAI()->AbortTeleport();
@@ -975,29 +1140,21 @@ void BotMgr::CleanupsBeforeBotDelete(ObjectGuid guid, uint8 removetype)
     if (bot->GetVehicle())
         bot->ExitVehicle();
 
-    RemoveBotFromBGQueue(bot);
-    if (removetype != BOT_REMOVE_LOGOUT)
-        RemoveBotFromGroup(bot);
-
     //remove any summons
     bot->GetBotAI()->UnsummonAll();
+    bot->AttackStop();
+    bot->CombatStopWithPets(true);
 
-    ASSERT(bot->GetOwnerGUID() == _owner->GetGUID());
-    bot->SetOwnerGUID(ObjectGuid::Empty);
+    //bot->SetOwnerGUID(ObjectGuid::Empty);
     //_owner->m_Controlled.erase(bot);
     bot->SetControlledByPlayer(false);
     //bot->RemoveUnitFlag(UNIT_FLAG_PVP_ATTACKABLE);
     bot->SetByteValue(UNIT_FIELD_BYTES_2, 1, 0);
-    bot->SetCreatorGUID(ObjectGuid::Empty);
+    bot->SetCreator(nullptr);
 
     Map* map = bot->FindMap();
     if (!map || map->IsDungeon())
         bot->RemoveFromWorld();
-}
-
-void BotMgr::_addBotToRemoveList(ObjectGuid guid)
-{
-    _removeList.push_back(guid);
 }
 
 void BotMgr::RemoveAllBots(uint8 removetype)
@@ -1034,13 +1191,20 @@ void BotMgr::RemoveBot(ObjectGuid guid, uint8 removetype)
     if (bot->GetBotAI()->IsTempBot())
     {
         //bot->GetBotAI()->OnBotDespawn(bot); //send to self
-        _addBotToRemoveList(guid);
+        _removeList.push_back(guid);
         return;
     }
 
     _bots.erase(itr);
 
-    bot->GetBotAI()->ResetBotAI(removetype == BOT_REMOVE_DISMISS ? BOTAI_RESET_DISMISS : BOTAI_RESET_LOGOUT);
+    BotAIResetType resetType;
+    switch (removetype)
+    {
+        case BOT_REMOVE_DISMISS: resetType = BOTAI_RESET_DISMISS; break;
+        case BOT_REMOVE_UNBIND:  resetType = BOTAI_RESET_UNBIND;    break;
+        default:                 resetType = BOTAI_RESET_LOGOUT;  break;
+    }
+    bot->GetBotAI()->ResetBotAI(resetType);
 
     bot->SetFaction(bot->GetCreatureTemplate()->faction);
     bot->SetLevel(bot->GetCreatureTemplate()->minlevel);
@@ -1051,17 +1215,32 @@ void BotMgr::RemoveBot(ObjectGuid guid, uint8 removetype)
         uint32 newOwner = 0;
         BotDataMgr::UpdateNpcBotData(bot->GetEntry(), NPCBOT_UPDATE_OWNER, &newOwner);
     }
-
-    bot->GetBotAI()->Reset();
-    bot->GetBotAI()->canUpdate = true;
 }
 
-BotAddResult BotMgr::AddBot(Creature* bot, bool takeMoney)
+void BotMgr::UnbindBot(ObjectGuid guid)
+{
+    Creature const* bot = GetBot(guid);
+    ASSERT(bot);
+
+    RemoveBot(guid, BOT_REMOVE_UNBIND);
+    bot->GetBotAI()->SetBotCommandState(BOT_COMMAND_UNBIND);
+}
+BotAddResult BotMgr::RebindBot(Creature* bot)
+{
+    BotAddResult res = AddBot(bot);
+    if (res == BOT_ADD_SUCCESS)
+        bot->GetBotAI()->RemoveBotCommandState(BOT_COMMAND_UNBIND);
+    return res;
+}
+
+BotAddResult BotMgr::AddBot(Creature* bot)
 {
     ASSERT(bot->IsNPCBot());
     ASSERT(bot->GetBotAI() != nullptr);
 
-    bool temporary = bot->GetBotAI()->IsTempBot();
+    bool owned = bot->GetBotAI()->IsTempBot() || bot->GetBotAI()->GetBotOwnerGuid() == _owner->GetGUID().GetCounter();
+    uint8 owned_count = BotDataMgr::GetOwnedBotsCount(_owner->GetGUID());
+    uint8 class_count = BotDataMgr::GetOwnedBotsCount(_owner->GetGUID(), bot->GetClassMask());
 
     if (!_enableNpcBots)
     {
@@ -1084,25 +1263,17 @@ BotAddResult BotMgr::AddBot(Creature* bot, bool takeMoney)
         ch.PSendSysMessage(bot_ai::LocalizedNpcText(GetOwner(), BOT_TEXT_BOTADDFAIL_TELEPORTED).c_str(), bot->GetName().c_str());
         return BOT_ADD_BUSY;
     }
-    if (!temporary && _owner->GetNpcBotsCount() >= GetMaxNpcBots())
+    if (!owned && owned_count >= GetMaxNpcBots())
     {
         ChatHandler ch(_owner->GetSession());
         ch.PSendSysMessage(bot_ai::LocalizedNpcText(GetOwner(), BOT_TEXT_HIREFAIL_MAXBOTS).c_str(), GetMaxNpcBots());
         return BOT_ADD_MAX_EXCEED;
     }
-    if (!temporary && HaveBot() && _maxClassNpcBots)
+    if (!owned && _maxClassNpcBots && class_count >= _maxClassNpcBots)
     {
-        uint8 count = 0;
-        for (BotMap::const_iterator itr = _bots.begin(); itr != _bots.end(); ++itr)
-            if (itr->second->GetBotClass() == bot->GetBotClass())
-                ++count;
-
-        if (count >= _maxClassNpcBots)
-        {
-            ChatHandler ch(_owner->GetSession());
-            ch.PSendSysMessage(bot_ai::LocalizedNpcText(GetOwner(), BOT_TEXT_HIREFAIL_MAXCLASSBOTS).c_str(), count, _maxClassNpcBots);
-            return BOT_ADD_MAX_CLASS_EXCEED;
-        }
+        ChatHandler ch(_owner->GetSession());
+        ch.PSendSysMessage(bot_ai::LocalizedNpcText(GetOwner(), BOT_TEXT_HIREFAIL_MAXCLASSBOTS).c_str(), class_count, _maxClassNpcBots);
+        return BOT_ADD_MAX_CLASS_EXCEED;
     }
     //Map* curMap = _owner->GetMap();
     //if (!temporary && LimitBots(curMap))
@@ -1116,7 +1287,7 @@ BotAddResult BotMgr::AddBot(Creature* bot, bool takeMoney)
     //        return BOT_ADD_INSTANCE_LIMIT;
     //    }
     //}
-    if (!temporary && takeMoney)
+    if (!owned)
     {
         uint32 cost = GetNpcBotCost(_owner->GetLevel(), bot->GetBotClass());
         if (!_owner->HasEnoughMoney(cost))
@@ -1141,9 +1312,9 @@ BotAddResult BotMgr::AddBot(Creature* bot, bool takeMoney)
 
     _bots[bot->GetGUID()] = bot;
 
-    ASSERT(!bot->GetOwnerGUID());
-    bot->SetOwnerGUID(_owner->GetGUID());
-    bot->SetCreatorGUID(_owner->GetGUID()); //needed in case of FFAPVP
+    ASSERT(!bot->GetCreatorGUID());
+    //bot->SetOwnerGUID(_owner->GetGUID());
+    bot->SetCreator(_owner); //needed in case of FFAPVP
     //_owner->m_Controlled.insert(bot);
     bot->SetControlledByPlayer(true);
     bot->SetUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED);
@@ -1155,7 +1326,7 @@ BotAddResult BotMgr::AddBot(Creature* bot, bool takeMoney)
 
     bot->GetBotAI()->Reset();
 
-    if (!temporary)
+    if (!bot->GetBotAI()->IsTempBot())
     {
         bot->GetBotAI()->SetBotCommandState(BOT_COMMAND_FOLLOW, true);
         if (bot->GetBotAI()->HasRole(BOT_ROLE_PARTY))
@@ -1197,7 +1368,7 @@ bool BotMgr::AddBotToGroup(Creature* bot)
         sGroupMgr->AddGroup(gr);
     }
 
-    if (gr->AddMember((Player*)bot))
+    if (gr->AddMember(bot))
     {
         if (!bot->GetBotAI()->HasRole(BOT_ROLE_PARTY))
             bot->GetBotAI()->ToggleRole(BOT_ROLE_PARTY, true);
@@ -1353,6 +1524,27 @@ uint8 BotMgr::BotClassByClassName(std::string const& className)
     return BOT_CLASS_NONE;
 }
 
+std::string BotMgr::GetTargetIconString(uint8 icon) const
+{
+    std::ostringstream ss;
+    ss << "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_" << uint32(icon) << ":12|t";
+    if (size_t(icon - 1) < TargetIconNamesCacheSize)
+        ss << _targetIconNamesCache[icon - 1];
+
+    return ss.str();
+}
+void BotMgr::UpdateTargetIconName(uint8 id, std::string const& name)
+{
+    if (id >= TargetIconNamesCacheSize)
+        return;
+
+    _targetIconNamesCache[id] = name;
+}
+void BotMgr::ResetTargetIconNames()
+{
+    _targetIconNamesCache = {};
+}
+
 void BotMgr::ReviveAllBots()
 {
     for (BotMap::const_iterator itr = _bots.begin(); itr != _bots.end(); ++itr)
@@ -1446,13 +1638,20 @@ void BotMgr::UpdatePvPForBots()
 
 void BotMgr::PropagateEngageTimers() const
 {
+    uint32 delay_dps = GetEngageDelayDPS();
+    uint32 delay_heal = GetEngageDelayHeal();
+
+    if (!delay_dps && !delay_heal)
+        return;
+
     for (BotMap::const_iterator itr = _bots.begin(); itr != _bots.end(); ++itr)
     {
         if (itr->second->GetBotAI()->IsTank())
             continue;
 
-        uint32 delay = itr->second->GetBotAI()->HasRole(BOT_ROLE_HEAL) ? GetEngageDelayHeal() :
-            itr->second->GetBotAI()->HasRole(BOT_ROLE_DPS) ? GetEngageDelayDPS() : 0;
+        bool is_heal = itr->second->GetBotAI()->HasRole(BOT_ROLE_HEAL);
+        bool is_dps= itr->second->GetBotAI()->HasRole(BOT_ROLE_DPS);
+        uint32 delay = (is_heal && is_dps) ? std::max<uint32>(delay_dps, delay_heal) : is_heal ? delay_heal : is_dps ? delay_dps : 0;
 
         itr->second->GetBotAI()->ResetEngageTimer(delay);
     }
@@ -1587,6 +1786,31 @@ int32 BotMgr::GetHPSTaken(Unit const* unit) const
     //    TC_LOG_ERROR("entities.player", "BotMgr:GetHPSTaken(): %s got %i)", unit->GetName().c_str(), amount);
 
     return amount;
+}
+
+void BotMgr::OnBotWandererKilled(Creature const* bot, Player* looter)
+{
+    bot->GetBotAI()->SpawnKillReward(looter);
+}
+
+void BotMgr::OnBotWandererKilled(GameObject* go)
+{
+    if (go->GetEntry() == GO_BOT_MONEY_BAG && go->GetSpellId() > go->GetEntry())
+    {
+        uint32 bot_id = go->GetSpellId() - GO_BOT_MONEY_BAG;
+        if (Creature const* bot = BotDataMgr::FindBot(bot_id))
+            bot->GetBotAI()->FillKillReward(go);
+    }
+}
+
+void BotMgr::OnBotSpellInterrupt(Unit const* caster, CurrentSpellTypes spellType)
+{
+    if (spellType == CURRENT_AUTOREPEAT_SPELL)
+    {
+        WorldPackets::Combat::CancelAutoRepeat cancelAutoRepeat;
+        cancelAutoRepeat.Guid = caster->GetPackGUID();
+        caster->SendMessageToSet(cancelAutoRepeat.Write(), true);
+    }
 }
 
 void BotMgr::OnBotSpellGo(Unit const* caster, Spell const* spell, bool ok)
@@ -1728,9 +1952,9 @@ void BotMgr::OnBotPartyEngage(Player const* owner)
         owner->GetBotMgr()->PropagateEngageTimers();
 }
 
-void BotMgr::ApplyBotEffectMods(Unit const* caster, Unit const* target, SpellInfo const* spellInfo, uint8 effIndex, float& value)
+void BotMgr::ApplyBotEffectMods(Unit const* caster, SpellInfo const* spellInfo, uint8 effIndex, float& value)
 {
-    caster->ToCreature()->GetBotAI()->ApplyBotEffectMods(target, spellInfo, effIndex, value);
+    caster->ToCreature()->GetBotAI()->ApplyBotEffectMods(spellInfo, effIndex, value);
 }
 
 void BotMgr::ApplyBotThreatMods(Unit const* attacker, SpellInfo const* spellInfo, float& threat)
@@ -1753,6 +1977,14 @@ int32 BotMgr::GetBotStat(Creature const* bot, BotStatMods stat)
     return bot->GetBotAI()->GetTotalBotStat(stat);
 }
 
+float BotMgr::GetBotResilience(Creature const* botOrPet)
+{
+    if (botOrPet->IsNPCBot())
+        return botOrPet->GetBotAI()->GetBotResilience();
+
+    return botOrPet->GetBotPetAI()->GetPetsOwner()->GetBotAI()->GetBotResilience();
+}
+
 float BotMgr::GetBotDamageModPhysical()
 {
     return _mult_dmg_physical;
@@ -1769,3 +2001,116 @@ float BotMgr::GetBotHPMod()
 {
     return _mult_hp;
 }
+float BotMgr::GetBotWandererDamageMod()
+{
+    return _mult_dmg_wanderer;
+}
+float BotMgr::GetBotWandererHealingMod()
+{
+    return _mult_healing_wanderer;
+}
+float BotMgr::GetBotWandererHPMod()
+{
+    return _mult_hp_wanderer;
+}
+float BotMgr::GetBotWandererSpeedMod()
+{
+    return _mult_speed_wanderer;
+}
+float BotMgr::GetBotDamageModByClass(uint8 botclass)
+{
+    switch (botclass)
+    {
+        case BOT_CLASS_WARRIOR:
+            return _mult_dmg_warrior;
+        case BOT_CLASS_PALADIN:
+            return _mult_dmg_paladin;
+        case BOT_CLASS_HUNTER:
+            return _mult_dmg_hunter;
+        case BOT_CLASS_ROGUE:
+            return _mult_dmg_rogue;
+        case BOT_CLASS_PRIEST:
+            return _mult_dmg_priest;
+        case BOT_CLASS_DEATH_KNIGHT:
+            return _mult_dmg_deathknight;
+        case BOT_CLASS_SHAMAN:
+            return _mult_dmg_shaman;
+        case BOT_CLASS_MAGE:
+            return _mult_dmg_mage;
+        case BOT_CLASS_WARLOCK:
+            return _mult_dmg_warlock;
+        case BOT_CLASS_DRUID:
+            return _mult_dmg_druid;
+        case BOT_CLASS_BM:
+            return _mult_dmg_blademaster;
+        case BOT_CLASS_SPHYNX:
+            return _mult_dmg_obsidiandestroyer;
+        case BOT_CLASS_ARCHMAGE:
+            return _mult_dmg_archmage;
+        case BOT_CLASS_DREADLORD:
+            return _mult_dmg_dreadlord;
+        case BOT_CLASS_SPELLBREAKER:
+            return _mult_dmg_spellbreaker;
+        case BOT_CLASS_DARK_RANGER:
+            return _mult_dmg_darkranger;
+        case BOT_CLASS_NECROMANCER:
+            return _mult_dmg_necromancer;
+        case BOT_CLASS_SEA_WITCH:
+            return _mult_dmg_seawitch;
+        default:
+            return 1.0;
+    }
+}
+
+void BotMgr::InviteBotToBG(ObjectGuid botguid, GroupQueueInfo* ginfo, Battleground* bg)
+{
+    Creature const* bot = BotDataMgr::FindBot(botguid.GetEntry());
+    ASSERT(bot);
+
+    bg->IncreaseInvitedCount(ginfo->Team);
+    //TC_LOG_INFO("npcbots", "Battleground: invited NPCBot %u to BG instance %u bgtype %u '%s'",
+    //    botguid.GetEntry(), bg->GetInstanceID(), bg->GetTypeID(), bg->GetName().c_str());
+}
+
+bool BotMgr::IsBotInAreaTriggerRadius(Creature const* bot, AreaTriggerEntry const* trigger)
+{
+    if (!trigger || !bot->IsInWorld() || bot->GetMap()->GetId() != trigger->ContinentID)
+        return false;
+
+    if (trigger->Radius > 0.f)
+    {
+        // if we have radius check it
+        float dist = bot->GetDistance(trigger->Pos.X, trigger->Pos.Y, trigger->Pos.Z);
+        if (dist > trigger->Radius)
+            return false;
+    }
+    else
+    {
+        Position center(trigger->Pos.X, trigger->Pos.Y, trigger->Pos.Z, trigger->BoxYaw);
+        if (!bot->IsWithinBox(center, trigger->BoxLength / 2.f, trigger->BoxWidth / 2.f, trigger->BoxHeight / 2.f))
+            return false;
+    }
+
+    return true;
+}
+
+BotMgr::delayed_teleport_mutex_type* BotMgr::_getTpLock()
+{
+    static BotMgr::delayed_teleport_mutex_type _lock;
+    return &_lock;
+}
+void BotMgr::AddDelayedTeleportCallback(delayed_teleport_callback_type&& callback)
+{
+    delayed_teleport_lock_type lock(*_getTpLock());
+    delayed_bot_teleports.push_back(std::forward<delayed_teleport_callback_type>(callback));
+}
+void BotMgr::HandleDelayedTeleports()
+{
+    for (auto& func : delayed_bot_teleports)
+        func();
+    delayed_bot_teleports.clear();
+}
+
+#ifdef _MSC_VER
+# pragma warning(pop)
+#endif

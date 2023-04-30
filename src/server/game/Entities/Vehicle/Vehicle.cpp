@@ -847,7 +847,7 @@ bool VehicleJoinEvent::Execute(uint64, uint32)
                 Target->GetBase()->RemoveNpcFlag(UNIT_NPC_FLAG_SPELLCLICK);
         }
         //npcbot: do not allow other passengers on bot vehicles
-        if (Passenger->GetTypeId() == TYPEID_UNIT && Passenger->ToCreature()->IsNPCBot()/* &&
+        if (Passenger->IsNPCBot()/* &&
             (Seat->second.SeatInfo->m_flags & VEHICLE_SEAT_FLAG_CAN_CONTROL)*/)
         {
             if (Target->GetBase()->GetTypeId() == TYPEID_PLAYER)
@@ -877,6 +877,14 @@ bool VehicleJoinEvent::Execute(uint64, uint32)
         if (!veSeat->HasFlag(VEHICLE_SEAT_FLAG_B_KEEP_PET))
             player->UnsummonPetTemporaryIfAny();
     }
+
+    //npcbot
+    if (Creature* bot = Passenger->ToCreature())
+    {
+        if (Battleground* bg = bot->GetBotBG())
+            bg->EventBotDroppedFlag(bot);
+    }
+    //end npcbot
 
     if (veSeat->HasFlag(VEHICLE_SEAT_FLAG_PASSENGER_NOT_SELECTABLE))
         Passenger->SetUnitFlag(UNIT_FLAG_UNINTERACTIBLE);

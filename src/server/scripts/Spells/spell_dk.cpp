@@ -2431,6 +2431,7 @@ public:
                 ghoul->DespawnOrUnsummon(1s);
             }
 
+            player->ClearResurrectRequestData();
             player->RemoveAura(SPELL_GHOUL_FRENZY);
         }
 

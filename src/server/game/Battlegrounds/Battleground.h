@@ -427,6 +427,22 @@ class TC_GAME_API Battleground
         virtual void HandleKillPlayer(Player* player, Player* killer);
         virtual void HandleKillUnit(Creature* /*creature*/, Player* /*killer*/) { }
 
+        //npcbot
+        uint32 GetBotScoresSize() const { return BotScores.size(); }
+        TeamId GetPlayerTeamId(ObjectGuid guid) const;
+        TeamId GetOtherTeamId(TeamId teamId) const;
+        void AddOrSetBotToCorrectBgGroup(Creature* bot, uint32 team);
+        virtual void AddBot(Creature* bot);
+        virtual WorldSafeLocsEntry const* GetClosestGraveyardForBot(WorldLocation const& curPos, uint32 team) const;
+        virtual bool UpdateBotScore(Creature const* bot, uint32 type, uint32 value, bool doAddHonor = true);
+        virtual void HandleBotKillPlayer(Creature* bot, Player* victim);
+        virtual void HandleBotKillBot(Creature* bot, Creature* victim);
+        virtual void HandlePlayerKillBot(Creature* bot, Player* killer);
+        virtual void EventBotDroppedFlag(Creature* /*bot*/) { }
+        virtual void EventBotClickedOnFlag(Creature* /*bot*/, GameObject* /*target_obj*/) { }
+        virtual void HandleBotAreaTrigger(Creature* /*bot*/, uint32 /*trigger*/) { }
+        //end npcbot
+
         // Battleground events
         virtual void EventPlayerDroppedFlag(Player* /*player*/) { }
         virtual void EventPlayerClickedOnFlag(Player* /*player*/, GameObject* /*target_obj*/) { }
@@ -514,6 +530,9 @@ class TC_GAME_API Battleground
 
         // Scorekeeping
         BattlegroundScoreMap PlayerScores;                // Player scores
+        //npcbot
+        BattlegroundScoreMap BotScores;
+        //end npcbot
         // must be implemented in BG subclass
         virtual void RemovePlayer(Player* /*player*/, ObjectGuid /*guid*/, uint32 /*team*/) { }
 

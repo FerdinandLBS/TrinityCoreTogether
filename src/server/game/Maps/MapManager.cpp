@@ -35,6 +35,7 @@
 #include "Opcodes.h"
 
 //npcbot
+#include "botdatamgr.h"
 #include "botmgr.h"
 //end npcbot
 
@@ -216,6 +217,10 @@ Map::EnterState MapManager::PlayerCannotEnter(uint32 mapid, Player* player, bool
 
 void MapManager::Update(uint32 diff)
 {
+    //npcbot
+    BotDataMgr::Update(diff);
+    //end npcbot
+
     i_timer.Update(diff);
     if (!i_timer.Passed())
         return;
@@ -230,6 +235,10 @@ void MapManager::Update(uint32 diff)
     }
     if (m_updater.activated())
         m_updater.wait();
+
+    //npcbot
+    BotMgr::HandleDelayedTeleports();
+    //end npcbot
 
     for (iter = i_maps.begin(); iter != i_maps.end(); ++iter)
         iter->second->DelayedUpdate(uint32(i_timer.GetCurrent()));

@@ -107,7 +107,7 @@ public:
 
             checkAuraTimer = 10000;
 
-            if (!me->HasAura(BRILLIANCE_AURA, me->GetGUID()))
+            if (!IAmFree() && !me->HasAura(BRILLIANCE_AURA, me->GetGUID()))
                 RefreshAura(BRILLIANCE_AURA);
         }
 
@@ -150,6 +150,8 @@ public:
 
             if (IsCasting())
                 return;
+
+            CheckUsableItems(diff);
 
             Attack(diff);
         }
@@ -269,10 +271,10 @@ public:
             Position pos;
 
             //water elemetal 1 minute duration
-            Creature* myPet = me->SummonCreature(entry, *me, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, std::chrono::minutes(IAmFree() ? 60 : 1));
+            Creature* myPet = me->SummonCreature(entry, *me, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5s);
             me->GetNearPoint(myPet, pos.m_positionX, pos.m_positionY, pos.m_positionZ, 2, me->GetOrientation());
             myPet->GetMotionMaster()->MovePoint(me->GetMapId(), pos);
-            myPet->SetCreatorGUID(master->GetGUID());
+            myPet->SetCreator(master);
             myPet->SetOwnerGUID(me->GetGUID());
             myPet->SetFaction(master->GetFaction());
             myPet->SetControlledByPlayer(!IAmFree());

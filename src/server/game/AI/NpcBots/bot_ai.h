@@ -9,6 +9,7 @@
 #include "Position.h"
 
 #include <tuple>
+#include <unordered_set>
 
 /*
 NpcBot System by Trickerer (onlysuffering@gmail.com)
@@ -19,6 +20,7 @@ class TeleportFinishEvent;
 class AwaitStateRemovalEvent;
 
 enum CombatRating : uint8;
+enum EnchantmentSlot : uint16;
 enum GossipOptionIcon : uint8;
 enum MeleeHitOutcome : uint8;
 
@@ -29,12 +31,15 @@ struct PlayerClassLevelInfo;
 struct SpellNonMeleeDamage;
 
 class Aura;
+class Battleground;
 class DamageInfo;
+class GameObject;
 class Item;
 class Spell;
 class SpellCastTargets;
 class Unit;
 class Vehicle;
+class WanderNode;
 
 class bot_ai : public CreatureAI
 {
@@ -43,7 +48,7 @@ class bot_ai : public CreatureAI
 
         bool canUpdate;
 
-        void InitializeAI() override { Reset(); }
+        void InitializeAI() override;
         //void Reset() override { }
 
         void JustDied(Unit*) override;
@@ -54,9 +59,10 @@ class bot_ai : public CreatureAI
         void DamageDealt(Unit* victim, uint32& damage, DamageEffectType damageType) override;
         //void DamageTaken(Unit* /*attacker*/, uint32& /*damage*/, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo*/) override { }
         void ReceiveEmote(Player* player, uint32 emote) override;
-        //void EnterEvadeMode(EvadeReason/* why*/ = EVADE_REASON_OTHER) override { }
+        void EnterEvadeMode(EvadeReason/* why*/ = EVADE_REASON_OTHER) override { }
         //void LeavingWorld() override { }
         void OnSpellStart(SpellInfo const* spellInfo) override { OnBotSpellStart(spellInfo); }
+        //bool CanRespawn() override { return IAmFree(); }
 
         virtual void OnBotSummon(Creature* /*summon*/) {}
         virtual void OnBotDespawn(Creature* /*summon*/) {}
@@ -90,7 +96,8 @@ class bot_ai : public CreatureAI
         Creature* GetBotsPet() const { return botPet; }
 
         void Evade();
-        float GetAttackRange();
+        void GetNextEvadeMovePoint(Position& pos, bool& use_path) const;
+
         EventProcessor* GetEvents() { return &Events; }
         ObjectGuid::LowType GetBotOwnerGuid() const { return _ownerGuid; }
         Player* GetBotOwner() const { return master; }
@@ -103,18 +110,21 @@ class bot_ai : public CreatureAI
         void CommonTimers(uint32 diff);
         void ResetBotAI(uint8 resetType);
         void KillEvents(bool force);
-        bool CanRespawn() { return IAmFree(); }
         void BotMovement(BotMovementType type, Position const* pos, Unit* target = nullptr, bool generatePath = true) const;
         bool CanBotMoveVehicle() const;
-        void SetBotCommandState(uint8 st, bool force = false, Position* newpos = nullptr);
-        void RemoveBotCommandState(uint8 st);
-        bool HasBotCommandState(uint8 st) const { return (m_botCommandState & st); }
+        void MoveToSendPosition(uint32 point_id);
+        void MoveToSendPosition(Position const& mpos);
+        void MoveToLastSendPosition() { MoveToSendPosition(sendlastpos); }
+        void MarkSendPosition(uint32 point_id);
+        void SetBotCommandState(uint32 st, bool force = false, Position* newpos = nullptr);
+        void RemoveBotCommandState(uint32 st);
+        bool HasBotCommandState(uint32 st) const { return (_botCommandState & st); }
         void SetBotAwaitState(uint8 state);
         inline void RemoveBotAwaitState(uint8 state) { _botAwaitState &= ~state; }
         inline bool HasBotAwaitState(uint8 state) const { return !!(_botAwaitState & state); }
         void EventRemoveBotAwaitState(uint8 state);
         void AbortAwaitStateRemoval();
-        uint8 GetBotCommandState() const { return m_botCommandState; }
+        uint32 GetBotCommandState() const { return _botCommandState; }
         bool IsInBotParty(Unit const* unit) const;
         bool IsInBotParty(ObjectGuid guid) const;
         bool CanBotAttack(Unit const* target, int8 byspell = 0, bool secondary = false) const;
@@ -133,7 +143,7 @@ class bot_ai : public CreatureAI
         void ApplyBotSpellRangeMods(SpellInfo const* spellInfo, float& maxrange) const;
         void ApplyBotSpellMaxTargetsMods(SpellInfo const* spellInfo, uint32& targets) const;
         void ApplyBotSpellChanceOfSuccessMods(SpellInfo const* spellInfo, float& chance) const;
-        void ApplyBotEffectMods(WorldObject const* wtarget, SpellInfo const* spellInfo, uint8 effIndex, float& value) const;
+        void ApplyBotEffectMods(SpellInfo const* spellInfo, uint8 effIndex, float& value) const;
         void ApplyBotThreatMods(SpellInfo const* spellInfo, float& threat) const;
         void ApplyBotEffectValueMultiplierMods(SpellInfo const* spellInfo, SpellEffIndex effIndex, float& multiplier) const;
         virtual uint8 GetBotStance() const;
@@ -142,7 +152,7 @@ class bot_ai : public CreatureAI
         GossipOptionIcon GetRoleIcon(uint32 role) const;
         static uint32 GetRoleString(uint32 role);
         void ToggleRole(uint32 role, bool force);
-        static uint32 DefaultRolesForClass(uint8 m_class);
+        static uint32 DefaultRolesForClass(uint8 m_class, uint8 spec);
         bool IsTank(Unit const* unit = nullptr) const;
         bool IsOffTank(Unit const* unit = nullptr) const;
 
@@ -151,14 +161,24 @@ class bot_ai : public CreatureAI
 
         bool IAmFree() const;
 
+        //wandering bots
+        bool IsWanderer() const { return _wanderer; }
+        void SetWanderer();
+        WanderNode const* GetNextTravelNode(Position const* from, bool random) const;
+        void OnWanderNodeReached();
+        Battleground* GetBG() const { return _bg; }
+        void SetBG(Battleground* bg) { _bg = bg; }
+
         static bool CCed(Unit const* target, bool root = false);
 
-        void TeleportHome();
-        bool FinishTeleport(/*uint32 mapId, uint32 instanceId, float x, float y, float z, float o*/);
+        void TeleportHomeStart(bool reset);
+        void TeleportHome(bool reset);
+        bool FinishTeleport(bool reset);
 
-        bool IsDuringTeleport() const { return teleFinishEvent || teleHomeEvent; }
+        bool IsDuringTeleport() const { return teleFinishEvent || teleHomeEvent || _duringTeleport; }
         void SetTeleportFinishEvent(TeleportFinishEvent* tfevent) { ASSERT(!teleFinishEvent); teleFinishEvent = tfevent; }
         void AbortTeleport();
+        void SetIsDuringTeleport(bool value) { _duringTeleport = value; }
 
         uint8 GetPlayerClass() const;
         uint8 GetPlayerRace() const;
@@ -177,6 +197,7 @@ class bot_ai : public CreatureAI
         float GetBotCritChance() const { return crit; }
         float GetBotMissChance() const { return -hit; }
         float GetBotDamageTakenMod(bool magic) const { return magic ? dmg_taken_mag : dmg_taken_phy; }
+        float GetBotResilience() const { return resilience; }
         uint32 GetBotExpertise() const { return expertise; }
         uint32 GetBotSpellPenetration() const { return spellpen; }
         uint32 GetBotSpellPower() const { return spellpower; }
@@ -228,8 +249,8 @@ class bot_ai : public CreatureAI
         virtual void OnClassSpellStart(SpellInfo const* /*spellInfo*/) {}
         virtual void OnClassSpellGo(SpellInfo const* /*spell*/) {}
 
-        static void InitBotCustomSpells();
-        static bool IsBotCustomSpell(uint32 spellId);
+        void SpawnKillReward(Player* looter) const;
+        void FillKillReward(GameObject* go) const;
 
         uint32 GetReviveTimer() const { return _reviveTimer; }
         void SetReviveTimer(uint32 newtime) { _reviveTimer = newtime; }
@@ -251,8 +272,8 @@ class bot_ai : public CreatureAI
         void ReInitFaction() { InitFaction(); }
         void ReinitOwner() { InitOwner(); }
         void SetSpec(uint8 spec, bool activate = true);
-        uint8 GetSpec() const { return _spec; }
-        static uint8 DefaultSpecForClass(uint8 m_class);
+        uint8 GetSpec() const;
+        static uint8 SelectSpecForClass(uint8 m_class);
         static uint32 TextForSpec(uint8 spec);
         static bool IsValidSpecForClass(uint8 m_class, uint8 spec);
 
@@ -289,6 +310,8 @@ class bot_ai : public CreatureAI
         static bool IsDamagingSpell(SpellInfo const* spellInfo);
 
         bool IsImmunedToMySpellEffect(Unit const* unit, SpellInfo const* spellInfo, SpellEffIndex index) const;
+
+        static bool IsFlagCarrier(Unit const* unit, BattlegroundTypeId bgTypeId = BATTLEGROUND_TYPE_NONE);
 
     protected:
         explicit bot_ai(Creature* creature);
@@ -365,6 +388,8 @@ class bot_ai : public CreatureAI
         bool JumpingFlyingOrFalling() const;
         bool JumpingOrFalling() const;
         bool Jumping() const;
+        bool IsIndoors() const;
+        bool IsOutdoors() const;
         bool IsInContactWithWater() const;
 
         float CalcSpellMaxRange(uint32 spellId, bool enemy = true) const;
@@ -376,7 +401,7 @@ class bot_ai : public CreatureAI
         void CalculateAttackPos(Unit* target, Position &pos, bool& force) const;
         void GetInPosition(bool force, Unit* newtarget, Position* pos = nullptr);
         bool AdjustTankingPosition(Unit const* mytarget) const;
-        virtual float GetSpellAttackRange(bool longRange) const { return longRange ? 25.f : 15.f; }
+        virtual float GetSpellAttackRange(bool longRange) const { return longRange ? 23.f : 15.f; }
         virtual void CheckAttackState();
         void OnSpellHit(Unit* caster, SpellInfo const* spell);
         void OnSpellHitTarget(Unit* /*target*/, SpellInfo const* spell);
@@ -418,7 +443,7 @@ class bot_ai : public CreatureAI
         virtual void ApplyClassSpellRangeMods(SpellInfo const* /*spellInfo*/, float& /*maxrange*/) const {}
         virtual void ApplyClassSpellMaxTargetsMods(SpellInfo const* /*spellInfo*/, uint32& /*targets*/) const {}
         virtual void ApplyClassSpellChanceOfSuccessMods(SpellInfo const* /*spellInfo*/, float& /*chance*/) const {}
-        virtual void ApplyClassEffectMods(WorldObject const* /*wtarget*/, SpellInfo const* /*spellInfo*/, uint8 /*effIndex*/, float& /*value*/) const {}
+        virtual void ApplyClassEffectMods(SpellInfo const* /*spellInfo*/, uint8 /*effIndex*/, float& /*value*/) const {}
         virtual void ApplyClassThreatMods(SpellInfo const* /*spellInfo*/, float& /*threat*/) const {}
         virtual void ApplyClassEffectValueMultiplierMods(SpellInfo const* /*spellInfo*/, SpellEffIndex /*effIndex*/, float& /*multiplier*/) const {}
 
@@ -444,6 +469,7 @@ class bot_ai : public CreatureAI
 
         //event helpers
         void BotJumpInPlaceInFrontOf(Position const* pos, float speedXY, float maxHeight);
+        void DismountBot();
 
         void BuildGrouUpdatePacket(WorldPacket* data);
 
@@ -478,6 +504,10 @@ class bot_ai : public CreatureAI
 
         bool ProcessImmediateNonAttackTarget();
 
+        static bool IsUsableItem(Item const* item);
+        uint32 GetItemSpellCooldown(uint32 spellid) const;
+        void CheckUsableItems(uint32 diff);
+
         Player* master;
         Player* _prevRRobin;
         Unit* opponent;
@@ -489,6 +519,7 @@ class bot_ai : public CreatureAI
 
         uint8 _botclass;
         uint8 _spec, _newspec;
+        int8 _primaryIconTank, _primaryIconDamage;
 
         BotVehicleStrats curVehStrat;
         uint8 vehcomboPoints;
@@ -519,7 +550,7 @@ class bot_ai : public CreatureAI
         bool IsPotionSpell(uint32 spellId) const;
         void StartPotionTimer();
 
-        void BotJump(Position const* pos);
+        void BotJump(Position const* pos, bool count = true);
         bool UpdateImpossibleChase(Unit const* target);
         void ResetChaseTimer(Position const* pos);
         void ResetChase(Position const* pos);
@@ -534,7 +565,8 @@ class bot_ai : public CreatureAI
 
         bool _canCureTarget(Unit const* target, uint32 cureSpell) const;
         void _getBotDispellableAuraList(Unit const* target, uint32 dispelMask, std::list<Aura const*> &dispelList) const;
-        void _calculatePos(Position& pos) const;
+        void _calculatePos(Unit const* followUnit, Position& pos) const;
+        uint32 _selectMountSpell() const;
         void _updateMountedState();
         void _updateStandState() const;
         void _updateRations();
@@ -552,7 +584,7 @@ class bot_ai : public CreatureAI
         bool _canUseOffHand() const;
         bool _canUseRanged() const;
         bool _canUseRelic() const;
-        bool _canEquip(Item const* newItem, uint8 slot, bool ignoreItemLevel = false) const;
+        bool _canEquip(ItemTemplate const* newProto, uint8 slot, bool ignoreItemLevel, Item const* newItem = nullptr) const;
         bool _unequip(uint8 slot, ObjectGuid receiver);
         bool _equip(uint8 slot, Item* newItem, ObjectGuid receiver);
         bool _resetEquipment(uint8 slot, ObjectGuid receiver);
@@ -565,6 +597,7 @@ class bot_ai : public CreatureAI
         bool _checkImmunities(Unit const* target, SpellInfo const* spellInfo) const;
         static float _getAttackDistance(float distance) { return distance*0.72f; }
         void _extendAttackRange(float& dist) const;
+        bool _canSwitchToTarget(Unit const* from, Unit const* newTarget, int8 byspell) const;
 
         //for moved
         void GetHomePosition(uint16& mapid, Position* pos) const;
@@ -588,34 +621,41 @@ class bot_ai : public CreatureAI
         float _getRatingMultiplier(CombatRating cr) const;
 
         float _getStatScore(uint8 stat) const;
-        float _getItemGearScore(Item const* item, uint8 forslot) const;
+        float _getItemGearScore(ItemTemplate const* iproto, uint8 forslot, Item const* item) const;
 
         void _saveStats();
 
         PlayerClassLevelInfo* _classinfo;
         SpellInfo const* m_botSpellInfo;
-        Position movepos, attackpos;
+        Position homepos, movepos, attackpos, sendlastpos;
+        Position sendpos[MAX_SEND_POINTS];
+        AoeSpotsVec _aoeSpots;
 
-        uint8 m_botCommandState;
+        uint32 _botCommandState;
         uint8 _botAwaitState;
 
         //stats
-        float hit, parry, dodge, block, crit, dmg_taken_phy, dmg_taken_mag, armor_pen;
+        float hit, parry, dodge, block, crit, dmg_taken_phy, dmg_taken_mag, armor_pen, resilience;
         uint32 expertise, spellpower, spellpen, defense, blockvalue;
-        int32 haste, resistbonus[6];
+        int32 haste, resistbonus[MAX_SPELL_SCHOOL - 1];
 
         //timers
         uint32 _reviveTimer, _powersTimer, _chaseTimer, _engageTimer, _potionTimer;
         uint32 lastdiff, checkAurasTimer, checkMasterTimer, roleTimer, ordersTimer, regenTimer, _updateTimerMedium, _updateTimerEx1;
         uint32 _wmoAreaUpdateTimer;
         uint32 waitTimer;
+        uint32 itemsAutouseTimer;
+        uint32 evadeDelayTimer;
+        uint32 indoorsTimer;
+        uint32 outdoorsTimer;
         //save timers
         uint32 _saveDisabledSpellsTimer;
 
         uint32 _lastZoneId, _lastAreaId, _lastWMOAreaId;
 
-        uint8 _jumpCount, _evadeCount;
+        uint8 _unreachableCount, _jumpCount, _evadeCount;
         uint32 _roleMask;
+        uint32 _usableItemSlotsMask;
         ObjectGuid::LowType _ownerGuid;
         ObjectGuid _lastTargetGuid;
         bool doHealth, doMana, shouldUpdateStats;
@@ -624,6 +664,14 @@ class bot_ai : public CreatureAI
         bool firstspawn;
         bool _evadeMode;
         bool _atHome;
+        bool _duringTeleport;
+
+        //wandering bots
+        bool _wanderer;
+        uint8 _baseLevel;
+        WanderNode const* _travel_node_last;
+        WanderNode const* _travel_node_cur;
+        Battleground* _bg;
 
         float _energyFraction;
 
@@ -669,20 +717,19 @@ class bot_ai : public CreatureAI
         {
             friend class bot_ai;
 
-            enum { ORDERS_PARAMS_MAX_SIZE = sizeof(uint64) + sizeof(uint32) };
             union
             {
-                char whole[ORDERS_PARAMS_MAX_SIZE];
                 struct
                 {
                     uint64 targetGuid;
                     uint32 baseSpell;
                 } spellCastParams;
+
             } params;
 
             explicit BotOrder(BotOrderTypes order_type) : _type(order_type)
             {
-                memset(params.whole, 0, ORDERS_PARAMS_MAX_SIZE);
+                memset((char*)(&params), 0, sizeof(params));
             }
             BotOrder(BotOrder&&) noexcept = default;
 

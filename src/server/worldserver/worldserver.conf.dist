@@ -396,7 +396,7 @@ mmap.enablePathFinding = 1
 #
 #    vmap.enableLOS
 #    vmap.enableHeight
-#        Description: VMmap support for line of sight and height calculation.
+#        Description: Vmap support for line of sight and height calculation.
 #        Default:     1 - (Enabled, vmap.enableLOS)
 #                     1 - (Enabled, vmap.enableHeight)
 #                     0 - (Disabled)
@@ -3933,6 +3933,7 @@ Appender.Console=1,3,0
 Appender.Server=2,2,0,Server.log,w
 Appender.GM=2,2,1,GM.log
 Appender.DBErrors=2,2,0,DBErrors.log
+Appender.NpcBots=1,2,0
 
 #  Logger config values: Given a logger "name"
 #    Logger.name
@@ -3959,6 +3960,7 @@ Logger.scripts.hotswap=3,Console Server
 Logger.sql.sql=5,Console DBErrors
 Logger.sql.updates=3,Console Server
 Logger.mmaps=3,Server
+Logger.npcbots=2,NpcBots Server
 
 #Logger.achievement=3,Console Server
 #Logger.addon=3,Console Server
@@ -4237,6 +4239,7 @@ NpcBot.NoDPSTargetIconMask = 0
 #    NpcBot.Mult.Healing
 #    NpcBot.Mult.HP
 #        Description: Multipliers for bots' damage, healing, etc. Allows to balance bots vs players.
+#                     Only affects normal spawned bots and generated wandering bot in BGs.
 #        Default:     1.0
 #        Minimum:     0.1
 #        Maximum:    10.0
@@ -4245,6 +4248,48 @@ NpcBot.Mult.Damage.Physical = 1.0
 NpcBot.Mult.Damage.Spell    = 1.0
 NpcBot.Mult.Healing         = 1.0
 NpcBot.Mult.HP              = 1.0
+
+#
+#    NpcBot.Mult.Wanderer.Damage
+#    NpcBot.Mult.Wanderer.Healing
+#    NpcBot.Mult.Wanderer.HP
+#    NpcBot.Mult.Wanderer.Speed
+#        Description: Multipliers for wandering bots' damage, healing, hp and speed.
+#                     Only affects wandering bots in open world.
+#        Default:     1.0
+#        Minimum:     0.1
+#        Maximum:    10.0
+
+NpcBot.Mult.Wanderer.Damage  = 1.0
+NpcBot.Mult.Wanderer.Healing = 1.0
+NpcBot.Mult.Wanderer.HP      = 1.0
+NpcBot.Mult.Wanderer.Speed   = 1.0
+
+#
+#    NpcBot.Mult.Damage.<Class>
+#        Description: Multipliers for bots' damage by class. Allows to balance dps between bot classes.
+#        Default:     1.0
+#        Minimum:     0.1
+#        Maximum:    10.0
+
+NpcBot.Mult.Damage.Warrior           = 1.0
+NpcBot.Mult.Damage.Paladin           = 1.0
+NpcBot.Mult.Damage.Hunter            = 1.0
+NpcBot.Mult.Damage.Rogue             = 1.0
+NpcBot.Mult.Damage.Priest            = 1.0
+NpcBot.Mult.Damage.DeathKnight       = 1.0
+NpcBot.Mult.Damage.Shaman            = 1.0
+NpcBot.Mult.Damage.Mage              = 1.0
+NpcBot.Mult.Damage.Warlock           = 1.0
+NpcBot.Mult.Damage.Druid             = 1.0
+NpcBot.Mult.Damage.Blademaster       = 1.0
+NpcBot.Mult.Damage.ObsidianDestroyer = 1.0
+NpcBot.Mult.Damage.Archmage          = 1.0
+NpcBot.Mult.Damage.Dreadlord         = 1.0
+NpcBot.Mult.Damage.SpellBreaker      = 1.0
+NpcBot.Mult.Damage.DarkRanger        = 1.0
+NpcBot.Mult.Damage.Necromancer       = 1.0
+NpcBot.Mult.Damage.SeaWitch          = 1.0
 
 #
 #    NpcBot.Enable.Dungeon
@@ -4458,6 +4503,26 @@ NpcBot.OwnershipExpireTime = 0
 #                     0 - (Disabled)
 
 NpcBot.EnrageOnDismiss = 1
+
+#
+#    NpcBot.WanderingBots.Continents.Count
+#        Description: Desired number of free wandering bots to generate. Wandering bots roam
+#                     around the map looking for trouble. Names and visuals are cloned from
+#                     existing non-spawned bots. Wandering bots aren't saved in DB.
+#        Note:        Wandering bots keep grids loaded, increasing CPU and memory usage.
+#        Note2:       You must have at least this number of non-spawned bots in creature_template.
+#        Default:     0 - (Disabled)
+
+NpcBot.WanderingBots.Continents.Count = 0
+
+#
+#    NpcBot.WanderingBots.BG.Enable
+#        Description: Allow wandering bots generation for Battlegrounds.
+#        Note:        Bots are temporarily borrowed from non-spawned bots pool.
+#        Default:     0 - (Disabled)
+#                     1 - (Enable)
+
+NpcBot.WanderingBots.BG.Enable = 0
 
 #
 ###################################################################################################

@@ -1844,7 +1844,7 @@ void AuraEffect::HandleAuraModShapeshift(AuraApplication const* aurApp, uint8 mo
             case FORM_BERSERKERSTANCE:
             {
                 //npcbot: skip this, handled inside class ai
-                if (target->GetTypeId() == TYPEID_UNIT && target->ToCreature()->IsNPCBot())
+                if (target->IsNPCBot())
                     break;
                 //end npcbot
                 uint32 Rage_val = 0;
@@ -3174,6 +3174,17 @@ void AuraEffect::HandleAuraModEffectImmunity(AuraApplication const* aurApp, uint
         else
             sOutdoorPvPMgr->HandleDropFlag(player, GetSpellInfo()->Id);
     }
+
+    //npcbot
+    if (Creature* bot = target->ToCreature())
+    {
+        if (!apply && bot->IsNPCBot() && (GetSpellInfo()->AuraInterruptFlags & AURA_INTERRUPT_FLAG_IMMUNE_OR_LOST_SELECTION))
+        {
+            if (Battleground* botbg = bot->GetBotBG())
+                botbg->EventBotDroppedFlag(bot);
+        }
+    }
+    //end npcbot
 }
 
 void AuraEffect::HandleAuraModStateImmunity(AuraApplication const* aurApp, uint8 mode, bool apply) const
@@ -5074,6 +5085,10 @@ void AuraEffect::HandlePeriodicTriggerSpellAuraTick(Unit* target, Unit* caster) 
 
     if (SpellInfo const* triggeredSpellInfo = sSpellMgr->GetSpellInfo(triggerSpellId))
     {
+        //npcbot: override spellInfo
+        triggeredSpellInfo = triggeredSpellInfo->TryGetSpellInfoOverride(caster);
+        //end npcbot
+
         if (Unit* triggerCaster = triggeredSpellInfo->NeedsToBeTriggeredByCaster(m_spellInfo) ? caster : target)
         {
             CastSpellExtraArgs args(this);
@@ -5099,6 +5114,10 @@ void AuraEffect::HandlePeriodicTriggerSpellWithValueAuraTick(Unit* target, Unit*
 
     if (SpellInfo const* triggeredSpellInfo = sSpellMgr->GetSpellInfo(triggerSpellId))
     {
+        //npcbot: override spellInfo
+        triggeredSpellInfo = triggeredSpellInfo->TryGetSpellInfoOverride(caster);
+        //end npcbot
+
         if (Unit* triggerCaster = triggeredSpellInfo->NeedsToBeTriggeredByCaster(m_spellInfo) ? caster : target)
         {
             CastSpellExtraArgs args(this);
@@ -5677,6 +5696,10 @@ void AuraEffect::HandleProcTriggerSpellAuraProc(AuraApplication* aurApp, ProcEve
     {
         TC_LOG_DEBUG("spells.aura.effect", "AuraEffect::HandleProcTriggerSpellAuraProc: Triggering spell %u from aura %u proc", triggeredSpellInfo->Id, GetId());
 
+        //npcbot: override spellInfo
+        triggeredSpellInfo = triggeredSpellInfo->TryGetSpellInfoOverride(aurApp->GetBase()->GetCaster());
+        //end npcbot
+
         //npcbot
         Aura const* triggeredByAura = aurApp->GetBase();
         int32 basepoints0 = 0;
@@ -5736,6 +5759,10 @@ void AuraEffect::HandleProcTriggerSpellWithValueAuraProc(AuraApplication* aurApp
 
     if (SpellInfo const* triggeredSpellInfo = sSpellMgr->GetSpellInfo(triggerSpellId))
     {
+        //npcbot: override spellInfo
+        triggeredSpellInfo = triggeredSpellInfo->TryGetSpellInfoOverride(aurApp->GetBase()->GetCaster());
+        //end npcbot
+
         CastSpellExtraArgs args(this);
         args.AddSpellMod(SPELLVALUE_BASE_POINT0, GetAmount());
         triggerCaster->CastSpell(triggerTarget, triggerSpellId, args);

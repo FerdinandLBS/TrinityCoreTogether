@@ -987,15 +987,15 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-            CheckShamanisticRage(diff);
-            CheckThunderStorm(diff);
-
             if (!GlobalUpdate(diff))
                 return;
 
             DoVehicleActions(diff);
             if (!CanBotAttackOnVehicle())
                 return;
+
+            CheckShamanisticRage(diff);
+            CheckThunderStorm(diff);
 
             CheckHexy(diff);
             CheckEarthy(diff);
@@ -1012,6 +1012,7 @@ public:
 
             CheckBloodlust(diff);
             BuffAndHealGroup(diff);
+            CheckEarthShield(diff);
             CureGroup(CURE_TOXINS, diff);
             CheckTotems(diff);
             CheckShield(diff);
@@ -1038,6 +1039,8 @@ public:
 
             if (IsCasting())
                 return;
+
+            CheckUsableItems(diff);
 
             DoNormalAttack(diff);
         }
@@ -1104,7 +1107,7 @@ public:
             }
 
             //LAVA BURST
-            if (IsSpellReady(LAVA_BURST_1, diff) && can_do_fire && _spec == BOT_SPEC_SHAMAN_ELEMENTAL &&
+            if (IsSpellReady(LAVA_BURST_1, diff) && can_do_fire && GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL &&
                 HasRole(BOT_ROLE_DPS) && dist < CalcSpellMaxRange(LAVA_BURST_1) && Rand() < 60 &&
                 (me->getAttackers().empty() || dist > 10))
             {
@@ -1112,7 +1115,7 @@ public:
                     return;
             }
 
-            if (((MaelstromCount < 5 || MaelstromTimer == 0) && IsMelee()) ||
+            if (((MaelstromCount < 5 || MaelstromTimer == 0) && me->GetLevel() >= 55 && IsMelee()) ||
                 (HasRole(BOT_ROLE_HEAL) && GetManaPCT(me) < 25))
                 return;
 
@@ -1141,16 +1144,16 @@ public:
             Hexy = FindAffectedTarget(GetSpell(HEX_1), me->GetGUID());
         }
 
-        void CheckHex(uint32 /*diff*/)
+        void CheckHex(uint32 diff)
         {
-            //if (Hexy || !IsSpellReady(HEX_1, diff))
-            //    return;
+            if (Hexy || !IsSpellReady(HEX_1, diff))
+                return;
 
-            //if (Unit* target = FindPolyTarget(20))
-            //{
-            //    if (doCast(target, GetSpell(HEX_1)))
-            //        return;
-            //}
+            if (Unit* target = FindPolyTarget(20))
+            {
+                if (doCast(target, GetSpell(HEX_1)))
+                    return;
+            }
         }
 
         void CheckEarthy(uint32 diff)
@@ -1165,9 +1168,25 @@ public:
 
         void CheckGhostWolf(uint32 diff)
         {
-            if (!IsSpellReady(GHOST_WOLF_1, diff) || !HasBotCommandState(BOT_COMMAND_FOLLOW) || Rand() > 15 ||
-                me->GetShapeshiftForm() == FORM_GHOSTWOLF || me->GetVictim() || me->IsMounted() || IAmFree())
+            if (!IsSpellReady(GHOST_WOLF_1, diff) || (!IAmFree() && !HasBotCommandState(BOT_COMMAND_FOLLOW)) ||
+                Rand() > 35 || me->GetShapeshiftForm() != FORM_NONE || me->IsMounted() || !IsOutdoors() || IsCasting())
                 return;
+
+            if (IAmFree())
+            {
+                InstanceTemplate const* instt = sObjectMgr->GetInstanceTemplate(me->GetMap()->GetId());
+                bool map_allows_mount = (!me->GetMap()->IsDungeon() || me->GetMap()->IsBattlegroundOrArena()) && (!instt || instt->AllowMount);
+                if (me->HasUnitMovementFlag(MOVEMENTFLAG_FORWARD) &&
+                    (!me->GetVictim() ?
+                        (me->IsInCombat() || !map_allows_mount || IsFlagCarrier(me)) :
+                        !me->IsWithinDist(me->GetVictim(), 8.0f + (IsMelee() ? 5.0f : GetSpellAttackRange(true)))))
+                {
+                    if (doCast(me, GetSpell(GHOST_WOLF_1)))
+                        return;
+                }
+
+                return;
+            }
 
             if (me->GetExactDist2d(master) > std::max<uint8>(master->GetBotMgr()->GetBotFollowDist(), 30))
             {
@@ -1269,17 +1288,8 @@ public:
 
         bool BuffTarget(Unit* target, uint32 /*diff*/) override
         {
-            if (GetSpell(EARTH_SHIELD_1) && Earthy == false && IsTank(target) && (target == me || !IsTank()) &&
-                (target->IsInCombat() || !target->isMoving()) && Rand() < 35)
-            {
-                AuraEffect const* eShield = target->GetAuraEffect(SPELL_AURA_REDUCE_PUSHBACK, SPELLFAMILY_SHAMAN, 0x0, 0x400, 0x0);
-                bool cast = (!eShield || eShield->GetBase()->GetCharges() < 5 || eShield->GetBase()->GetDuration() < 30000);
-
-                if (cast && doCast(target, GetSpell(EARTH_SHIELD_1)))
-                    return true;
-            }
-
-            if (me->IsInCombat() && !master->GetMap()->IsRaid()) return false;
+            if (me->IsInCombat() && !master->GetMap()->IsRaid())
+                return false;
 
             if (target->HasUnitMovementFlag(MOVEMENTFLAG_SWIMMING))
             {
@@ -1301,6 +1311,74 @@ public:
                 }
             }
             return false;
+        }
+
+        void CheckEarthShield(uint32 diff)
+        {
+            if (!IsSpellReady(EARTH_SHIELD_1, diff) || IAmFree() || Earthy == true || Rand() > (65 - 45 * me->IsInCombat()))
+                return;
+
+            static auto can_affect = [](WorldObject const* o, Unit const* unit)
+            {
+                AuraEffect const* eShield = unit->GetAuraEffect(SPELL_AURA_REDUCE_PUSHBACK, SPELLFAMILY_SHAMAN, 0x0, 0x400, 0x0);
+                return (!eShield || eShield->GetBase()->GetCharges() < 5 || eShield->GetBase()->GetDuration() < 30000) && o->GetDistance(unit) < 40 && (unit->IsInCombat() || !unit->isMoving());
+            };
+
+            Group const* gr = master->GetGroup();
+            if (!gr)
+            {
+                Player* pl = master;
+
+                if (IsTank(pl) && can_affect(me, pl) && doCast(pl, GetSpell(EARTH_SHIELD_1)))
+                    return;
+
+                BotMap const* map = pl->GetBotMgr()->GetBotMap();
+                for (BotMap::const_iterator it = map->begin(); it != map->end(); ++it)
+                {
+                    Unit* u = it->second;
+                    if (!u || !u->IsInWorld() || me->GetMap() != u->FindMap() || !u->InSamePhase(me))
+                        continue;
+
+                    if (IsTank(u))
+                    {
+                        if (can_affect(me, u))
+                        {
+                            if (doCast(u, GetSpell(EARTH_SHIELD_1)))
+                            {
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for (GroupReference const* ref = gr->GetFirstMember(); ref != nullptr; ref = ref->next())
+                {
+                    Player* pl = ref->GetSource();
+                    if (!pl || !pl->IsInWorld() || me->GetMap() != pl->FindMap() || !pl->InSamePhase(me))
+                        continue;
+
+                    if (IsTank(pl) && can_affect(me, pl) && doCast(pl, GetSpell(EARTH_SHIELD_1)))
+                        return;
+
+                    if (!pl->HaveBot())
+                        continue;
+
+                    BotMap const* map = pl->GetBotMgr()->GetBotMap();
+                    for (BotMap::const_iterator it = map->begin(); it != map->end(); ++it)
+                    {
+                        Unit* u = it->second;
+                        if (!u || !u->IsInWorld() || me->GetMap() != u->FindMap() || !u->InSamePhase(me))
+                            continue;
+                        if (IsTank(u) && can_affect(me, u) && doCast(u, GetSpell(EARTH_SHIELD_1)))
+                            return;
+                    }
+                }
+            }
+
+            if (can_affect(me, master) && doCast(master, GetSpell(EARTH_SHIELD_1)))
+                return;
         }
 
         void CheckDispel(uint32 diff)
@@ -1380,7 +1458,7 @@ public:
                 if (doCast(target, GetSpell(RIPTIDE_1)))
                     return true;
             }
-            if (IsSpellReady(CHAIN_HEAL_1, diff) && xppct > 35 && xphploss > _heals[CHAIN_HEAL_1] &&
+            if (IsSpellReady(CHAIN_HEAL_1, diff) && !IAmFree() && xppct > 35 && xphploss > _heals[CHAIN_HEAL_1] &&
                 (!tanking || Rand() < 60 || target->GetAuraEffect(SPELL_AURA_PERIODIC_HEAL, SPELLFAMILY_SHAMAN, 0x0, 0x0, 0x10, me->GetGUID())))
             {
                 if (doCast(target, GetSpell(CHAIN_HEAL_1)))
@@ -1405,7 +1483,7 @@ public:
             uint8 lvl = me->GetLevel();
 
             //Call of Thunder: 5% additional critical chance for Lightning Bolt, Chain Lightning and Thunderstorm
-            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 30 &&
+            if ((GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 30 &&
                 (spellId == GetSpell(LIGHTNING_BOLT_1) ||
                 spellId == GetSpell(CHAIN_LIGHTNING_1) ||
                 spellId == GetSpell(THUNDERSTORM_1)))
@@ -1414,7 +1492,7 @@ public:
             if (lvl >= 25 && (SPELL_SCHOOL_MASK_NATURE & schoolMask))
                 crit_chance += 5.f;
             //Blessing of the Eternals: 4% additional critical chance for all spells
-            if ((_spec == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 45)
+            if ((GetSpec() == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 45)
                 crit_chance += 4.f;
             //Tidal Waves (Lesser Healing Wave crit)
             if (spellInfo->SpellFamilyFlags[0] & 0x80)
@@ -1474,7 +1552,7 @@ public:
                     (spellInfo->GetSchoolMask() & (SPELL_SCHOOL_MASK_NATURE|SPELL_SCHOOL_MASK_FIRE|SPELL_SCHOOL_MASK_FROST)))
                     pctbonus += 0.333f;
                 //Lava Flows (part 1): 24% additional crit damage bonus for Lava Burst
-                if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 50 && spellId == GetSpell(LAVA_BURST_1))
+                if ((GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 50 && spellId == GetSpell(LAVA_BURST_1))
                     pctbonus += 0.16f;
             }
             //Concussion: 5% bonus damage for Lightning Bolt, Chain Lightning, Thunderstorm, Lava Burst and Shocks
@@ -1491,10 +1569,10 @@ public:
             if (lvl >= 15 && spellId == GetSpell(LAVA_BURST_1))
                 pctbonus += 0.06f;
             //Storm, Earth and fire (part 3): 60% bonus damage for Flame Shock (periodic damage in fact but who cares?)
-            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 40 && spellId == GetSpell(FLAME_SHOCK_1))
+            if ((GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 40 && spellId == GetSpell(FLAME_SHOCK_1))
                 pctbonus += 0.6f;
             //Booming Echoes (part 2): 20% bonus damage for Flame Shock and Frost Shock (direct damage)
-            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 45 &&
+            if ((GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 45 &&
                 (spellId == GetSpell(FLAME_SHOCK_1) ||
                 spellId == GetSpell(FROST_SHOCK_1)))
                 pctbonus += 0.2f;
@@ -1502,7 +1580,7 @@ public:
             if (lvl >= 15 && spellInfo->IsRankOf(sSpellMgr->GetSpellInfo(LIGHTNING_SHIELD_DAMAGE_1)))
                 pctbonus += 0.15f;
             //Shamanism: +20/25% bonus from spp
-            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 45)
+            if ((GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 45)
             {
                 if (spellId == GetSpell(CHAIN_LIGHTNING_1) || spellId == GetSpell(LIGHTNING_BOLT_1))
                     flat_mod += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.2f * me->CalculateDefaultCoefficient(spellInfo, SPELL_DIRECT_DAMAGE) * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo);
@@ -1510,7 +1588,7 @@ public:
                     flat_mod += me->SpellBaseDamageBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.25f * me->CalculateDefaultCoefficient(spellInfo, SPELL_DIRECT_DAMAGE) * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo);
             }
             //Elemental Oath (part 1): 10% bonus damage
-            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) &&
+            if ((GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL) &&
                 lvl >= 45 && me->GetAuraEffect(ELEMENTAL_FOCUS_BUFF, 0, me->GetGUID()))
                 pctbonus += 0.1f;
             //Elemental Weapons (part 1): 40% bonus damage
@@ -1532,26 +1610,26 @@ public:
             float flat_mod = 0.0f;
 
             //Healing Way: 25% bonus healing for Healing Wave
-            if ((_spec == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 30 && spellId == GetSpell(HEALING_WAVE_1))
+            if ((GetSpec() == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 30 && spellId == GetSpell(HEALING_WAVE_1))
                 pctbonus += 0.25f;
             //Purification: 10% bonus healing for all spells
-            if ((_spec == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 35)
+            if ((GetSpec() == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 35)
                 pctbonus += 0.1f;
             //Nature's Blessing: 15% of Intellect to healing
-            if ((_spec == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 45)
+            if ((GetSpec() == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 45)
                 flat_mod += GetTotalBotStat(BOT_STAT_MOD_INTELLECT) * 0.15f * me->CalculateDefaultCoefficient(spellInfo, damagetype) * stack * 1.88f * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo) * stack;
             //Improved Chain Heal: 20% bonus healing for Chain Heal
-            if ((_spec == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 45 && spellId == GetSpell(CHAIN_HEAL_1))
+            if ((GetSpec() == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 45 && spellId == GetSpell(CHAIN_HEAL_1))
                 pctbonus += 0.2f;
             //Improved Earth Shield: 10% bonus healing for Earth Shield
             //Glyph of Earth Shield: 20% bonus healing for Earth Shield
             if (lvl >= 50 && spellId == EARTH_SHIELD_HEAL)
-                pctbonus += (_spec == BOT_SPEC_SHAMAN_RESTORATION) ? 0.3f : 0.2f;
+                pctbonus += (GetSpec() == BOT_SPEC_SHAMAN_RESTORATION) ? 0.3f : 0.2f;
             //Improved Shields (part 3): 15% bonus healing for Earth Shield
             if (lvl >= 15 && spellId == EARTH_SHIELD_HEAL)
                 pctbonus += 0.15f;
             //Tidal Waves (part 2): 20% bonus (from spellpower) for Healing Wave and 10% bonus (from spellpower) for Lesser Healing Wave
-            if ((_spec == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 55)
+            if ((GetSpec() == BOT_SPEC_SHAMAN_RESTORATION) && lvl >= 55)
             {
                 if (spellId == GetSpell(HEALING_WAVE_1))
                     flat_mod += me->SpellBaseHealingBonusDone(SPELL_SCHOOL_MASK_MAGIC) * 0.2f * me->CalculateDefaultCoefficient(spellInfo, damagetype) * 1.88f * me->CalculateSpellpowerCoefficientLevelPenalty(spellInfo) * stack;
@@ -1583,7 +1661,7 @@ public:
             if (lvl >= 20 && (spellInfo->SpellFamilyFlags[0] & 0x90100000))
                 pctbonus += 0.45f;
             //Mental Quickness:
-            if ((_spec == BOT_SPEC_SHAMAN_ENHANCEMENT) && lvl >= 50 && !spellInfo->CalcCastTime())
+            if ((GetSpec() == BOT_SPEC_SHAMAN_ENHANCEMENT) && lvl >= 50 && !spellInfo->CalcCastTime())
                 pctbonus += 0.06f;
             //Totemic Focus:
             if (lvl >= 10 && (spellInfo->AttributesEx7 & SPELL_ATTR7_SUMMON_PLAYER_TOTEM))
@@ -1646,7 +1724,7 @@ public:
             if (lvl >= 10 && spellId == GetSpell(HEALING_WAVE_1))
                 timebonus += 500;
             //Lightning Mastery: -0.5 sec
-            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) &&
+            if ((GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL) &&
                 lvl >= 35 && ((spellInfo->SpellFamilyFlags[0] & 0x3) || (spellInfo->SpellFamilyFlags[1] & 0x1000)))
                 timebonus += 500;
             //Stormcaller Chain Heal Bonus (26122): -0.4 sec
@@ -1675,13 +1753,13 @@ public:
             if (lvl >= 20 && ((spellInfo->SpellFamilyFlags[0] & 0x90100000) || (spellInfo->SpellFamilyFlags[1] & 0x8000000)))
                 timebonus += 1000;
             //Booming Echoes (part 1)
-            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 45 && (spellInfo->SpellFamilyFlags[0] & 0x90000000))
+            if ((GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 45 && (spellInfo->SpellFamilyFlags[0] & 0x90000000))
                 timebonus += 2000;
             //Storm, Earth and Fire (part 1)
-            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 40 && (spellInfo->SpellFamilyFlags[0] & 0x2))
+            if ((GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 40 && (spellInfo->SpellFamilyFlags[0] & 0x2))
                 timebonus += 2500;
             //Improved Fire Nova (part 2)
-            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 25 && (spellInfo->SpellFamilyFlags[0] & 0x8000000))
+            if ((GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL) && lvl >= 25 && (spellInfo->SpellFamilyFlags[0] & 0x8000000))
                 timebonus += 4000;
 
             cooldown = std::max<int32>((float(cooldown) * (1.0f - pctbonus)) - timebonus, 0);
@@ -1734,11 +1812,11 @@ public:
 
             //flat mods
             //Elemental Reach part 1: +6 yd
-            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) &&
+            if ((GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL) &&
                 lvl >= 30 && ((spellInfo->SpellFamilyFlags[0] & 0x8000003) || (spellInfo->SpellFamilyFlags[1] & 0x1000)))
                 flatbonus += 6.f;
             //Elemental Reach part 2: +15 yd
-            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) &&
+            if ((GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL) &&
                 lvl >= 30 && (spellInfo->SpellFamilyFlags[0] & 0x10000000))
                 flatbonus += 15.f;
 
@@ -1962,14 +2040,14 @@ public:
             }
 
             //Earthen Power part 2
-            if ((_spec == BOT_SPEC_SHAMAN_ENHANCEMENT) && me->GetLevel() >= 50 && baseId == EARTH_SHOCK_1)
+            if ((GetSpec() == BOT_SPEC_SHAMAN_ENHANCEMENT) && me->GetLevel() >= 50 && baseId == EARTH_SHOCK_1)
             {
                 if (AuraEffect* eff = target->GetAuraEffect(spellId, 0, me->GetGUID()))
                     eff->ChangeAmount(eff->GetAmount() * 2);
             }
 
             //Lightning Overload
-            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) &&
+            if ((GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL) &&
                 me->GetLevel() >= 45 && (baseId == LIGHTNING_BOLT_1 || baseId == CHAIN_LIGHTNING_1) &&
                 urand(1,100) <= 33)
             {
@@ -2060,8 +2138,7 @@ public:
 
         void SummonBotPet(Unit* target)
         {
-            //if (botPet)
-            //    botPet->ToTempSummon()->UnSummon();
+            UnsummonWolves();
 
             uint32 entry = BOT_PET_SPIRIT_WOLF;
 
@@ -2070,10 +2147,10 @@ public:
                 //Position pos;
 
                 //45 sec duration
-                Creature* myPet = me->SummonCreature(entry, *me, TEMPSUMMON_MANUAL_DESPAWN);
+                Creature* myPet = me->SummonCreature(entry, *me, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5s);
                 //me->GetNearPoint(myPet, pos.m_positionX, pos.m_positionY, pos.m_positionZ, 0, 2, me->GetOrientation());
                 //myPet->GetMotionMaster()->MovePoint(me->GetMapId(), pos);
-                myPet->SetCreatorGUID(master->GetGUID());
+                myPet->SetCreator(master);
                 myPet->SetOwnerGUID(me->GetGUID());
                 myPet->SetFaction(master->GetFaction());
                 myPet->SetControlledByPlayer(!IAmFree());
@@ -2085,7 +2162,7 @@ public:
                 //botPet = myPet;
 
                 myPet->Attack(target, true);
-                if (!HasBotCommandState(BOT_COMMAND_STAY))
+                if (!HasBotCommandState(BOT_COMMAND_MASK_UNCHASE))
                     myPet->GetMotionMaster()->MoveChase(target);
             }
         }
@@ -2137,17 +2214,23 @@ public:
             }
         }
 
-        void UnsummonAll() override
+        void UnsummonWolves()
         {
-            //if (botPet)
-            //    botPet->ToTempSummon()->UnSummon();
-
             for (uint8 i = 0; i != MAX_WOLVES; ++i)
             {
                 if (_wolves[i])
+                {
                     if (Unit* wo = ObjectAccessor::GetUnit(*me, _wolves[i]))
                         wo->ToTempSummon()->UnSummon();
+                    else
+                        _wolves[i] = ObjectGuid::Empty;
+                }
             }
+        }
+
+        void UnsummonAll() override
+        {
+            UnsummonWolves();
 
             for (uint8 i = 0; i != MAX_TOTEMS; ++i)
             {
@@ -2296,7 +2379,7 @@ public:
 
             //TODO: gets overriden in Spell::EffectSummonType (end)
             //Without setting creator correctly it will be impossible to use summon X elemental totems
-            summon->SetCreatorGUID(me->GetGUID());
+            summon->SetCreator(me);
             summon->SetDisplayId(sObjectMgr->GetModelForTotem(SummonSlot(slot+1), Races(me->GetRace())));
             summon->SetFaction(me->GetFaction());
             summon->SetPvP(me->IsPvP());
@@ -2313,7 +2396,7 @@ public:
             //check by btype
 
             // Storm, Earth and Fire: Earthbind totem AoE root
-            if ((_spec == BOT_SPEC_SHAMAN_ELEMENTAL) && btype == BOT_TOTEM_EARTHBIND && me->GetLevel() >= 40)
+            if ((GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL) && btype == BOT_TOTEM_EARTHBIND && me->GetLevel() >= 40)
             {
                 //master's talent will be found so do not cast earthgrab twice, instead let spell script roll the chance
                 //see spell_shaman.cpp
@@ -2448,9 +2531,9 @@ public:
         void InitSpells() override
         {
             uint8 lvl = me->GetLevel();
-            bool isElem = _spec == BOT_SPEC_SHAMAN_ELEMENTAL;
-            bool isEnha = _spec == BOT_SPEC_SHAMAN_ENHANCEMENT;
-            bool isRest = _spec == BOT_SPEC_SHAMAN_RESTORATION;
+            bool isElem = GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL;
+            bool isEnha = GetSpec() == BOT_SPEC_SHAMAN_ENHANCEMENT;
+            bool isRest = GetSpec() == BOT_SPEC_SHAMAN_RESTORATION;
 
             InitSpellMap(HEALING_WAVE_1);
             InitSpellMap(CHAIN_HEAL_1);
@@ -2532,15 +2615,15 @@ public:
         void ApplyClassPassives() const override
         {
             uint8 level = master->GetLevel();
-            bool isElem = _spec == BOT_SPEC_SHAMAN_ELEMENTAL;
-            bool isEnha = _spec == BOT_SPEC_SHAMAN_ENHANCEMENT;
-            bool isRest = _spec == BOT_SPEC_SHAMAN_RESTORATION;
+            bool isElem = GetSpec() == BOT_SPEC_SHAMAN_ELEMENTAL;
+            bool isEnha = GetSpec() == BOT_SPEC_SHAMAN_ENHANCEMENT;
+            bool isRest = GetSpec() == BOT_SPEC_SHAMAN_RESTORATION;
 
             RefreshAura(ELEMENTAL_DEVASTATION3, isEnha && level >= 18 ? 1 : 0);
             RefreshAura(ELEMENTAL_DEVASTATION2, isEnha && level >= 15 && level < 18 ? 1 : 0);
             RefreshAura(ELEMENTAL_DEVASTATION1, isEnha && level >= 12 && level < 15 ? 1 : 0);
             RefreshAura(ELEMENTAL_FOCUS, isElem && level >= 20 ? 1 : 0);
-            RefreshAura(ELEMENTAL_OATH, isElem && level >= 40 ? 1 : 0);
+            RefreshAura(ELEMENTAL_OATH, !IAmFree() && isElem && level >= 40 ? 1 : 0);
             //RefreshAura(STORM_EARTH_AND_FIRE, isElem && level >= 45 ? 1 : 0);
 
             RefreshAura(TOUGHNESS, level >= 25 ? 1 : 0);
@@ -2550,7 +2633,7 @@ public:
             RefreshAura(FLURRY2, isEnha && level >= 26 && level < 27 ? 1 : 0);
             RefreshAura(FLURRY1, isEnha && level >= 25 && level < 26 ? 1 : 0);
             RefreshAura(WEAPON_MASTERY, isEnha && level >= 30 ? 1 : 0);
-            RefreshAura(UNLEASHED_RAGE, isEnha && level >= 35 ? 1 : 0);
+            RefreshAura(UNLEASHED_RAGE, !IAmFree() && isEnha && level >= 35 ? 1 : 0);
             RefreshAura(IMPROVED_STORMSTRIKE, isEnha && level >= 40 ? 1 : 0);
             RefreshAura(STATIC_SHOCK, isEnha && level >= 41 ? 1 : 0);
             RefreshAura(EARTHEN_POWER, isEnha && level >= 50 ? 1 : 0);

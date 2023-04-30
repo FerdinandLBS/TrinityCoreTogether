@@ -51,7 +51,7 @@ public:
         void KilledUnit(Unit* u) override { bot_pet_ai::KilledUnit(u); }
         void EnterEvadeMode(EvadeReason why = EVADE_REASON_OTHER) override { bot_pet_ai::EnterEvadeMode(why); }
         void MoveInLineOfSight(Unit* u) override { bot_pet_ai::MoveInLineOfSight(u); }
-        void JustDied(Unit* u) override { canUpdate = false; me->ToTempSummon()->UnSummon(1); bot_pet_ai::JustDied(u); }
+        void JustDied(Unit* u) override { bot_pet_ai::JustDied(u); }
 
         void DoPetActions(uint32 diff)
         {
@@ -91,7 +91,7 @@ public:
                 me->ToTempSummon()->UnSummon(1);
                 return;
             }
-            else if (!me->IsOutdoors() && (indoorsTimer += diff) >= TORNADO_DISSIPATE_TIMER)
+            else if ((IsIndoors() && !me->IsOutdoors()) && (isIndoorsTimer += diff) >= TORNADO_DISSIPATE_TIMER)
             {
                 canUpdate = false;
                 me->SetObjectScale(me->GetNativeObjectScale() / 2.f);
@@ -221,7 +221,7 @@ public:
             liveTimer = 0;
             moveResetTimer = 0;
             growthTimer = 0;
-            indoorsTimer = 0;
+            isIndoorsTimer = 0;
         }
 
         void InitPetSpells() override
@@ -240,7 +240,7 @@ public:
         uint32 liveTimer;
         uint32 moveResetTimer;
         uint32 growthTimer;
-        uint32 indoorsTimer;
+        uint32 isIndoorsTimer;
     };
 };
 

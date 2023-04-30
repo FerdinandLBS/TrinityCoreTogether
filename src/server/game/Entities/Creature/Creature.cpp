@@ -373,6 +373,11 @@ bool Creature::IsFormationLeaderMoveAllowed() const
 
 void Creature::RemoveCorpse(bool setSpawnTime, bool destroyForNearbyPlayers)
 {
+    //npcbot
+    if (IsNPCBotOrPet())
+        return;
+    //end npcbot
+
     if (getDeathState() != CORPSE)
         return;
 
@@ -790,6 +795,15 @@ void Creature::Update(uint32 diff)
                 }
                 else m_groupLootTimer -= diff;
             }
+            //npcbot: update dead bots
+            else if (bot_AI)
+            {
+                bot_AI->UpdateDeadAI(diff);
+                break;
+            }
+            else if (bot_pet_AI)
+                break;
+            //end npcbot
             else if (m_corpseRemoveTime <= GameTime::GetGameTime())
             {
                 //npcbot: do not remove corpse
@@ -1340,9 +1354,9 @@ void Creature::SetLootRecipient(Unit* unit, bool withGroup)
     */
     //npcbot - loot recipient of bot's vehicle is owner
     Player* player = nullptr;
-    if (unit->IsVehicle() && unit->GetCharmerGUID().IsCreature() && unit->GetOwnerGUID().IsPlayer())
+    if (unit->IsVehicle() && unit->GetCharmerGUID().IsCreature() && unit->GetCreatorGUID().IsPlayer())
     {
-        if (Unit* uowner = unit->GetOwner())
+        if (Unit* uowner = unit->GetCreator())
             player = uowner->ToPlayer();
     }
     else
@@ -1378,6 +1392,11 @@ bool Creature::isTappedBy(Player const* player) const
 
 void Creature::SaveToDB()
 {
+    //npcbot: disallow saving generated bots
+    if (IsNPCBot() && GetBotAI() && GetBotAI()->IsWanderer())
+        return;
+    //end npcbot
+
     // this should only be used when the creature has already been loaded
     // preferably after adding to map, because mapid may not be valid otherwise
     CreatureData const* data = sObjectMgr->GetCreatureData(m_spawnId);
@@ -1393,6 +1412,11 @@ void Creature::SaveToDB()
 
 void Creature::SaveToDB(uint32 mapid, uint8 spawnMask, uint32 phaseMask)
 {
+    //npcbot: disallow saving generated bots
+    if (IsNPCBot() && GetBotAI() && GetBotAI()->IsWanderer())
+        return;
+    //end npcbot
+
     // update in loaded data
     if (!m_spawnId)
         m_spawnId = sObjectMgr->GenerateCreatureSpawnId();
@@ -2165,6 +2189,11 @@ void Creature::setDeathState(DeathState s)
 
 void Creature::Respawn(bool force)
 {
+    //npcbot
+    if (IsNPCBotOrPet())
+        return;
+    //end npcbot
+
     if (force)
     {
         if (IsAlive())
@@ -2228,6 +2257,11 @@ void Creature::Respawn(bool force)
 
 void Creature::ForcedDespawn(uint32 timeMSToDespawn, Seconds forceRespawnTimer)
 {
+    //npcbot
+    if (IsNPCBotOrPet())
+        return;
+    //end npcbot
+
     if (timeMSToDespawn)
     {
         m_Events.AddEvent(new ForcedDespawnDelayEvent(*this, forceRespawnTimer), m_Events.CalculateTime(Milliseconds(timeMSToDespawn)));
@@ -2635,60 +2669,48 @@ CreatureAddon const* Creature::GetCreatureAddon() const
 //creature_addon table
 bool Creature::LoadCreaturesAddon()
 {
-    CreatureAddon const* cainfo = GetCreatureAddon();
-    if (!cainfo)
+    CreatureAddon const* creatureAddon = GetCreatureAddon();
+    if (!creatureAddon)
         return false;
 
-    if (cainfo->mount != 0)
-        Mount(cainfo->mount);
+    if (creatureAddon->mount != 0)
+        Mount(creatureAddon->mount);
 
-    if (cainfo->bytes1 != 0)
-    {
-        // 0 StandState
-        // 1 FreeTalentPoints   Pet only, so always 0 for default creature
-        // 2 StandFlags
-        // 3 StandMiscFlags
+    // UNIT_FIELD_BYTES_1 values
+    SetStandState(UnitStandStateType(creatureAddon->standState));
+    SetAnimTier(AnimTier(creatureAddon->animTier));
+    ReplaceAllVisFlags(UnitVisFlags(creatureAddon->visFlags));
 
-        SetStandState(UnitStandStateType(cainfo->bytes1 & 0xFF));
-        ReplaceAllVisFlags(UnitVisFlags((cainfo->bytes1 >> 16) & 0xFF));
-        SetAnimTier(AnimTier((cainfo->bytes1 >> 24) & 0xFF));
+    //! Suspected correlation between UNIT_FIELD_BYTES_1, offset 3, value 0x2:
+    //! If no inhabittype_fly (if no MovementFlag_DisableGravity or MovementFlag_CanFly flag found in sniffs)
+    //! Check using InhabitType as movement flags are assigned dynamically
+    //! basing on whether the creature is in air or not
+    //! Set MovementFlag_Hover. Otherwise do nothing.
+    if (CanHover())
+        AddUnitMovementFlag(MOVEMENTFLAG_HOVER);
 
-        //! Suspected correlation between UNIT_FIELD_BYTES_1, offset 3, value 0x2:
-        //! If no inhabittype_fly (if no MovementFlag_DisableGravity or MovementFlag_CanFly flag found in sniffs)
-        //! Check using InhabitType as movement flags are assigned dynamically
-        //! basing on whether the creature is in air or not
-        //! Set MovementFlag_Hover. Otherwise do nothing.
-        if (CanHover())
-            AddUnitMovementFlag(MOVEMENTFLAG_HOVER);
-    }
+    // UNIT_FIELD_BYTES_2 values
+    SetSheath(SheathState(creatureAddon->sheathState));
+    ReplaceAllPvpFlags(UnitPVPStateFlags(creatureAddon->pvpFlags));
 
-    if (cainfo->bytes2 != 0)
-    {
-        // 0 SheathState
-        // 1 PvpFlags
-        // 2 PetFlags           Pet only, so always 0 for default creature
-        // 3 ShapeshiftForm     Must be determined/set by shapeshift spell/aura
+    // These fields must only be handled by core internals and must not be modified via scripts/DB data
+    ReplaceAllPetFlags(UNIT_PET_FLAG_NONE);
+    SetShapeshiftForm(FORM_NONE);
 
-        SetSheath(SheathState(cainfo->bytes2 & 0xFF));
-        ReplaceAllPvpFlags(UnitPVPStateFlags((cainfo->bytes2 >> 8) & 0xFF));
-        ReplaceAllPetFlags(UNIT_PET_FLAG_NONE);
-        SetShapeshiftForm(FORM_NONE);
-    }
-
-    if (cainfo->emote != 0)
-        SetEmoteState(Emote(cainfo->emote));
+    if (creatureAddon->emote != 0)
+        SetEmoteState(Emote(creatureAddon->emote));
 
     // Check if visibility distance different
-    if (cainfo->visibilityDistanceType != VisibilityDistanceType::Normal)
-        SetVisibilityDistanceOverride(cainfo->visibilityDistanceType);
+    if (creatureAddon->visibilityDistanceType != VisibilityDistanceType::Normal)
+        SetVisibilityDistanceOverride(creatureAddon->visibilityDistanceType);
 
     // Load Path
-    if (cainfo->path_id != 0)
-        _waypointPathId = cainfo->path_id;
+    if (creatureAddon->path_id != 0)
+        _waypointPathId = creatureAddon->path_id;
 
-    if (!cainfo->auras.empty())
+    if (!creatureAddon->auras.empty())
     {
-        for (std::vector<uint32>::const_iterator itr = cainfo->auras.begin(); itr != cainfo->auras.end(); ++itr)
+        for (std::vector<uint32>::const_iterator itr = creatureAddon->auras.begin(); itr != creatureAddon->auras.end(); ++itr)
         {
             SpellInfo const* AdditionalSpellInfo = sSpellMgr->GetSpellInfo(*itr);
             if (!AdditionalSpellInfo)
@@ -2863,6 +2885,11 @@ void Creature::RefreshCanSwimFlag(bool recheck)
 
 void Creature::AllLootRemovedFromCorpse()
 {
+    //npcbot
+    if (IsNPCBotOrPet())
+        return;
+    //end npcbot
+
     if (loot.loot_type != LOOT_SKINNING && !IsPet() && GetCreatureTemplate()->SkinLootId && hasLootRecipient())
         if (LootTemplates_Skinning.HaveLootFor(GetCreatureTemplate()->SkinLootId))
             SetUnitFlag(UNIT_FLAG_SKINNABLE);
@@ -3546,13 +3573,21 @@ void Creature::ExitVehicle(Position const* /*exitPosition*/)
 }
 
 //NPCBOT
-bool Creature::LoadBotCreatureFromDB(ObjectGuid::LowType spawnId, Map* map, bool addToMap)
+bool Creature::LoadBotCreatureFromDB(ObjectGuid::LowType spawnId, Map* map, bool addToMap, bool generated, uint32 entry, Position const* pos)
 {
     CreatureData const* data = sObjectMgr->GetCreatureData(spawnId);
     if (!data)
     {
-        TC_LOG_ERROR("sql.sql", "Bot creature (GUID: %u) not found in table `creature`, can't load. ", spawnId);
-        return false;
+        if (!generated)
+        {
+            TC_LOG_ERROR("sql.sql", "Bot creature (GUID: %u) not found in table `creature`, can't load. ", spawnId);
+            return false;
+        }
+        else
+        {
+            ASSERT(entry != 0);
+            ASSERT_NOTNULL(pos);
+        }
     }
 
     m_spawnId = spawnId;
@@ -3560,9 +3595,12 @@ bool Creature::LoadBotCreatureFromDB(ObjectGuid::LowType spawnId, Map* map, bool
 
     m_respawnCompatibilityMode = true;
     m_creatureData = data;
-    m_wanderDistance = data->wander_distance;
+    m_wanderDistance = data ? data->wander_distance : 0.f;
 
-    if (!Create(map->GenerateLowGuid<HighGuid::Unit>(), map, data->phaseMask, data->id, data->spawnPoint, data, 0U , !m_respawnCompatibilityMode))
+    if (!Create(map->GenerateLowGuid<HighGuid::Unit>(), map,
+        data ? data->phaseMask : PHASEMASK_NORMAL,
+        data ? data->id : entry, data ? data->spawnPoint : *pos,
+        data, 0U, !m_respawnCompatibilityMode))
         return false;
 
     //We should set first home position, because then AI calls home movement
@@ -3574,9 +3612,9 @@ bool Creature::LoadBotCreatureFromDB(ObjectGuid::LowType spawnId, Map* map, bool
     SetSpawnHealth();
 
     // checked at creature_template loading
-    m_defaultMovementType = MovementGeneratorType(data->movementType);
+    m_defaultMovementType = data ? MovementGeneratorType(data->movementType) : IDLE_MOTION_TYPE;
 
-    TC_LOG_INFO("entities.unit", "Creature: loading npcbot %s (id: %u)", GetName().c_str(), GetEntry());
+    TC_LOG_INFO("entities.unit", "Creature: loading npcbot %s (id: %u, gen: %u)", GetName().c_str(), GetEntry(), uint32(generated));
     ASSERT(!IsInWorld());
 
     m_corpseDelay = 0;
@@ -3605,22 +3643,32 @@ Unit* Creature::GetBotsPet() const
 
 bool Creature::IsNPCBot() const
 {
-    return GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_NPCBOT;
+    return GetCreatureTemplate()->IsNPCBot();
 }
 
 bool Creature::IsNPCBotPet() const
 {
-    return GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_NPCBOT_PET;
+    return GetCreatureTemplate()->IsNPCBotPet();
 }
 
 bool Creature::IsNPCBotOrPet() const
 {
-    return IsNPCBot() || IsNPCBotPet();
+    return GetCreatureTemplate()->IsNPCBotOrPet();
 }
 
 bool Creature::IsFreeBot() const
 {
     return bot_AI ? bot_AI->IAmFree() : bot_pet_AI ? bot_pet_AI->IAmFree() : false;
+}
+
+bool Creature::IsWandererBot() const
+{
+    return bot_AI ? bot_AI->IsWanderer() : bot_pet_AI ? bot_pet_AI->IsWanderer() : false;
+}
+
+Battleground* Creature::GetBotBG() const
+{
+    return bot_AI ? bot_AI->GetBG() : nullptr;
 }
 
 uint32 Creature::GetBotRoles() const
@@ -3688,10 +3736,10 @@ void Creature::ApplyCreatureSpellChanceOfSuccessMods(SpellInfo const* spellInfo,
         bot_AI->ApplyBotSpellChanceOfSuccessMods(spellInfo, chance);
 }
 
-void Creature::ApplyCreatureEffectMods(WorldObject const* wtarget, SpellInfo const* spellInfo, uint8 effIndex, float& value) const
+void Creature::ApplyCreatureEffectMods(SpellInfo const* spellInfo, uint8 effIndex, float& value) const
 {
     if (bot_AI)
-        bot_AI->ApplyBotEffectMods(wtarget, spellInfo, effIndex, value);
+        bot_AI->ApplyBotEffectMods(spellInfo, effIndex, value);
 }
 
 void Creature::OnBotSummon(Creature* summon)
@@ -3853,11 +3901,5 @@ Item* Creature::GetBotEquipsByGuid(ObjectGuid itemGuid) const
 float Creature::GetBotAverageItemLevel() const
 {
     return bot_AI ? bot_AI->GetAverageItemLevel() : 0.0f;
-}
-
-//static
-bool Creature::IsBotCustomSpell(uint32 spellId)
-{
-    return bot_ai::IsBotCustomSpell(spellId);
 }
 //END NPCBOT
