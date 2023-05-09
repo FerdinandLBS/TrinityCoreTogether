@@ -1381,7 +1381,7 @@ public:
                     angle += stepAngle;
                 }
                 else {
-                    iter->second->GetMotionMaster()->MovePoint(owner->GetMapId(), target->GetNearPosition(followDis * ((bot_ai*)iter->second->GetAI())->GetAttackRange(), angle));
+                    iter->second->GetMotionMaster()->MovePoint(owner->GetMapId(), target->GetNearPosition(owner->GetBotMgr()->GetBotExactAttackRange(), angle));
                     angle += stepAngle;
                 }
                 ((bot_ai*)iter->second->GetAI())->SetBotCommandState(BOT_COMMAND_STAY);
