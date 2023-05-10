@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -16,6 +16,7 @@
  */
 
 // This is where scripts' loading functions should be declared:
+void AddSC_Transmogrification();
 
 extern void AddSC_telebook_script();
 extern void AddSC_TCTogether_script();
@@ -53,7 +54,7 @@ public:
 // void Add${NameOfDirectory}Scripts()
 void AddCustomScripts()
 {
-    new SpellScriptName();
+    AddSC_Transmogrification();
     AddSC_telebook_script();
     AddSC_TCTogether_script();
 }
