@@ -30,6 +30,7 @@
 #include "PetDefines.h"
 #include "PlayerTaxi.h"
 #include "QuestDef.h"
+#include "TransmogrificationDefines.h"
 #include <memory>
 #include <queue>
 #include <unordered_set>
@@ -154,6 +155,14 @@ struct SpellModifier
     uint32 spellId;
     Aura* const ownerAura;
 };
+
+typedef std::array<std::unordered_set<uint32>, TRANSMOG_TYPE_COUNT> AppearanceContainer;
+struct PresetData
+{
+    std::string name;
+    SetTransmogs data;
+};
+typedef std::map<uint8 /*presetid*/, PresetData> PresetMapType;
 
 typedef std::unordered_map<uint32, PlayerTalent*> PlayerTalentMap;
 typedef std::unordered_map<uint32, PlayerSpell> PlayerSpellMap;
@@ -744,6 +753,8 @@ enum PlayerLoginQueryIndex
     PLAYER_LOGIN_QUERY_LOAD_MONTHLY_QUEST_STATUS    = 32,
     PLAYER_LOGIN_QUERY_LOAD_CORPSE_LOCATION         = 33,
     PLAYER_LOGIN_QUERY_LOAD_PET_SLOTS               = 34,
+    PLAYER_LOGIN_QUERY_LOAD_TRANSMOG,
+    PLAYER_LOGIN_QUERY_LOAD_TRANSMOG_SETS,
     MAX_PLAYER_LOGIN_QUERY
 };
 
@@ -2030,7 +2041,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
 
         bool HaveAtClient(Object const* u) const;
 
-        bool IsNeverVisible(bool allowServersideObjects = false) const override;
+        bool IsNeverVisible(bool allowServersideObjects) const override;
 
         bool IsVisibleGloballyFor(Player const* player) const;
 
@@ -2197,6 +2208,9 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         std::string GetMapAreaAndZoneString() const;
         std::string GetCoordsMapAreaAndZoneString() const;
 
+        BasicEvent* pendingTransmogCheck = nullptr;
+        AppearanceContainer transmogrification_appearances;
+        PresetMapType presetMap;
         std::string GetDebugInfo() const override;
 
         /*****************************************************************/
