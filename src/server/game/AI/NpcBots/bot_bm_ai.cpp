@@ -289,6 +289,7 @@ public:
         {
             if (!bot_ai::StartAttack(u, force))
                 return;
+
             GetInPosition(force, u);
         }
 
@@ -320,6 +321,10 @@ public:
                 return;
 
             StartAttack(mytar, IsMelee());
+
+            CheckAttackState();
+            if (!me->IsAlive() || !mytar->IsAlive())
+                return;
 
             MoveBehind(mytar);
         }

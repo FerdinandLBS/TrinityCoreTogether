@@ -2370,6 +2370,10 @@ void Spell::TargetInfo::PreprocessTarget(Spell* spell)
         // but respect current pvp rules (buffing/healing npcs flagged for pvp only flags you if they are in combat)
         if (unit->IsPvP() && (unit->IsInCombat() || unit->IsCharmedOwnedByPlayerOrPlayer()) && spell->m_caster->GetTypeId() == TYPEID_PLAYER)
             _enablePVP = true; // Decide on PvP flagging now, but act on it later.
+        //npcbot
+        else if (unit->IsPvP() && (unit->IsInCombat() || unit->IsNPCBotOrPet()) && spell->m_caster->GetTypeId() == TYPEID_PLAYER)
+            _enablePVP = true; // Decide on PvP flagging now, but act on it later.
+        //end npcbot
 
         SpellMissInfo missInfo = spell->PreprocessSpellHit(_spellHitTarget, ScaleAura, *this);
         if (missInfo != SPELL_MISS_NONE)
@@ -2770,6 +2774,27 @@ SpellMissInfo Spell::PreprocessSpellHit(Unit* unit, bool scaleAura, TargetInfo& 
             // assisting case, healing and resurrection
             if (unit->HasUnitState(UNIT_STATE_ATTACK_PLAYER))
             {
+                //npcbot: bot assist case
+                if (m_caster->IsNPCBotOrPet() && (unit->IsNPCBotOrPet() || unit->IsPlayer()))
+                {
+                    if (m_caster->ToCreature()->IsFreeBot())
+                    {
+                        Unit const* bot = m_caster->IsNPCBotPet() ? m_caster->ToUnit()->GetCreator() : m_caster->ToUnit();
+                        if (bot && bot->IsNPCBot())
+                            BotMgr::SetBotContestedPvP(bot->ToCreature());
+                    }
+                    else
+                    {
+                        if (Player const* pOwner = m_caster->ToUnit()->GetCreator() ? m_caster->ToUnit()->GetCreator()->ToPlayer() : nullptr)
+                        {
+                            Unit* bot = m_caster->IsNPCBotPet() ? static_cast<Unit*>(pOwner->GetBotMgr()->GetBot(m_caster->GetOwnerGUID())) : m_caster->ToUnit();
+                            if (bot && bot->IsNPCBot())
+                                BotMgr::SetBotContestedPvP(bot->ToCreature());
+                        }
+                    }
+                }
+                else
+                //end npcbot
                 if (Player* playerOwner = m_caster->GetCharmerOrOwnerPlayerOrPlayerItself())
                 {
                     playerOwner->SetContestedPvP();
@@ -2781,6 +2806,10 @@ SpellMissInfo Spell::PreprocessSpellHit(Unit* unit, bool scaleAura, TargetInfo& 
             {
                 if (m_originalCaster->HasUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED)) // only do explicit combat forwarding for PvP enabled units
                     m_originalCaster->GetCombatManager().InheritCombatStatesFrom(unit);    // for creature v creature combat, the threat forward does it for us
+                //npcbot
+                else if (m_originalCaster->IsNPCBotOrPet())
+                    m_originalCaster->GetCombatManager().InheritCombatStatesFrom(unit);
+                //end npcbot
                 unit->GetThreatManager().ForwardThreatForAssistingMe(m_originalCaster, 0.0f, nullptr, true);
             }
         }
@@ -3358,7 +3387,7 @@ void Spell::_cast(bool skipCheck)
             SendInterrupted(0);
 
             //npcbot - hook for spellcast finish (unsuccessful)
-            if (m_caster->GetTypeId() == TYPEID_UNIT && m_caster->ToCreature()->IsNPCBotOrPet())
+            if (m_caster->IsNPCBotOrPet())
                 BotMgr::OnBotSpellGo(m_caster->ToCreature(), this, false);
             //end npcbot
 
@@ -3899,6 +3928,10 @@ void Spell::update(uint32 difftime)
                 if (Creature* creatureCaster = m_caster->ToCreature())
                     if (creatureCaster->IsAIEnabled())
                         creatureCaster->AI()->OnChannelFinished(m_spellInfo);
+                //npcbot: signal channel finish to botmgr
+                if (m_caster->IsNPCBot())
+                    BotMgr::OnBotChannelFinish(m_caster->ToUnit(), this);
+                //end npcbot
             }
             break;
         }
@@ -3938,6 +3971,11 @@ void Spell::finish(bool ok)
 
     if (Creature* creatureCaster = unitCaster->ToCreature())
         creatureCaster->ReleaseSpellFocus(this);
+
+    //npcbot
+    if (!ok && unitCaster->IsNPCBotOrPet())
+        BotMgr::OnBotSpellGo(unitCaster, this, false);
+    //end npcbot
 
     if (!ok)
         return;
@@ -5238,7 +5276,7 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* param1 /*= nullptr*/, uint
         }
 
         //npcbot
-        if (m_caster->IsNPCBot() && m_caster->ToCreature()->HasSpellCooldown(m_spellInfo->Id))
+        if (m_caster->IsNPCBot() && m_caster->ToCreature()->HasSpellCooldown(m_spellInfo->Id) && !IsIgnoringCooldowns())
         {
             //TC_LOG_ERROR("spells", "%s has cd of %u on %s", m_caster->GetName().c_str(), m_caster->ToCreature()->GetCreatureSpellCooldownDelay(m_spellInfo->Id), m_spellInfo->SpellName[0]);
             if (m_triggeredByAuraSpell)
@@ -6118,7 +6156,7 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* param1 /*= nullptr*/, uint
                         return SPELL_FAILED_CHARMED;
  
                     //npcbot: do not allow to charm owned npcbots
-                    if (target->GetCreatorGUID() && target->GetCreatorGUID().IsPlayer())
+                    if (target->GetCreator() && target->GetCreator()->IsPlayer())
                         return SPELL_FAILED_TARGET_IS_PLAYER_CONTROLLED;
                     else if (target->IsNPCBotOrPet())
                         return SPELL_FAILED_CANT_BE_CHARMED;

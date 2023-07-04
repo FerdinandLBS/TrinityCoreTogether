@@ -574,7 +574,7 @@ void BattlegroundAB::EventBotClickedOnFlag(Creature* bot, GameObject* /*target_o
         return;
     }
 
-    TeamId teamIndex = GetPlayerTeamId(bot->GetGUID());
+    TeamId teamIndex = GetBotTeamId(bot->GetGUID());
 
     // Check if player really could use this banner, not cheated
     if (!(m_Nodes[node] == 0 || teamIndex == m_Nodes[node]%2))
@@ -912,7 +912,7 @@ void BattlegroundAB::HandleBotKillPlayer(Creature* killer, Player* victim)
         return;
 
     Battleground::HandleBotKillPlayer(killer, victim);
-    //RewardKillScore(GetPlayerTeamId(killer->GetGUID()), BG_AB_TickPoints[1]);
+    //RewardKillScore(GetBotTeamId(killer->GetGUID()), BG_AB_TickPoints[1]);
 }
 void BattlegroundAB::HandleBotKillBot(Creature* killer, Creature* victim)
 {
@@ -920,7 +920,7 @@ void BattlegroundAB::HandleBotKillBot(Creature* killer, Creature* victim)
         return;
 
     Battleground::HandleBotKillBot(killer, victim);
-    //RewardKillScore(GetPlayerTeamId(killer->GetGUID()), BG_AB_TickPoints[1]);
+    //RewardKillScore(GetBotTeamId(killer->GetGUID()), BG_AB_TickPoints[1]);
 }
 void BattlegroundAB::HandlePlayerKillBot(Creature* victim, Player* killer)
 {
@@ -928,7 +928,7 @@ void BattlegroundAB::HandlePlayerKillBot(Creature* victim, Player* killer)
         return;
 
     Battleground::HandlePlayerKillBot(victim, killer);
-    //RewardKillScore(GetPlayerTeamId(killer->GetGUID()), BG_AB_TickPoints[1]);
+    //RewardKillScore(GetBotTeamId(killer->GetGUID()), BG_AB_TickPoints[1]);
 }
 //end npcbot
 

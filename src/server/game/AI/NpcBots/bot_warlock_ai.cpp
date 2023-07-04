@@ -295,53 +295,41 @@ public:
             if (!IAmFree() && hasSoulstone && soulstoneTimer <= diff && GetSpell(CREATE_SOULSTONE_1))
             {
                 Group const* gr = master->GetGroup();
-                Unit* u = master;
+                std::set<Unit*> targets;
                 if (!gr)
                 {
-                    if (!u->IsAlive() || u->isPossessed() || u->IsCharmed() ||
-                        me->GetDistance(u) > 30 || u->GetDummyAuraEffect(SPELLFAMILY_GENERIC, 92, 0))
-                        u = nullptr;
+                    if (master->IsAlive() && !master->isPossessed() && !master->IsCharmed() &&
+                        me->GetDistance(master) < 30 && !master->GetDummyAuraEffect(SPELLFAMILY_GENERIC, 92, 0))
+                        targets.insert(master);
                 }
                 else
                 {
-                    //check rezzers first
-                    for (GroupReference const* itr = gr->GetFirstMember(); itr != nullptr; itr = itr->next())
+                    for (uint8 i = 0; i < 2 && !targets.empty(); ++i)
                     {
-                        u = itr->GetSource();
-                        if (!u || u->GetLevel() < 20 || !u->IsAlive() || me->GetMap() != u->FindMap() ||
-                            u->isPossessed() || u->IsCharmed() || me->GetDistance(u) > 30 ||
-                            u->GetDummyAuraEffect(SPELLFAMILY_GENERIC, 92, 0))
+                        for (Unit* member : BotMgr::GetAllGroupMembers(gr))
                         {
-                            u = nullptr;
-                            continue;
-                        }
-                        if (u->GetClass() == CLASS_PRIEST || u->GetClass() == CLASS_PALADIN ||
-                            u->GetClass() == CLASS_DRUID || u->GetClass() == CLASS_SHAMAN)
-                            break;
-                    }
-                    if (!u)
-                    {
-                        for (GroupReference const* itr = gr->GetFirstMember(); itr != nullptr; itr = itr->next())
-                        {
-                            u = itr->GetSource();
-                            if (!u || u->GetLevel() < 20 || !u->IsAlive() || me->GetMap() != u->FindMap() ||
-                                u->isPossessed() || u->IsCharmed() || me->GetDistance(u) > 30 ||
-                                u->GetDummyAuraEffect(SPELLFAMILY_GENERIC, 92, 0))
+                            if ((i == 0 ? member->IsPlayer() : member->IsNPCBot()) && me->GetMap() == member->FindMap() &&
+                                member->IsAlive() && !member->isPossessed() && !member->IsCharmed() &&
+                                !(member->IsNPCBot() && member->ToCreature()->IsTempBot()) &&
+                                me->GetDistance(member) < 30 && !member->GetDummyAuraEffect(SPELLFAMILY_GENERIC, 92, 0))
                             {
-                                u = nullptr;
-                                continue;
+                                if (i > 0 || member->GetClass() == CLASS_PRIEST || member->GetClass() == CLASS_PALADIN ||
+                                    member->GetClass() == CLASS_DRUID || member->GetClass() == CLASS_SHAMAN)
+                                {
+                                    targets.insert(member);
+                                }
                             }
-                            break;
                         }
                     }
                 }
 
-                if (u)
+                if (!targets.empty())
                 {
+                    Unit* target = targets.size() == 1 ? *targets.begin() : Trinity::Containers::SelectRandomContainerElement(targets);
                     SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(CREATE_SOULSTONE_1);
                     uint32 rank = spellInfo->GetRank();
 
-                    while (rank < 7 && u->GetLevel() > spellInfo->SpellLevel && spellInfo->GetNextRankSpell())
+                    while (rank + 1 < std::size(_healthStoneSpells) && target->GetLevel() > spellInfo->SpellLevel && spellInfo->GetNextRankSpell())
                     {
                         spellInfo = spellInfo->GetNextRankSpell();
                         rank = spellInfo->GetRank();
@@ -362,7 +350,7 @@ public:
                             spellId = SOULSTONE_RESURRECTION_1;
                             break;
                     }
-                    me->CastSpell(u, spellId, false);
+                    me->CastSpell(target, spellId, false);
                 }
             }
         }
@@ -624,29 +612,32 @@ public:
             else
             {
                 spell = me->GetCurrentSpell(CURRENT_GENERIC_SPELL);
-                if (spell)
+                SpellInfo const* baseSpellInfo = spell ? spell->GetSpellInfo()->GetFirstRankSpell() : nullptr;
+                uint32 base_id = baseSpellInfo ? baseSpellInfo->Id : 0;
+                if (baseSpellInfo && (base_id == FEAR_1 || base_id == BANISH_1 || baseSpellInfo->SpellVisual[0] == 99))
                 {
-                    //Fear interrupt
-                    if (spell->GetSpellInfo()->GetFirstRankSpell()->Id == FEAR_1 && spell->m_targets.GetUnitTarget() &&
-                        spell->m_targets.GetUnitTarget()->HasAuraType(SPELL_AURA_MOD_FEAR))
-                        me->InterruptSpell(CURRENT_GENERIC_SPELL);
-                    //Banish interrupt
-                    else if (spell->GetSpellInfo()->GetFirstRankSpell()->Id == BANISH_1 && spell->m_targets.GetUnitTarget())
+                    if (Unit const* target = ObjectAccessor::GetUnit(*me, spell->m_targets.GetObjectTargetGUID()))
                     {
-                        if (AuraEffect const* bani = spell->m_targets.GetUnitTarget()->GetAuraEffect(SPELL_AURA_SCHOOL_IMMUNITY, SPELLFAMILY_WARLOCK, 0x0, 0x8000000, 0x0))
+                        //Fear interrupt
+                        if (base_id == FEAR_1 && target->HasAuraType(SPELL_AURA_MOD_FEAR))
+                            me->InterruptSpell(CURRENT_GENERIC_SPELL);
+                        //Banish interrupt
+                        else if (base_id == BANISH_1)
                         {
-                            //Already banished
-                            //check spell cast time
-                            if (bani->GetBase()->GetDuration() > bani->GetBase()->GetMaxDuration() - 1500)
+                            if (AuraEffect const* bani = target->GetAuraEffect(SPELL_AURA_SCHOOL_IMMUNITY, SPELLFAMILY_WARLOCK, 0x0, 0x8000000, 0x0))
+                            {
+                                //Already banished
+                                //check spell cast time
+                                if (bani->GetBase()->GetDuration() > bani->GetBase()->GetMaxDuration() - 1500)
+                                    me->InterruptSpell(CURRENT_GENERIC_SPELL);
+                            }
+                            else if (!target->getAttackers().empty())
                                 me->InterruptSpell(CURRENT_GENERIC_SPELL);
                         }
-                        else if (!spell->m_targets.GetUnitTarget()->getAttackers().empty())
+                        //Soulstone resurrection interrupt
+                        else if (spell->GetSpellInfo()->SpellVisual[0] == 99 && target->GetDummyAuraEffect(SPELLFAMILY_GENERIC, 92, 0))
                             me->InterruptSpell(CURRENT_GENERIC_SPELL);
                     }
-                    //Soulstone resurrection interrupt
-                    else if (spell->GetSpellInfo()->SpellVisual[0] == 99 && spell->m_targets.GetUnitTarget() &&
-                        spell->m_targets.GetUnitTarget()->GetDummyAuraEffect(SPELLFAMILY_GENERIC, 92, 0))
-                        me->InterruptSpell(CURRENT_GENERIC_SPELL);
                 }
             }
 
@@ -734,6 +725,10 @@ public:
                 return;
 
             StartAttack(mytar, IsMelee());
+
+            CheckAttackState();
+            if (!me->IsAlive() || !mytar->IsAlive())
+                return;
 
             MoveBehind(mytar);
 
@@ -1772,7 +1767,6 @@ public:
             myPet->SetFaction(master->GetFaction());
             myPet->SetControlledByPlayer(!IAmFree());
             myPet->SetPvP(me->IsPvP());
-            myPet->SetUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED);
             myPet->SetByteValue(UNIT_FIELD_BYTES_2, 1, master->GetByteValue(UNIT_FIELD_BYTES_2, 1));
 
             //fix scale and equips

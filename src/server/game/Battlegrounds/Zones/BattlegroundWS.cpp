@@ -426,7 +426,7 @@ void BattlegroundWS::EventBotCapturedFlag(Creature* bot)
     uint32 winner = 0;
 
     bot->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ENTER_PVP_COMBAT);
-    if (GetPlayerTeam(bot->GetGUID()) == ALLIANCE)
+    if (GetBotTeam(bot->GetGUID()) == ALLIANCE)
     {
         if (!IsHordeFlagPickedup())
             return;
@@ -465,23 +465,23 @@ void BattlegroundWS::EventBotCapturedFlag(Creature* bot)
         RewardReputationToTeam(889, m_ReputationCapture, HORDE);
     }
     //for flag capture is reward 2 honorable kills
-    RewardHonorToTeam(GetBonusHonorFromKill(2), GetPlayerTeam(bot->GetGUID()));
+    RewardHonorToTeam(GetBonusHonorFromKill(2), GetBotTeam(bot->GetGUID()));
 
     SpawnBGObject(BG_WS_OBJECT_H_FLAG, BG_WS_FLAG_RESPAWN_TIME);
     SpawnBGObject(BG_WS_OBJECT_A_FLAG, BG_WS_FLAG_RESPAWN_TIME);
 
-    if (GetPlayerTeam(bot->GetGUID()) == ALLIANCE)
+    if (GetBotTeam(bot->GetGUID()) == ALLIANCE)
         SendBroadcastText(BG_WS_TEXT_CAPTURED_HORDE_FLAG, CHAT_MSG_BG_SYSTEM_ALLIANCE, bot);
     else
         SendBroadcastText(BG_WS_TEXT_CAPTURED_ALLIANCE_FLAG, CHAT_MSG_BG_SYSTEM_HORDE, bot);
 
-    UpdateFlagState(GetPlayerTeam(bot->GetGUID()), 1);                  // flag state none
-    UpdateTeamScore(GetPlayerTeamId(bot->GetGUID()));
+    UpdateFlagState(GetBotTeam(bot->GetGUID()), 1);                  // flag state none
+    UpdateTeamScore(GetBotTeamId(bot->GetGUID()));
     // only flag capture should be updated
     UpdateBotScore(bot, SCORE_FLAG_CAPTURES, 1);      // +1 flag captures
 
     // update last flag capture to be used if teamscore is equal
-    SetLastFlagCapture(GetPlayerTeam(bot->GetGUID()));
+    SetLastFlagCapture(GetBotTeam(bot->GetGUID()));
 
     if (GetTeamScore(TEAM_ALLIANCE) == BG_WS_MAX_TEAM_SCORE)
         winner = ALLIANCE;
@@ -502,7 +502,7 @@ void BattlegroundWS::EventBotCapturedFlag(Creature* bot)
     }
     else
     {
-        _flagsTimer[GetTeamIndexByTeamId(GetPlayerTeam(bot->GetGUID())) ? 0 : 1] = BG_WS_FLAG_RESPAWN_TIME;
+        _flagsTimer[GetTeamIndexByTeamId(GetBotTeam(bot->GetGUID())) ? 0 : 1] = BG_WS_FLAG_RESPAWN_TIME;
     }
 }
 //end npcbot
@@ -602,7 +602,7 @@ void BattlegroundWS::EventBotDroppedFlag(Creature* bot)
     {
         // if not running, do not cast things at the dropper player (prevent spawning the "dropped" flag), neither send unnecessary messages
         // just take off the aura
-        if (GetPlayerTeam(bot->GetGUID()) == ALLIANCE)
+        if (GetBotTeam(bot->GetGUID()) == ALLIANCE)
         {
             if (!IsHordeFlagPickedup())
                 return;
@@ -629,7 +629,7 @@ void BattlegroundWS::EventBotDroppedFlag(Creature* bot)
 
     bool set = false;
 
-    if (GetPlayerTeam(bot->GetGUID()) == ALLIANCE)
+    if (GetBotTeam(bot->GetGUID()) == ALLIANCE)
     {
         if (!IsHordeFlagPickedup())
             return;
@@ -667,9 +667,9 @@ void BattlegroundWS::EventBotDroppedFlag(Creature* bot)
     if (set)
     {
         bot->CastSpell(bot, SPELL_RECENTLY_DROPPED_FLAG, true);
-        UpdateFlagState(GetPlayerTeam(bot->GetGUID()), 1);
+        UpdateFlagState(GetBotTeam(bot->GetGUID()), 1);
 
-        if (GetPlayerTeam(bot->GetGUID()) == ALLIANCE)
+        if (GetBotTeam(bot->GetGUID()) == ALLIANCE)
         {
             SendBroadcastText(BG_WS_TEXT_HORDE_FLAG_DROPPED, CHAT_MSG_BG_SYSTEM_HORDE, bot);
             UpdateWorldState(BG_WS_FLAG_UNK_HORDE, uint32(-1));
@@ -680,7 +680,7 @@ void BattlegroundWS::EventBotDroppedFlag(Creature* bot)
             UpdateWorldState(BG_WS_FLAG_UNK_ALLIANCE, uint32(-1));
         }
 
-        _flagsDropTimer[GetTeamIndexByTeamId(GetPlayerTeam(bot->GetGUID())) ? 0 : 1] = BG_WS_FLAG_DROP_TIME;
+        _flagsDropTimer[GetTeamIndexByTeamId(GetBotTeam(bot->GetGUID())) ? 0 : 1] = BG_WS_FLAG_DROP_TIME;
     }
 }
 //end npcbot
@@ -807,13 +807,14 @@ void BattlegroundWS::EventPlayerClickedOnFlag(Player* player, GameObject* target
     player->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ENTER_PVP_COMBAT);
 }
 
+//npcbot
 void BattlegroundWS::EventBotClickedOnFlag(Creature* bot, GameObject* target_obj)
 {
     if (GetStatus() != STATUS_IN_PROGRESS)
         return;
 
     //alliance flag picked up from base
-    if (GetPlayerTeam(bot->GetGUID()) == HORDE && GetFlagState(ALLIANCE) == BG_WS_FLAG_STATE_ON_BASE
+    if (GetBotTeam(bot->GetGUID()) == HORDE && GetFlagState(ALLIANCE) == BG_WS_FLAG_STATE_ON_BASE
         && BgObjects[BG_WS_OBJECT_A_FLAG] == target_obj->GetGUID())
     {
         SendBroadcastText(BG_WS_TEXT_ALLIANCE_FLAG_PICKED_UP, CHAT_MSG_BG_SYSTEM_HORDE, bot);
@@ -835,7 +836,7 @@ void BattlegroundWS::EventBotClickedOnFlag(Creature* bot, GameObject* target_obj
     }
 
     //horde flag picked up from base
-    if (GetPlayerTeam(bot->GetGUID()) == ALLIANCE && GetFlagState(HORDE) == BG_WS_FLAG_STATE_ON_BASE
+    if (GetBotTeam(bot->GetGUID()) == ALLIANCE && GetFlagState(HORDE) == BG_WS_FLAG_STATE_ON_BASE
         && BgObjects[BG_WS_OBJECT_H_FLAG] == target_obj->GetGUID())
     {
         SendBroadcastText(BG_WS_TEXT_HORDE_FLAG_PICKED_UP, CHAT_MSG_BG_SYSTEM_ALLIANCE, bot);
@@ -860,7 +861,7 @@ void BattlegroundWS::EventBotClickedOnFlag(Creature* bot, GameObject* target_obj
     if (GetFlagState(ALLIANCE) == BG_WS_FLAG_STATE_ON_GROUND && bot->IsWithinDistInMap(target_obj, 10)
         && target_obj->GetGOInfo()->entry == BG_OBJECT_A_FLAG_GROUND_WS_ENTRY)
     {
-        if (GetPlayerTeam(bot->GetGUID()) == ALLIANCE)
+        if (GetBotTeam(bot->GetGUID()) == ALLIANCE)
         {
             SendBroadcastText(BG_WS_TEXT_ALLIANCE_FLAG_RETURNED, CHAT_MSG_BG_SYSTEM_ALLIANCE, bot);
             UpdateFlagState(HORDE, BG_WS_FLAG_STATE_WAIT_RESPAWN);
@@ -894,7 +895,7 @@ void BattlegroundWS::EventBotClickedOnFlag(Creature* bot, GameObject* target_obj
     if (GetFlagState(HORDE) == BG_WS_FLAG_STATE_ON_GROUND && bot->IsWithinDistInMap(target_obj, 10)
         && target_obj->GetGOInfo()->entry == BG_OBJECT_H_FLAG_GROUND_WS_ENTRY)
     {
-        if (GetPlayerTeam(bot->GetGUID()) == HORDE)
+        if (GetBotTeam(bot->GetGUID()) == HORDE)
         {
             SendBroadcastText(BG_WS_TEXT_HORDE_FLAG_RETURNED, CHAT_MSG_BG_SYSTEM_HORDE, bot);
             UpdateFlagState(ALLIANCE, BG_WS_FLAG_STATE_WAIT_RESPAWN);
@@ -927,26 +928,41 @@ void BattlegroundWS::EventBotClickedOnFlag(Creature* bot, GameObject* target_obj
     bot->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ENTER_PVP_COMBAT);
 }
 
+void BattlegroundWS::RemoveBot(ObjectGuid guid)
+{
+    // sometimes flag aura not removed :(
+    if (IsAllianceFlagPickedup() && m_FlagKeepers[TEAM_ALLIANCE] == guid)
+    {
+        Creature const* bot = BotDataMgr::FindBot(guid.GetEntry());
+        if (!bot)
+        {
+            TC_LOG_ERROR("bg.battleground", "BattlegroundWS: Removing offline bot %u who has the FLAG!!", guid.GetEntry());
+            SetAllianceFlagPicker(ObjectGuid::Empty);
+            RespawnFlag(ALLIANCE, false);
+        }
+        else
+            EventBotDroppedFlag(const_cast<Creature*>(bot));
+    }
+    if (IsHordeFlagPickedup() && m_FlagKeepers[TEAM_HORDE] == guid)
+    {
+        Creature const* bot = BotDataMgr::FindBot(guid.GetEntry());
+        if (!bot)
+        {
+            TC_LOG_ERROR("bg.battleground", "BattlegroundWS: Removing offline bot %u who has the FLAG!!", guid.GetEntry());
+            SetHordeFlagPicker(ObjectGuid::Empty);
+            RespawnFlag(HORDE, false);
+        }
+        else
+            EventBotDroppedFlag(const_cast<Creature*>(bot));
+    }
+}
+//end npcbot
+
 void BattlegroundWS::RemovePlayer(Player* player, ObjectGuid guid, uint32 /*team*/)
 {
     // sometimes flag aura not removed :(
     if (IsAllianceFlagPickedup() && m_FlagKeepers[TEAM_ALLIANCE] == guid)
     {
-        //npcbot
-        if (guid.IsCreature())
-        {
-            Creature const* bot = BotDataMgr::FindBot(guid.GetEntry());
-            if (!bot)
-            {
-                TC_LOG_ERROR("bg.battleground", "BattlegroundWS: Removing offline bot %u who has the FLAG!!", guid.GetEntry());
-                SetAllianceFlagPicker(ObjectGuid::Empty);
-                RespawnFlag(ALLIANCE, false);
-            }
-            else
-                EventBotDroppedFlag(const_cast<Creature*>(bot));
-        }
-        else
-        //end npcbot
         if (!player)
         {
             TC_LOG_ERROR("bg.battleground", "BattlegroundWS: Removing offline player who has the FLAG!!");
@@ -958,21 +974,6 @@ void BattlegroundWS::RemovePlayer(Player* player, ObjectGuid guid, uint32 /*team
     }
     if (IsHordeFlagPickedup() && m_FlagKeepers[TEAM_HORDE] == guid)
     {
-        //npcbot
-        if (guid.IsCreature())
-        {
-            Creature const* bot = BotDataMgr::FindBot(guid.GetEntry());
-            if (!bot)
-            {
-                TC_LOG_ERROR("bg.battleground", "BattlegroundWS: Removing offline bot %u who has the FLAG!!", guid.GetEntry());
-                SetHordeFlagPicker(ObjectGuid::Empty);
-                RespawnFlag(HORDE, false);
-            }
-            else
-                EventBotDroppedFlag(const_cast<Creature*>(bot));
-        }
-        else
-        //end npcbot
         if (!player)
         {
             TC_LOG_ERROR("bg.battleground", "BattlegroundWS: Removing offline player who has the FLAG!!");
@@ -1198,32 +1199,29 @@ void BattlegroundWS::HandleKillPlayer(Player* player, Player* killer)
 }
 
 //npcbot
-void BattlegroundWS::HandleBotKillPlayer(Creature* bot, Player* victim)
+void BattlegroundWS::HandleBotKillPlayer(Creature* killer, Player* victim)
 {
     if (GetStatus() != STATUS_IN_PROGRESS)
         return;
 
     EventPlayerDroppedFlag(victim);
-
-    Battleground::HandleBotKillPlayer(bot, victim);
+    Battleground::HandleBotKillPlayer(killer, victim);
 }
-void BattlegroundWS::HandleBotKillBot(Creature* bot, Creature* victim)
+void BattlegroundWS::HandleBotKillBot(Creature* killer, Creature* victim)
 {
     if (GetStatus() != STATUS_IN_PROGRESS)
         return;
 
     EventBotDroppedFlag(victim);
-
-    Battleground::HandleBotKillBot(bot, victim);
+    Battleground::HandleBotKillBot(killer, victim);
 }
-void BattlegroundWS::HandlePlayerKillBot(Creature* bot, Player* killer)
+void BattlegroundWS::HandlePlayerKillBot(Creature* victim, Player* killer)
 {
     if (GetStatus() != STATUS_IN_PROGRESS)
         return;
 
-    EventBotDroppedFlag(bot);
-
-    Battleground::HandlePlayerKillBot(bot, killer);
+    EventBotDroppedFlag(victim);
+    Battleground::HandlePlayerKillBot(victim, killer);
 }
 //end npcbot
 

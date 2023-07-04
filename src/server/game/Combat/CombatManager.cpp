@@ -286,6 +286,27 @@ void CombatManager::InheritCombatStatesFrom(Unit const* who)
             continue;
         SetInCombatWith(target);
     }
+    //npcbot
+    for (auto& ref : mgr._pveRefs)
+    {
+        if (!IsInCombatWith(ref.first))
+        {
+            Unit* target = ref.second->GetOther(who);
+            if ((_owner->IsImmuneToPC() && target->IsNPCBotOrPet()) ||
+                (_owner->IsImmuneToNPC() && !target->IsNPCBotOrPet()))
+                continue;
+            SetInCombatWith(target);
+        }
+    }
+    for (auto& ref : mgr._pvpRefs)
+    {
+        Unit* target = ref.second->GetOther(who);
+        if ((_owner->IsImmuneToPC() && target->IsNPCBotOrPet()) ||
+            (_owner->IsImmuneToNPC() && !target->IsNPCBotOrPet()))
+            continue;
+        SetInCombatWith(target);
+    }
+    //end npcbot
 }
 
 void CombatManager::EndCombatBeyondRange(float range, bool includingPvP)

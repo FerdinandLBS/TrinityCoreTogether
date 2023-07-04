@@ -34,6 +34,12 @@
 #include "World.h"
 #include "WorldPacket.h"
 
+//npcbot: try query bot name
+#include "CreatureData.h"
+#include "botdatamgr.h"
+#include "botmgr.h"
+//end npcbot
+
 class Aura;
 
 /* differeces from off:
@@ -480,7 +486,8 @@ void WorldSession::HandleLootRoll(WorldPacket& recvData)
     if (!group)
         return;
 
-    group->CountRollVote(GetPlayer()->GetGUID(), guid, rollType);
+    if (!group->CountRollVote(GetPlayer()->GetGUID(), guid, rollType))
+        return;
 
     switch (rollType)
     {
@@ -623,6 +630,14 @@ void WorldSession::HandleGroupChangeSubGroupOpcode(WorldPacket& recvData)
         guid = movedPlayer->GetGUID();
     else
         guid = sCharacterCache->GetCharacterGuidByName(name);
+
+    //npcbot
+    if (guid.IsEmpty())
+    {
+        if (Creature const* bot = BotDataMgr::FindBot(name, GetSessionDbcLocale()))
+            guid = bot->GetGUID();
+    }
+    //end npcbot
 
     if (guid.IsEmpty())
         return;
@@ -923,6 +938,21 @@ void WorldSession::HandleRequestPartyMemberStatsOpcode(WorldPacket &recvData)
     TC_LOG_DEBUG("network", "WORLD: Received CMSG_REQUEST_PARTY_MEMBER_STATS");
     ObjectGuid Guid;
     recvData >> Guid;
+
+    //npcbot: try send bot group member info
+    if (Guid.IsCreature())
+    {
+        uint32 creatureId = Guid.GetEntry();
+        CreatureTemplate const* creatureTemplate = sObjectMgr->GetCreatureTemplate(creatureId);
+        if (creatureTemplate && creatureTemplate->IsNPCBot())
+        {
+            WorldPacket bpdata(SMSG_PARTY_MEMBER_STATS_FULL, 4+2+2+2+1+2*6+8+1+8);
+            BotMgr::BuildBotPartyMemberStatsPacket(Guid, &bpdata);
+            SendPacket(&bpdata);
+            return;
+        }
+    }
+    //end npcbot
 
     Player* player = ObjectAccessor::FindConnectedPlayer(Guid);
     if (!player)

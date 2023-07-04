@@ -190,25 +190,23 @@ GroupQueueInfo* BattlegroundQueue::AddGroup(Player* leader, Group* grp, Battlegr
             pl_info.GroupInfo        = ginfo;
             // add the pinfo to ginfo's list
             ginfo->Players[member->GetGUID()]  = &pl_info;
+        }
 
-            //npcbot: queue bots (bg only)
-            if (arenateamid || !member->HaveBot())
-                continue;
-
-            BotMap const* map = member->GetBotMgr()->GetBotMap();
-            for (BotMap::const_iterator itr = map->begin(); itr != map->end(); ++itr)
+        //npcbot: queue bots (bg only)
+        if (!arenateamid)
+        {
+            for (GroupBotReference* itr = grp->GetFirstBotMember(); itr != nullptr; itr = itr->next())
             {
-                Creature const* bot = itr->second;
-                if (!bot || !grp->IsMember(bot->GetGUID()))
+                Creature const* bot = itr->GetSource();
+                if (!bot)
                     continue;
-
                 PlayerQueueInfo& pl_info = m_QueuedPlayers[bot->GetGUID()];
                 pl_info.LastOnlineTime   = lastOnlineTime;
                 pl_info.GroupInfo        = ginfo;
-                ginfo->Players[bot->GetGUID()]  = &pl_info;
+                ginfo->Players[bot->GetGUID()] = &pl_info;
             }
-            //end npcbot
         }
+        //end npcbot
     }
     else
     {
@@ -258,8 +256,7 @@ GroupQueueInfo* BattlegroundQueue::AddGroup(Player* leader, Group* grp, Battlegr
     }
 
     //npcbot: try to queue wandering bots
-    if (!isRated && !ArenaType && !arenateamid && !sBattlegroundMgr->isTesting() && BotMgr::IsBotGenerationEnabledBGs() &&
-        (BgTypeId == BATTLEGROUND_WS || BgTypeId == BATTLEGROUND_AB))
+    if (!isRated && !ArenaType && !arenateamid && !sBattlegroundMgr->isTesting())
     {
         if (!BotDataMgr::GenerateBattlegroundBots(leader, grp, this, bracketEntry, ginfo))
         {

@@ -2553,14 +2553,6 @@ void Player::RemoveFromGroup(Group* group, ObjectGuid guid, RemoveMethod method 
     {
         if (player->HaveBot())
         {
-            //uint8 players = 0;
-            //Group::MemberSlotList const& members = group->GetMemberSlots();
-            //for (Group::member_citerator itr = members.begin(); itr!= members.end(); ++itr)
-            //{
-            //    if (Player* pl = ObjectAccessor::FindPlayer(itr->guid))
-            //        ++players;
-            //}
-
             //remove npcbots and set up new group if needed
             player->GetBotMgr()->RemoveAllBotsFromGroup();
             group = player->GetGroup();
@@ -2584,7 +2576,6 @@ void Player::RemoveFromGroup(Group* group, ObjectGuid guid, RemoveMethod method 
         }
     }
     //npcbot - bot is being removed from group - find master and remove bot through botmap
-    //else if (Creature* bot = ObjectAccessor::GetObjectInOrOutOfWorld(guid, (Creature*)NULL))
     else if (guid.IsCreature())
     {
         for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
@@ -2601,9 +2592,6 @@ void Player::RemoveFromGroup(Group* group, ObjectGuid guid, RemoveMethod method 
                 }
             }
         }
-        //ASSERT(!bot->IsFreeBot());
-        //bot->GetBotOwner()->GetBotMgr()->RemoveBotFromGroup(bot, false);
-        //return;
     }
 
     group->RemoveMember(guid, method, kicker, reason);
@@ -2896,9 +2884,11 @@ void Player::InitStatsForLevel(bool reapplyMods)
 
     SetAttackPower(0);
     SetAttackPowerModPos(0);
+    SetAttackPowerModNeg(0);
     SetAttackPowerMultiplier(0.0f);
     SetRangedAttackPower(0);
     SetRangedAttackPowerModPos(0);
+    SetRangedAttackPowerModNeg(0);
     SetRangedAttackPowerMultiplier(0.0f);
 
     // Base crit values (will be recalculated in UpdateAllStats() at loading and in _ApplyAllStatBonuses() at reset
@@ -6939,18 +6929,15 @@ bool Player::RewardHonor(Unit* victim, uint32 groupsize, int32 honor, bool pvpto
         //npcbot: honor for bots
         else if (victim->IsNPCBot() && !victim->ToCreature()->IsTempBot())
         {
+            static const float WANDERING_BOT_HONOR_GAIN_MULT = 10.0f;
+
+            if (!BotMgr::IsBotHKEnabled())
+                return false;
+
             Creature const* bot = victim->ToCreature();
 
-            uint32 check1 = GetFaction();
-            uint32 check2 = bot->GetFaction();
-
-            if (!bot->IsFreeBot())
-            {
-                check1 = GetTeam();
-                check2 = bot->GetBotOwner()->GetTeam();
-            }
-
-            if (check1 == check2 && !sWorld->IsFFAPvPRealm())
+            uint32 victimTeam = !bot->IsFreeBot() ? bot->GetBotOwner()->GetTeam() : BotDataMgr::GetTeamForFaction(bot->GetFaction());
+            if (GetTeam() == victimTeam && !sWorld->IsFFAPvPRealm())
                 return false;
 
             uint8 k_level = GetLevel();
@@ -6960,10 +6947,26 @@ bool Player::RewardHonor(Unit* victim, uint32 groupsize, int32 honor, bool pvpto
             if (v_level <= k_grey)
                 return false;
 
-            victim_guid.Clear(); // Don't show HK: <rank> message, only log.
+            if (!BotMgr::IsBotHKMessageEnabled())
+                victim_guid.Clear(); // Don't show HK: <rank> message, only log.
 
             //TODO: honor gain rate
             honor_f = ceil(Trinity::Honor::hk_honor_at_level_f(k_level) * (v_level - k_grey) / (k_level - k_grey));
+            honor_f *= BotMgr::GetBotHKHonorRate();
+            if (bot->IsWandererBot() && !bot->GetBotBG())
+                honor_f *= WANDERING_BOT_HONOR_GAIN_MULT;
+
+            if (BotMgr::IsBotHKAchievementsEnabled())
+            {
+                ApplyModUInt32Value(PLAYER_FIELD_KILLS, 1, true);
+                ApplyModUInt32Value(PLAYER_FIELD_LIFETIME_HONORABLE_KILLS, 1, true);
+                UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_EARN_HONORABLE_KILL);
+                UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HK_CLASS, BotMgr::GetBotPlayerClass(victim->ToCreature()));
+                UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HK_RACE, BotMgr::GetBotPlayerRace(victim->ToCreature()));
+                UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HONORABLE_KILL_AT_AREA, GetAreaId());
+                UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HONORABLE_KILL, 1, 0, victim);
+                UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_SPECIAL_PVP_KILL, 1, 0, victim);
+            }
         }
         //end npcbot
         else
@@ -19890,6 +19893,10 @@ void Player::SaveToDB(CharacterDatabaseTransaction trans, bool create /* = false
     // save pet (hunter pet level and experience and all type pets health/mana).
     if (Pet* pet = GetPet())
         pet->SavePetToDB(PET_SAVE_AS_CURRENT);
+
+    //npcbot: save stored items
+    BotDataMgr::SaveNpcBotStoredGear(GetGUID(), trans);
+    //end npcbot
 }
 
 // fast save function for item/money cheating preventing - save only inventory and money state
@@ -24593,22 +24600,6 @@ bool Player::inRandomLfgDungeon() const
 
 void Player::SetBattlegroundOrBattlefieldRaid(Group* group, int8 subgroup)
 {
-    //npcbot: add bots to new group
-    if (HaveBot() && GetGroup())
-    {
-        BotMap const* map = GetBotMgr()->GetBotMap();
-        for (BotMap::const_iterator itr = map->begin(); itr != map->end(); ++itr)
-        {
-            Creature* bot = itr->second;
-            if (!bot || !GetGroup()->IsMember(bot->GetGUID()))
-                continue;
-
-            if (!group->IsMember(itr->first))
-                group->AddMember(bot);
-        }
-    }
-    //end npcbot
-
     //we must move references from m_group to m_originalGroup
     SetOriginalGroup(GetGroup(), GetSubGroup());
 

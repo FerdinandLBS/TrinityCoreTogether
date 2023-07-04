@@ -282,19 +282,6 @@ void TempSummon::UnSummon(uint32 msTime)
             owner->ToGameObject()->AI()->SummonedCreatureDespawn(this);
     }
 
-    //npcbot
-    //if (IsNPCBot())
-    //{
-    //    //TC_LOG_ERROR("entities.player", "TempSummon::UnSummon(): Trying to unsummon Bot %s (guidLow: %u owner: %s)", GetName().c_str(), GetGUIDLow(), GetBotOwner()->GetName().c_str());
-    //    if (IsTempBot())
-    //        if (IS_CREATURE_GUID(GetCreatorGUID()))
-    //            if (Unit* bot = sObjectAccessor->FindUnit(GetCreatorGUID()))
-    //                if (bot->ToCreature()->IsNPCBot())
-    //                    bot->ToCreature()->OnBotDespawn(this);
-    //    return;
-    //}
-    //end npcbots
-
     AddObjectToRemoveList();
 }
 

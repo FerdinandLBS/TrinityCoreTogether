@@ -67,10 +67,10 @@ class ImmunityShieldDispelTargetCheck
 {
     public:
         explicit ImmunityShieldDispelTargetCheck(Unit const* unit, float dist, bot_ai const* m_ai) :
-        me(unit), range(dist), ai(m_ai) { free = ai->IAmFree(); }
+        me(unit), range(dist), ai(m_ai) { }
         bool operator()(Unit const* u)
         {
-            if (!_botPvP && !free && u->IsControlledByPlayer())
+            if (!_botPvP && me->IsPvP() && u->IsControlledByPlayer())
                 return false;
             if (!u->IsInCombat())
                 return false;
@@ -96,7 +96,6 @@ class ImmunityShieldDispelTargetCheck
         Unit const* me;
         float range;
         bot_ai const* ai;
-        bool free;
         ImmunityShieldDispelTargetCheck(ImmunityShieldDispelTargetCheck const&);
 };
 
@@ -181,7 +180,7 @@ class NearbyHostileVehicleTargetCheck
                 return false;
             if (!u->IsInCombat())
                 return false;
-            if (!_botPvP && !ai->IAmFree() && u->IsControlledByPlayer())
+            if (!_botPvP && veh->IsPvP() && u->IsControlledByPlayer())
                 return false;
             //if (!veh->IsValidAttackTarget(u))
             //    return false;
@@ -212,7 +211,7 @@ class HostileDispelTargetCheck
         me(unit), m_range(dist), checksteal(stealable), ai(m_ai) { }
         bool operator()(Unit const* u) const
         {
-            if (!_botPvP && !ai->IAmFree() && u->IsControlledByPlayer())
+            if (!_botPvP && me->IsPvP() && u->IsControlledByPlayer())
                 return false;
             if (u->IsInCombat() &&
                 u->InSamePhase(me) &&
@@ -335,7 +334,7 @@ class PolyUnitCheck
         explicit PolyUnitCheck(Unit const* unit, float dist) : me(unit), m_range(dist) {}
         bool operator()(Unit const* u) const
         {
-            if (!_botPvP && !(me->ToCreature() && me->ToCreature()->IsFreeBot()) && u->IsControlledByPlayer())
+            if (!_botPvP && me->IsPvP() && u->IsControlledByPlayer())
                 return false;
             if (!me->GetVictim() || u == me->GetVictim())
                 return false;
@@ -353,7 +352,7 @@ class PolyUnitCheck
                 return false;
             if (!u->isTargetableForAttack())
                 return false;
-            if (!u->IsVisible())
+            if (!u->IsVisible() || u->IsTotem())
                 return false;
             if (me->ToCreature()->GetBotClass() == BOT_CLASS_MAGE ? !u->getAttackers().empty() : u->getAttackers().size() > 1)
                 return false;
@@ -386,7 +385,7 @@ class FearUnitCheck
         explicit FearUnitCheck(Unit const* unit, float dist = 30) : me(unit), m_range(dist) {}
         bool operator()(Unit const* u) const
         {
-            if (!_botPvP && !(me->ToCreature() && me->ToCreature()->IsFreeBot()) && u->IsControlledByPlayer())
+            if (!_botPvP && me->IsPvP() && u->IsControlledByPlayer())
                 return false;
             if (!u->IsAlive())
                 return false;
@@ -400,14 +399,12 @@ class FearUnitCheck
                 return false;
             if (!me->IsWithinDistInMap(u, m_range))
                 return false;
-            if (!u->IsVisible())
+            if (!u->IsVisible() || u->IsTotem())
                 return false;
             if (u->GetCreatureType() == CREATURE_TYPE_UNDEAD)
                 return false;
             if (u->GetCreatureType() != CREATURE_TYPE_BEAST &&
                 me->ToCreature()->GetBotClass() == BOT_CLASS_HUNTER)
-                return false;
-            if (u->IsTotem())
                 return false;
             if (!u->isTargetableForAttack())
                 return false;
@@ -440,7 +437,7 @@ class StunUnitCheck
         explicit StunUnitCheck(Unit const* unit, float dist = 20) : me(unit), m_range(dist) {}
         bool operator()(Unit const* u) const
         {
-            if (!_botPvP && !(me->ToCreature() && me->ToCreature()->IsFreeBot()) && u->IsControlledByPlayer())
+            if (!_botPvP && me->IsPvP() && u->IsControlledByPlayer())
                 return false;
             if (!u->IsAlive())
                 return false;
@@ -452,7 +449,7 @@ class StunUnitCheck
                 return false;
             if (!me->IsWithinDistInMap(u, m_range))
                 return false;
-            if (!u->IsVisible())
+            if (!u->IsVisible() || u->IsTotem())
                 return false;
             if (!u->isTargetableForAttack())
                 return false;
@@ -517,7 +514,7 @@ class UndeadCCUnitCheck
         me(unit), m_range(dist), m_ai(ai), m_spellId(spell), _unattacked(unattacked) { }
         bool operator()(Unit const* u) const
         {
-            if (!_botPvP && !(me->ToCreature() && me->ToCreature()->IsFreeBot()) && u->IsControlledByPlayer())
+            if (!_botPvP && me->IsPvP() && u->IsControlledByPlayer())
                 return false;
             if (!me->IsWithinDistInMap(u, m_range))
                 return false;
@@ -572,7 +569,7 @@ class RootUnitCheck
         me(unit), m_range(dist), m_ai(ai), m_spellId(spell) { if (!spell) return; }
         bool operator()(Unit const* u) const
         {
-            if (!_botPvP && !(me->ToCreature() && me->ToCreature()->IsFreeBot()) && u->IsControlledByPlayer())
+            if (!_botPvP && me->IsPvP() && u->IsControlledByPlayer())
                 return false;
             if (u == me->GetVictim())
                 return false;
@@ -629,13 +626,11 @@ class CastingUnitCheck
                 return false;
             if (!u->InSamePhase(me))
                 return false;
-            if (!u->IsVisible())
+            if (!u->IsVisible() || u->IsTotem())
                 return false;
             if (!u->GetTarget() && !u->IsInCombat())
                 return false;
-            if (u->IsTotem())
-                return false;
-            if (!_botPvP && !(me->ToCreature() && me->ToCreature()->IsFreeBot()) && u->IsControlledByPlayer())
+            if (!_botPvP && me->IsPvP() && u->IsControlledByPlayer())
                 return false;
             if (u->HealthBelowPct(m_minHpPct))
                 return false;
@@ -767,7 +762,7 @@ class SecondEnemyCheck
                 return false;//We need to find SECONDARY target
             if (u->isMoving() != mytar->isMoving())//only when both targets idle or both moving
                 return false;
-            if (!_botPvP && !ai->IAmFree() && u->IsControlledByPlayer())
+            if (!_botPvP && me->IsPvP() && u->IsControlledByPlayer())
                 return false;
             if (!me->IsWithinDistInMap(u, m_range))//distance check
                 return false;
@@ -794,7 +789,7 @@ class TranquilTargetCheck
         me(unit), min_range(mindist), max_range(maxdist), ai(m_ai) { }
         bool operator()(Unit const* u) const
         {
-            if (!_botPvP && !ai->IAmFree() && u->IsControlledByPlayer())
+            if (!_botPvP && me->IsPvP() && u->IsControlledByPlayer())
                 return false;
             if (u != me->GetVictim() &&//check hunter_bot::hunter_botAI::CheckTranquil(uint32)
                 u->IsWithinDistInMap(me, max_range) &&
@@ -855,7 +850,7 @@ class NearbyHostileUnitCheck
                 return false;
             if (me->HasUnitState(UNIT_STATE_ROOT) && (ai->HasRole(BOT_ROLE_RANGED) == me->IsWithinDistInMap(u, 8.f)))
                 return false;
-            if (!_botPvP && !ai->IAmFree() && u->IsControlledByPlayer())
+            if (!_botPvP && me->IsPvP() && u->IsControlledByPlayer())
                 return false;
             if (u->GetCreatureType() == CREATURE_TYPE_CRITTER)
                 return false;
@@ -866,7 +861,7 @@ class NearbyHostileUnitCheck
             //if (ai->InDuel(u))
             //    return false;
 
-            if (!free && !ai->IsInBotParty(u->GetVictim()))
+            if (!ai->IsInBotParty(u->GetVictim()))
                 return false;
 
             if (free)
@@ -911,7 +906,7 @@ class NearbyHostileUnitInConeCheck
                 return false;
             if (!free && !ai->CanBotAttack(u))
                 return false;
-            if (!_botPvP && !ai->IAmFree() && u->IsControlledByPlayer())
+            if (!_botPvP && me->IsPvP() && u->IsControlledByPlayer())
                 return false;
             if (!me->IsWithinDistInMap(u, max_range))
                 return false;
@@ -920,7 +915,7 @@ class NearbyHostileUnitInConeCheck
             //if (ai->InDuel(u))
             //    return false;
 
-            if (!free && !ai->IsInBotParty(u->GetVictim()))
+            if (!ai->IsInBotParty(u->GetVictim()))
                 return false;
 
             if (free)
@@ -984,10 +979,7 @@ class FarTauntUnitCheck
 {
     public:
         explicit FarTauntUnitCheck(Unit const* unit, float maxdist, bool ally, bot_ai const* m_ai) :
-        me(unit), max_range(maxdist), targetAlly(ally), ai(m_ai)
-        {
-            free = ai->IAmFree();
-        }
+        me(unit), max_range(maxdist), targetAlly(ally), ai(m_ai) { }
         bool operator()(Unit const* u) const
         {
             if (u == me)
@@ -1006,33 +998,41 @@ class FarTauntUnitCheck
                 return false;
             if (u->HasAuraType(SPELL_AURA_MOD_TAUNT))
                 return false;
-            if (ai->IsTank(u->GetVictim()))
+            if (!ai->IsInBotParty(u->GetVictim()))
                 return false;
-            //if (ai->InDuel(u))
-            //    return false;
-            if (!free && !ai->IsInBotParty(u->GetVictim()))
-                return false;
-            if (me->ToCreature()->GetBotClass() == BOT_CLASS_WARRIOR && u->IsImmunedToSpell(sSpellMgr->GetSpellInfo(355), me))
+            if (ai->GetBotClass() == BOT_CLASS_WARRIOR && u->IsImmunedToSpell(sSpellMgr->GetSpellInfo(355), me))
                 return false; //taunt
-            else if (me->ToCreature()->GetBotClass() == BOT_CLASS_PALADIN && u->IsImmunedToSpell(sSpellMgr->GetSpellInfo(62124), me))
+            else if (ai->GetBotClass() == BOT_CLASS_PALADIN && u->IsImmunedToSpell(sSpellMgr->GetSpellInfo(62124), me))
                 return false; //HoR
-            else if (me->ToCreature()->GetBotClass() == BOT_CLASS_DRUID && u->IsImmunedToSpell(sSpellMgr->GetSpellInfo(6795), me))
+            else if (ai->GetBotClass() == BOT_CLASS_DRUID && u->IsImmunedToSpell(sSpellMgr->GetSpellInfo(6795), me))
                 return false; //Growl
 
-            if (free && (!me->IsValidAttackTarget(u) || !u->isTargetableForAttack(false)))
+            if (!me->IsValidAttackTarget(u) || !u->isTargetableForAttack(false))
                 return false;
 
             if (me->GetDistance(targetAlly ? u->GetVictim() : u) > max_range)
                 return false;
 
+            if (ai->IsTank(u->GetVictim()))
+            {
+                if (!ai->IsTank(me))
+                    return false;
+
+                const bool isofftank = ai->IsOffTank(me);
+                const bool vofftank = ai->IsOffTank(u->GetVictim());
+                if (isofftank && (vofftank || !ai->IsPointedOffTankingTarget(u)))
+                    return false;
+                else if (!isofftank && vofftank && !ai->IsPointedTankingTarget(u))
+                    return false;
+            }
+
             return true;
         }
     private:
-        Unit const* me;
-        float max_range;
-        bool targetAlly;
-        bot_ai const* ai;
-        bool free;
+        const Unit* const me;
+        const float max_range;
+        const bool targetAlly;
+        const bot_ai* const ai;
         FarTauntUnitCheck(FarTauntUnitCheck const&);
 };
 
@@ -1040,10 +1040,10 @@ class ManaDrainUnitCheck
 {
     public:
         explicit ManaDrainUnitCheck(Unit const* unit, float maxdist, bot_ai const* ai) : me(unit), max_range(maxdist), ai(ai)
-        { maxPool = me->GetMaxPower(POWER_MANA) * 3 / 2; }
+        { maxPool = me->GetMaxPower(POWER_MANA) * 3 / 2; free = ai->IAmFree(); }
         bool operator()(Unit const* u)
         {
-            if (!_botPvP && !ai->IAmFree() && u->IsControlledByPlayer())
+            if (!_botPvP && me->IsPvP() && u->IsControlledByPlayer())
                 return false;
             if (u == me)
                 return false;
@@ -1057,7 +1057,7 @@ class ManaDrainUnitCheck
                 return false;
             //if (u->IsControlledByPlayer())
             //    return false;
-            if (ai->IAmFree())
+            if (free)
             {
                 if (!me->IsValidAttackTarget(u) || !u->isTargetableForAttack())
                     return false;
@@ -1085,6 +1085,7 @@ class ManaDrainUnitCheck
         float max_range;
         bot_ai const* ai;
         uint32 maxPool;
+        bool free;
         ManaDrainUnitCheck(ManaDrainUnitCheck const&);
 };
 
@@ -1102,7 +1103,9 @@ class NearbyRezTargetCheck
                 return false;
             if (!me->IsWithinDistInMap(u, max_range))
                 return false;
-            if (Player const* p = u->ToPlayer())
+            if (!me->CanSeeOrDetect(u))
+                return false;
+            if (Player const* p = u->IsPlayer() ? u->ToPlayer() : ObjectAccessor::FindPlayer(u->ToCorpse()->GetOwnerGUID()))
             {
                 if (p->IsAlive())
                     return false;
@@ -1111,11 +1114,7 @@ class NearbyRezTargetCheck
                 if (!ai->IsInBotParty(p))
                     return false;
             }
-            if (!me->CanSeeOrDetect(u))
-                return false;
-            if (urand(0,100) > 20)
-                return false;
-            if (u->GetTypeId() == TYPEID_CORPSE && !ObjectAccessor::FindPlayer(u->ToCorpse()->GetOwnerGUID()))
+            else
                 return false;
 
             return true;

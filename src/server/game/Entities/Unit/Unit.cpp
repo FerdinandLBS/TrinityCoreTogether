@@ -1019,7 +1019,7 @@ bool Unit::HasBreakableByDamageCrowdControlAura(Unit* excludeCasterChannel) cons
     }
 
     // make player victims stand up automatically
-    if (victim->GetStandState() && victim->IsPlayer())
+    if (victim->GetStandState() && victim->IsPlayer() && damagetype != NODAMAGE && damagetype != DOT)
         victim->SetStandState(UNIT_STAND_STATE_STAND);
 
     return damage;
@@ -1572,6 +1572,9 @@ void Unit::DealMeleeDamage(CalcDamageInfo* damageInfo, bool durabilityLoss)
     if ((damageInfo->HitOutCome == MELEE_HIT_CRIT || damageInfo->HitOutCome == MELEE_HIT_CRUSHING || damageInfo->HitOutCome == MELEE_HIT_NORMAL || damageInfo->HitOutCome == MELEE_HIT_GLANCING) &&
         GetTypeId() != TYPEID_PLAYER && !ToCreature()->IsControlledByPlayer() && !victim->HasInArc(float(M_PI), this)
         && (victim->GetTypeId() == TYPEID_PLAYER || !victim->ToCreature()->isWorldBoss())&& !victim->IsVehicle())
+    //npcbot: prevent daze caused by bots
+    if (!IsNPCBotOrPet())
+    //end npcbot
     {
         // 20% base chance
         float chance = 20.0f;
@@ -3571,7 +3574,7 @@ void Unit::_ApplyAura(AuraApplication* aurApp, uint8 effMask)
         return;
 
     // Sitdown on apply aura req seated
-    if (aura->GetSpellInfo()->AuraInterruptFlags & AURA_INTERRUPT_FLAG_NOT_SEATED && !IsSitState())
+    if (aura->GetSpellInfo()->AuraInterruptFlags & AURA_INTERRUPT_FLAG_NOT_SEATED && GetStandState() == UNIT_STAND_STATE_STAND)
         SetStandState(UNIT_STAND_STATE_SIT);
 
     Unit* caster = aura->GetCaster();
@@ -5296,7 +5299,7 @@ GameObject* Unit::GetFirstGameObjectById(uint32 id) const
 
 void Unit::SetCreator(Unit* creator)
 {
-    SetCreatorGUID(creator ? creator->GetGUID() : ObjectGuid::Empty);
+    //creator is unrelated to creator guid
     m_creator = creator;
 }
 //end npcbot
@@ -5640,6 +5643,22 @@ void Unit::SetPowerType(Powers new_powertype, bool sendUpdate/* = true*/)
                 owner->ToPlayer()->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_PET_POWER_TYPE);
         }
     }
+    //npcbot
+    else if (IsNPCBotOrPet())
+    {
+        if (IsNPCBot())
+        {
+            if (ToCreature()->GetBotGroup())
+                BotMgr::SetBotGroupUpdateFlag(ToCreature(), GROUP_UPDATE_FLAG_POWER_TYPE);
+        }
+        else
+        {
+            Unit const* owner = GetOwner();
+            if (owner && owner->IsNPCBot() && owner->ToCreature()->GetBotsPet() == this && owner->ToCreature()->GetBotGroup())
+                BotMgr::SetBotGroupUpdateFlag(owner->ToCreature(), GROUP_UPDATE_FLAG_PET_POWER_TYPE);
+        }
+    }
+    //end npcbot
 
     // Update max power
     UpdateMaxPower(new_powertype);
@@ -6097,6 +6116,10 @@ Player* Unit::GetControllingPlayer() const
             return master->GetControllingPlayer();
         return nullptr;
     }
+    //npcbot
+    else if (IsNPCBotOrPet() && ToUnit()->GetCreator())
+        return ToUnit()->GetCreator()->ToPlayer();
+    //end npcbot
     else
         return const_cast<Player*>(ToPlayer());
 }
@@ -6547,18 +6570,23 @@ Unit* Unit::GetNextRandomRaidMemberOrPet(float radius)
     else if (GetTypeId() == TYPEID_UNIT && IsPet())
         player = GetOwner()->ToPlayer();
 
-    //npcbot: count bot owner
-    if (!player && IsNPCBot() && !ToCreature()->IsFreeBot())
-        player = ToCreature()->GetBotOwner();
+    //npcbot
+    /*
     //end npcbot
-
     if (!player)
         return nullptr;
     Group* group = player->GetGroup();
+    //npcbot
+    */
+    Group* group = player ? player->GetGroup() : IsNPCBot() ? ToCreature()->GetBotGroup() : nullptr;
+    //end npcbot
     // When there is no group check pet presence
     if (!group)
     {
         // We are pet now, return owner
+        //npcbot
+        if (player)
+        //end npcbot
         if (player != this)
             return IsWithinDistInMap(player, radius) ? player : nullptr;
         Unit* pet = GetGuardianPet();
@@ -6580,30 +6608,22 @@ Unit* Unit::GetNextRandomRaidMemberOrPet(float radius)
             if (Target != this && IsWithinDistInMap(Target, radius) && Target->IsAlive() && !IsHostileTo(Target))
                 nearMembers.push_back(Target);
 
-            //npcbot: push bots and bot pets
-            if (Target->HaveBot())
-            {
-                BotMap const* botMap = Target->GetBotMgr()->GetBotMap();
-                for (BotMap::const_iterator it = botMap->begin(); it != botMap->end(); ++it)
-                {
-                    if (group->IsMember(it->second->GetGUID()))
-                    {
-                        if (it->second != this && it->second->IsAlive() &&
-                            IsWithinDistInMap(it->second, radius) && !IsHostileTo(it->second))
-                            nearMembers.push_back(it->second);
-                        //if (Unit* botpet = it->second->GetBotsPet())
-                        //    if (botpet != this && botpet->IsAlive() && IsWithinDistInMap(botpet, radius) && !IsHostileTo(botpet))
-                        //        nearMembers.push_back(botpet);
-                    }
-                }
-            }
-            //end npcbot
-
         // Push player's pet to vector
         if (Unit* pet = Target->GetGuardianPet())
             if (pet != this && IsWithinDistInMap(pet, radius) && pet->IsAlive() && !IsHostileTo(pet))
                 nearMembers.push_back(pet);
         }
+
+    //npcbot
+    for (GroupBotReference* itr = group->GetFirstBotMember(); itr != nullptr; itr = itr->next())
+    {
+        if (Creature* bot = itr->GetSource())
+        {
+            if (bot != this && bot->IsAlive() && IsWithinDistInMap(bot, radius) && !IsHostileTo(bot))
+                nearMembers.push_back(bot);
+        }
+    }
+    //end npcbot
 
     if (nearMembers.empty())
         return nullptr;
@@ -8654,6 +8674,14 @@ void Unit::SetImmuneToPC(bool apply, bool keepCombat)
             for (auto const& pair : m_combatManager.GetPvPCombatRefs())
                 if (pair.second->GetOther(this)->HasUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED))
                     toEnd.push_back(pair.second);
+            //npcbot
+            for (auto const& pair : m_combatManager.GetPvECombatRefs())
+                if (pair.second->GetOther(this)->IsNPCBotOrPet())
+                    toEnd.push_back(pair.second);
+            for (auto const& pair : m_combatManager.GetPvPCombatRefs())
+                if (pair.second->GetOther(this)->IsNPCBotOrPet())
+                    toEnd.push_back(pair.second);
+            //end npcbot
             for (CombatReference* ref : toEnd)
                 ref->EndCombat();
         }
@@ -8677,6 +8705,9 @@ void Unit::SetImmuneToNPC(bool apply, bool keepCombat)
             for (auto const& pair : m_combatManager.GetPvPCombatRefs())
                 if (!pair.second->GetOther(this)->HasUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED))
                     toEnd.push_back(pair.second);
+            //npcbot
+            toEnd.remove_if([this](CombatReference const* cref) { return cref->GetOther(this)->IsNPCBotOrPet(); });
+            //end npcbot
             for (CombatReference* ref : toEnd)
                 ref->EndCombat();
         }
@@ -8817,9 +8848,8 @@ bool Unit::IsAlwaysVisibleFor(WorldObject const* seer) const
                     return true;
 
     //npcbot - bots are always visible for owner
-    if (Creature const* bot = ToCreature())
-        if ((bot->GetBotAI() || bot->GetBotPetAI()) && seer->GetGUID() == bot->GetBotOwner()->GetGUID())
-            return true;
+    if (GetCreator() && seer->GetGUID() == GetCreator()->GetGUID())
+        return true;
     //end npcbot
 
     return false;
@@ -9133,7 +9163,45 @@ void Unit::AtTargetAttacked(Unit* target, bool canInitialAggro)
         myPlayerOwner->UpdatePvP(true);
         myPlayerOwner->SetContestedPvP(targetPlayerOwner);
         myPlayerOwner->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ENTER_PVP_COMBAT);
+
+        //npcbot: init contested PvP for owned bots
+        if (IsNPCBotOrPet() && target->IsNPCBotOrPet())
+        {
+            if (Unit* bot = IsNPCBotPet() ? static_cast<Unit*>(myPlayerOwner->GetBotMgr()->GetBot(GetOwnerGUID())) : this)
+            {
+                BotMgr::SetBotContestedPvP(bot->ToCreature());
+                bot->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ENTER_PVP_COMBAT);
+            }
+        }
+        //end npcbot
     }
+    //npcbot: init contested PvP for free bots
+    else if (!myPlayerOwner && IsNPCBotOrPet() && (target->IsNPCBotOrPet() || targetPlayerOwner))
+    {
+        if (Unit* bot = IsNPCBotPet() ? GetCreator() : this)
+        {
+            BotMgr::SetBotContestedPvP(bot->ToCreature());
+            bot->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ENTER_PVP_COMBAT);
+        }
+    }
+    else if (myPlayerOwner && !targetPlayerOwner && target->IsNPCBotOrPet() && (IsPlayer() || IsNPCBotOrPet()))
+    {
+        if (IsPlayer())
+        {
+            myPlayerOwner->UpdatePvP(true);
+            myPlayerOwner->SetContestedPvP();
+            myPlayerOwner->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ENTER_PVP_COMBAT);
+        }
+        else // if (IsNPCBotOrPet())
+        {
+            if (Unit* bot = IsNPCBotPet() ? static_cast<Unit*>(myPlayerOwner->GetBotMgr()->GetBot(GetOwnerGUID())) : this)
+            {
+                BotMgr::SetBotContestedPvP(bot->ToCreature());
+                bot->RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_ENTER_PVP_COMBAT);
+            }
+        }
+    }
+    //end npcbot
 }
 
 void Unit::UpdatePetCombatState()
@@ -9679,6 +9747,11 @@ float Unit::GetWeaponDamageRange(WeaponAttackType attType, WeaponDamageRange typ
 
 bool Unit::CanFreeMove() const
 {
+    //npcbot: skip owner guid condition for bots
+    if (IsNPCBotOrPet())
+        return !HasUnitState(UNIT_STATE_CONFUSED | UNIT_STATE_FLEEING | UNIT_STATE_IN_FLIGHT |
+            UNIT_STATE_ROOT | UNIT_STATE_STUNNED | UNIT_STATE_DISTRACTED);
+    //end npcbot
     return !HasUnitState(UNIT_STATE_CONFUSED | UNIT_STATE_FLEEING | UNIT_STATE_IN_FLIGHT |
         UNIT_STATE_ROOT | UNIT_STATE_STUNNED | UNIT_STATE_DISTRACTED) && GetOwnerGUID().IsEmpty();
 }
@@ -9698,6 +9771,13 @@ void Unit::SetLevel(uint8 lvl, bool sendUpdate/* = true*/)
 
         sCharacterCache->UpdateCharacterLevel(GetGUID(), lvl);
     }
+    //npcbot
+    else if (IsNPCBot())
+    {
+        if (ToCreature()->GetBotGroup())
+            BotMgr::SetBotGroupUpdateFlag(ToCreature(), GROUP_UPDATE_FLAG_LEVEL);
+    }
+    //end npcbot
 }
 
 void Unit::SetHealth(uint32 val)
@@ -9730,6 +9810,22 @@ void Unit::SetHealth(uint32 val)
                 owner->ToPlayer()->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_PET_CUR_HP);
         }
     }
+    //npcbot
+    else if (IsNPCBotOrPet())
+    {
+        if (IsNPCBot())
+        {
+            if (ToCreature()->GetBotGroup())
+                BotMgr::SetBotGroupUpdateFlag(ToCreature(), GROUP_UPDATE_FLAG_CUR_HP);
+        }
+        else
+        {
+            Unit const* owner = GetOwner();
+            if (owner && owner->IsNPCBot() && owner->ToCreature()->GetBotsPet() == this && owner->ToCreature()->GetBotGroup())
+                BotMgr::SetBotGroupUpdateFlag(owner->ToCreature(), GROUP_UPDATE_FLAG_PET_CUR_HP);
+        }
+    }
+    //end npcbot
 }
 
 void Unit::SetMaxHealth(uint32 val)
@@ -9755,6 +9851,22 @@ void Unit::SetMaxHealth(uint32 val)
                 owner->ToPlayer()->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_PET_MAX_HP);
         }
     }
+    //npcbot
+    else if (IsNPCBotOrPet())
+    {
+        if (IsNPCBot())
+        {
+            if (ToCreature()->GetBotGroup())
+                BotMgr::SetBotGroupUpdateFlag(ToCreature(), GROUP_UPDATE_FLAG_MAX_HP);
+        }
+        else
+        {
+            Unit const* owner = GetOwner();
+            if (owner && owner->IsNPCBot() && owner->ToCreature()->GetBotsPet() == this && owner->ToCreature()->GetBotGroup())
+                BotMgr::SetBotGroupUpdateFlag(owner->ToCreature(), GROUP_UPDATE_FLAG_PET_MAX_HP);
+        }
+    }
+    //end npcbot
 
     if (val < health)
         SetHealth(val);
@@ -9799,6 +9911,22 @@ void Unit::SetPower(Powers power, uint32 val, bool withPowerUpdate /*= true*/)
         if (pet->getPetType() == HUNTER_PET && power == POWER_HAPPINESS)
             pet->UpdateDamagePhysical(BASE_ATTACK);
     }
+    //npcbot
+    else if (IsNPCBotOrPet())
+    {
+        if (IsNPCBot())
+        {
+            if (ToCreature()->GetBotGroup())
+                BotMgr::SetBotGroupUpdateFlag(ToCreature(), GROUP_UPDATE_FLAG_CUR_POWER);
+        }
+        else
+        {
+            Unit const* owner = GetOwner();
+            if (owner && owner->IsNPCBot() && owner->ToCreature()->GetBotsPet() == this && owner->ToCreature()->GetBotGroup())
+                BotMgr::SetBotGroupUpdateFlag(owner->ToCreature(), GROUP_UPDATE_FLAG_PET_CUR_POWER);
+        }
+    }
+    //end npcbot
 }
 
 void Unit::SetMaxPower(Powers power, uint32 val)
@@ -9821,6 +9949,22 @@ void Unit::SetMaxPower(Powers power, uint32 val)
                 owner->ToPlayer()->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_PET_MAX_POWER);
         }
     }
+    //npcbot
+    else if (IsNPCBotOrPet())
+    {
+        if (IsNPCBot())
+        {
+            if (ToCreature()->GetBotGroup())
+                BotMgr::SetBotGroupUpdateFlag(ToCreature(), GROUP_UPDATE_FLAG_MAX_POWER);
+        }
+        else
+        {
+            Unit const* owner = GetOwner();
+            if (owner && owner->IsNPCBot() && owner->ToCreature()->GetBotsPet() == this && owner->ToCreature()->GetBotGroup())
+                BotMgr::SetBotGroupUpdateFlag(owner->ToCreature(), GROUP_UPDATE_FLAG_PET_MAX_POWER);
+        }
+    }
+    //end npcbot
 
     if (val < cur_power)
         SetPower(power, val);
@@ -10715,7 +10859,7 @@ void Unit::SetStandState(UnitStandStateType state)
 {
     SetByteValue(UNIT_FIELD_BYTES_1, UNIT_BYTES_1_OFFSET_STAND_STATE, state);
 
-    if (IsStandState())
+    if (state == UNIT_STAND_STATE_STAND)
        RemoveAurasWithInterruptFlags(AURA_INTERRUPT_FLAG_NOT_SEATED);
 
     if (GetTypeId() == TYPEID_PLAYER)
@@ -10862,6 +11006,13 @@ void Unit::SendComboPoints()
     Player* owner = nullptr;
     if (ownerGuid.IsPlayer())
         owner = ObjectAccessor::GetPlayer(*this, ownerGuid);
+    //npcbot
+    else if (IsNPCBotOrPet())
+    {
+        if (Unit* creator = ToUnit()->GetCreator())
+            owner = creator->ToPlayer();
+    }
+    //end npcbot
     if (movingMe || owner)
     {
         WorldPacket data;
@@ -11153,6 +11304,28 @@ void Unit::UpdateAuraForGroup(uint8 slot)
             }
         }
     }
+    //npcbot
+    else if (IsNPCBotOrPet())
+    {
+        if (IsNPCBot())
+        {
+            if (ToCreature()->GetBotGroup())
+            {
+                BotMgr::SetBotGroupUpdateFlag(ToCreature(), GROUP_UPDATE_FLAG_AURAS);
+                BotMgr::SetBotAuraUpdateMaskForRaid(ToCreature(), slot);
+            }
+        }
+        else
+        {
+            Unit const* owner = GetOwner();
+            if (owner && owner->IsNPCBot() && owner->ToCreature()->GetBotsPet() == this && owner->ToCreature()->GetBotGroup())
+            {
+                BotMgr::SetBotGroupUpdateFlag(owner->ToCreature(), GROUP_UPDATE_FLAG_PET_AURAS);
+                BotMgr::SetBotPetAuraUpdateMaskForRaid(ToCreature(), slot);
+            }
+        }
+    }
+    //end npcbot
 }
 
 void Unit::SetCantProc(bool apply)
@@ -11319,11 +11492,8 @@ bool Unit::InitTamedPet(Pet* pet, uint8 level, uint32 spell_id)
     // find player: owner of controlled `this` or `this` itself maybe
     Player* player = nullptr;
     //npcbot - loot recipient of bot's vehicle is owner
-    if (attacker && attacker->IsVehicle() && attacker->GetCharmerGUID().IsCreature() && attacker->GetCreatorGUID().IsPlayer())
-    {
-        if (Unit* uowner = attacker->GetCreator())
-            player = uowner->ToPlayer();
-    }
+    if (attacker && attacker->IsVehicle() && attacker->GetCharmerGUID().IsCreature() && attacker->GetCreator() && attacker->GetCreator()->IsPlayer())
+        player = attacker->GetCreator()->ToPlayer();
     else
     //end npcbot
     if (attacker)
@@ -12333,14 +12503,12 @@ bool Unit::IsInPartyWith(Unit const* unit) const
         (u1->GetTypeId() == TYPEID_PLAYER && u2->GetTypeId() == TYPEID_UNIT && u2->ToCreature()->GetCreatureTemplate()->type_flags & CREATURE_TYPE_FLAG_TREAT_AS_RAID_UNIT))
         return true;
     //npcbot
-    else if (u1->GetTypeId() == TYPEID_PLAYER && u1->ToPlayer()->HaveBot() && u1->ToPlayer()->GetBotMgr()->GetBot(u2->GetGUID()))
-        return true;
-    else if (u2->GetTypeId() == TYPEID_PLAYER && u2->ToPlayer()->HaveBot() && u2->ToPlayer()->GetBotMgr()->GetBot(u1->GetGUID()))
-        return true;
-    else if (u1->GetTypeId() == TYPEID_UNIT && u1->ToCreature()->GetBotAI() && !u1->ToCreature()->IsFreeBot())
-        return u1->ToCreature()->GetBotOwner()->IsInPartyWith(u2);
-    else if (u2->GetTypeId() == TYPEID_UNIT && u2->ToCreature()->GetBotAI() && !u2->ToCreature()->IsFreeBot())
-        return u2->ToCreature()->GetBotOwner()->IsInPartyWith(u1);
+    else if (u1->IsPlayer() && u2->IsNPCBot())
+        return u1->ToPlayer()->GetBotMgr()->GetBot(u2->GetGUID()) || (u1->ToPlayer()->GetGroup() && u2->ToCreature()->GetBotGroup() && u1->ToPlayer()->GetSubGroup() == u2->ToCreature()->GetSubGroup());
+    else if (u2->IsPlayer() && u1->IsNPCBot())
+        return u2->ToPlayer()->GetBotMgr()->GetBot(u1->GetGUID()) || (u2->ToPlayer()->GetGroup() && u1->ToCreature()->GetBotGroup() && u2->ToPlayer()->GetSubGroup() == u1->ToCreature()->GetSubGroup());
+    else if (u1->IsNPCBot() && u2->IsNPCBot() && u1->ToCreature()->GetBotGroup() && u1->ToCreature()->GetBotGroup() == u2->ToCreature()->GetBotGroup())
+        return u1->ToCreature()->GetSubGroup() == u2->ToCreature()->GetSubGroup();
     //end npcbot
 
     return u1->GetTypeId() == TYPEID_UNIT && u2->GetTypeId() == TYPEID_UNIT && u1->GetFaction() == u2->GetFaction();
@@ -12362,18 +12530,12 @@ bool Unit::IsInRaidWith(Unit const* unit) const
             (u1->GetTypeId() == TYPEID_PLAYER && u2->GetTypeId() == TYPEID_UNIT && u2->ToCreature()->GetCreatureTemplate()->type_flags & CREATURE_TYPE_FLAG_TREAT_AS_RAID_UNIT))
         return true;
     //npcbot
-    else if (u1->GetTypeId() == TYPEID_PLAYER && u1->ToPlayer()->HaveBot() && u1->ToPlayer()->GetBotMgr()->GetBot(u2->GetGUID()))
-        return true;
-    else if (u2->GetTypeId() == TYPEID_PLAYER && u2->ToPlayer()->HaveBot() && u2->ToPlayer()->GetBotMgr()->GetBot(u1->GetGUID()))
-        return true;
-    else if (u1->GetTypeId() == TYPEID_PLAYER && u1->ToPlayer()->GetGroup() && u1->ToPlayer()->GetGroup()->IsMember(u2->GetGUID()))
-        return true;
-    else if (u2->GetTypeId() == TYPEID_PLAYER && u2->ToPlayer()->GetGroup() && u2->ToPlayer()->GetGroup()->IsMember(u2->GetGUID()))
-        return true;
-    else if (u1->GetTypeId() == TYPEID_UNIT && u1->ToCreature()->GetBotAI() && !u1->ToCreature()->IsFreeBot())
-        return u1->ToCreature()->GetBotOwner()->IsInRaidWith(u2);
-    else if (u2->GetTypeId() == TYPEID_UNIT && u2->ToCreature()->GetBotAI() && !u2->ToCreature()->IsFreeBot())
-        return u2->ToCreature()->GetBotOwner()->IsInRaidWith(u1);
+    else if (u1->IsPlayer() && u2->IsNPCBot())
+        return u1->ToPlayer()->GetBotMgr()->GetBot(u2->GetGUID()) || (u1->ToPlayer()->GetGroup() && u1->ToPlayer()->GetGroup() == u2->ToCreature()->GetBotGroup());
+    else if (u2->IsPlayer() && u1->IsNPCBot())
+        return u2->ToPlayer()->GetBotMgr()->GetBot(u1->GetGUID()) || (u2->ToPlayer()->GetGroup() && u2->ToPlayer()->GetGroup() == u1->ToCreature()->GetBotGroup());
+    else if (u1->IsNPCBot() && u2->IsNPCBot() && u1->ToCreature()->GetBotGroup())
+        return  u1->ToCreature()->GetBotGroup() == u2->ToCreature()->GetBotGroup();
     //end npcbot
 
     return u1->GetTypeId() == TYPEID_UNIT && u2->GetTypeId() == TYPEID_UNIT && u1->GetFaction() == u2->GetFaction();
@@ -12386,9 +12548,21 @@ void Unit::GetPartyMembers(std::list<Unit*> &TagUnitMap)
     if (owner->GetTypeId() == TYPEID_PLAYER)
         group = owner->ToPlayer()->GetGroup();
 
+    //npcbot: get bot group
+    if (!group && IsNPCBot())
+        group = ToCreature()->GetBotGroup();
+    //end npcbot
+
     if (group)
     {
+        //npcbot: get bot group
+        /*
+        //end npcbot
         uint8 subgroup = owner->ToPlayer()->GetSubGroup();
+        //npcbot: get bot group
+        */
+        uint8 subgroup = owner->IsPlayer() ? owner->ToPlayer()->GetSubGroup() : group->GetMemberGroup(owner->GetGUID());
+        //end npcbot
 
         for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
         {
@@ -12403,21 +12577,16 @@ void Unit::GetPartyMembers(std::list<Unit*> &TagUnitMap)
                 if (Guardian* pet = Target->GetGuardianPet())
                     if (pet->IsAlive())
                         TagUnitMap.push_back(pet);
-
-                //npcbot: count bots
-                if (!Target->HaveBot())
-                    continue;
-
-                BotMap const* map = Target->GetBotMgr()->GetBotMap();
-                for (BotMap::const_iterator it = map->begin(); it != map->end(); ++it)
-                {
-                    if (group->GetMemberGroup(it->second->GetGUID()) == subgroup &&
-                        it->second->IsAlive() && IsInMap(it->second) && !IsHostileTo(it->second))
-                        TagUnitMap.push_back(it->second);
-                }
-                //end npcbot
             }
         }
+        //npcbot: count bots
+        for (GroupBotReference* itr = group->GetFirstBotMember(); itr != nullptr; itr = itr->next())
+        {
+            Creature* bot = itr->GetSource();
+            if (bot && group->GetMemberGroup(bot->GetGUID()) == subgroup && bot->IsAlive() && IsInMap(bot) && !IsHostileTo(bot))
+                TagUnitMap.push_back(bot);
+        }
+        //end npcbot
     }
     else
     {
@@ -13539,6 +13708,10 @@ bool Unit::CanSwim() const
         return false;
     if (HasUnitFlag(UNIT_FLAG_PET_IN_COMBAT))
         return true;
+    //npcbot
+    if (IsNPCBotOrPet())
+        return true;
+    //end npcbot
     return HasUnitFlag(UNIT_FLAG_RENAME | UNIT_FLAG_CAN_SWIM);
 }
 
@@ -13631,6 +13804,11 @@ bool Unit::UpdatePosition(float x, float y, float z, float orientation, bool tel
         UpdateOrientation(orientation);
 
     UpdatePositionData();
+
+    //npcbot: send bot group update
+    if ((relocated || turn) && IsNPCBot())
+        BotMgr::SetBotGroupUpdateFlag(ToCreature(), GROUP_UPDATE_FLAG_POSITION);
+    //end npcbot
 
     _positionUpdateInfo.Relocated = relocated;
     _positionUpdateInfo.Turned = turn;
@@ -14142,6 +14320,10 @@ void Unit::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player const* t
 
     if (plr && plr->IsInSameRaidWith(target))
         visibleFlag |= UF_FLAG_PARTY_MEMBER;
+    //npcbot
+    else if (IsNPCBotOrPet() && IsInRaidWith(target))
+        visibleFlag |= UF_FLAG_PARTY_MEMBER;
+    //end npcbot
 
     Creature const* creature = ToCreature();
     for (uint16 index = 0; index < m_valuesCount; ++index)
@@ -14266,6 +14448,24 @@ void Unit::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player const* t
                     else
                         fieldBuffer << m_uint32Values[index];
                 }
+                //npcbot
+                else if (IsNPCBotOrPet() && IsInRaidWith(target))
+                {
+                    FactionTemplateEntry const* ft1 = GetFactionTemplateEntry();
+                    FactionTemplateEntry const* ft2 = target->GetFactionTemplateEntry();
+                    if (!ft1->IsFriendlyTo(*ft2))
+                    {
+                        if (index == UNIT_FIELD_BYTES_2)
+                            // Allow targetting opposite faction in party when enabled in config
+                            fieldBuffer << (m_uint32Values[UNIT_FIELD_BYTES_2] & ((UNIT_BYTE2_FLAG_SANCTUARY /*| UNIT_BYTE2_FLAG_AURAS | UNIT_BYTE2_FLAG_UNK5*/) << 8)); // this flag is at uint8 offset 1 !!
+                        else
+                            // pretend that all other HOSTILE players have own faction, to allow follow, heal, rezz (trade wont work)
+                            fieldBuffer << uint32(target->GetFaction());
+                    }
+                    else
+                        fieldBuffer << m_uint32Values[index];
+                }
+                //end npcbot
                 else
                     fieldBuffer << m_uint32Values[index];
             }

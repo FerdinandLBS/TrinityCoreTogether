@@ -94,6 +94,13 @@ void ThreatReference::UpdateOffline()
         if (b->HasUnitFlag(UNIT_FLAG_IMMUNE_TO_PC))
             return false;
     }
+    //npcbot
+    else if (a->IsNPCBotOrPet())
+    {
+        if (b->HasUnitFlag(UNIT_FLAG_IMMUNE_TO_PC))
+            return false;
+    }
+    //end npcbot
     else
     {
         if (b->HasUnitFlag(UNIT_FLAG_IMMUNE_TO_NPC))

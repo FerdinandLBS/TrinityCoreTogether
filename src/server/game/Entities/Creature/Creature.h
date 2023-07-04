@@ -389,6 +389,16 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool IsNPCBotOrPet() const override;
         bool IsFreeBot() const;
         bool IsWandererBot() const;
+        Group* GetBotGroup() const;
+        void SetBotGroup(Group* group, int8 subgroup = -1);
+        uint8 GetSubGroup() const;
+        void SetSubGroup(uint8 subgroup);
+        void SetBattlegroundOrBattlefieldRaid(Group* group, int8 subgroup = -1);
+        void RemoveFromBattlegroundOrBattlefieldRaid();
+        Group* GetOriginalGroup() const;
+        void SetOriginalGroup(Group* group, int8 subgroup = -1);
+        uint8 GetOriginalSubGroup() const;
+        void SetOriginalSubGroup(uint8 subgroup);
         Battleground* GetBotBG() const;
         uint8 GetBotClass() const;
         uint32 GetBotRoles() const;

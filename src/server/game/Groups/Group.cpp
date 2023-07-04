@@ -499,8 +499,41 @@ bool Group::AddMember(Creature* creature)
     m_memberSlots.push_back(member);
 
     SubGroupCounterIncrease(subGroup);
+
+    if (creature->GetBotGroup())
+    {
+        if (isBGGroup() || isBFGroup()) // if player is in group and he is being added to BG raid group, then call SetBattlegroundRaid()
+            creature->SetBattlegroundOrBattlefieldRaid(this, subGroup);
+        else //if player is in bg raid and we are adding him to normal group, then call SetOriginalGroup()
+            creature->SetOriginalGroup(this, subGroup);
+    }
+    else //if player is not in group, then call set group
+        creature->SetBotGroup(this, subGroup);
+
+    if (!isRaidGroup())
+    {
+        for (uint8 i = 0; i < TARGETICONCOUNT; ++i)
+            m_targetIcons[i].Clear();
+    }
+
+    // insert into the table if we're not a battleground group
+    if (!isBGGroup() && !isBFGroup())
+    {
+        //INSERT INTO characters_npcbot_group_member (guid, entry, memberFlags, subgroup, roles) VALUES(?, ?, ?, ?, ?), CONNECTION_ASYNC
+        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_NPCBOT_GROUP_MEMBER);
+        stmt->setUInt32(0, m_dbStoreId);
+        stmt->setUInt32(1, member.guid.GetEntry());
+        stmt->setUInt8(2, member.flags);
+        stmt->setUInt8(3, member.group);
+        stmt->setUInt8(4, member.roles);
+        CharacterDatabase.Execute(stmt);
+    }
+
     SendUpdate();
     sScriptMgr->OnGroupAddMember(this, creature->GetGUID());
+
+    BotMgr::SetBotGroupUpdateFlag(creature, GROUP_UPDATE_FULL);
+    UpdateBotOutOfRange(creature);
 
     return true;
 }
@@ -681,7 +714,7 @@ bool Group::AddMember(Player* player)
     //end npcbot
 
     //npcbot: if player has been added to bot BG raid switch leader to it
-    if (isBGGroup() && !m_leaderGuid.IsPlayer())
+    if (!m_leaderGuid.IsPlayer())
         ChangeLeader(player->GetGUID());
     //end npcbot
 
@@ -693,6 +726,74 @@ bool Group::RemoveMember(ObjectGuid guid, RemoveMethod const& method /*= GROUP_R
     BroadcastGroupUpdate();
 
     sScriptMgr->OnGroupRemoveMember(this, guid, method, kicker, reason);
+
+    //npcbot: skip group size check before removing a bot
+    if (guid.IsCreature())
+    {
+        // LFG group vote kick handled in scripts
+        if (isLFGGroup() && method == GROUP_REMOVEMETHOD_KICK)
+            return !m_memberSlots.empty();
+
+        if (GetMembersCount() > ((isBGGroup() || isLFGGroup() || isBFGroup()) ? 1u : 2u))
+        {
+            if (Creature const* cbot = BotDataMgr::FindBot(guid.GetEntry()))
+            {
+                Creature* bot = const_cast<Creature*>(cbot);
+                if (isBGGroup() || isBFGroup())
+                    bot->RemoveFromBattlegroundOrBattlefieldRaid();
+                else
+                {
+                    if (bot->GetOriginalGroup() == this)
+                        bot->SetOriginalGroup(nullptr);
+                    else
+                        bot->SetBotGroup(nullptr);
+                }
+            }
+
+            // Remove bot from group in DB
+            if (!isBGGroup() && !isBFGroup())
+            {
+                //DELETE FROM characters_npcbot_group_member WHERE entry = ?, CONNECTION_ASYNC
+                CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_NPCBOT_GROUP_MEMBER);
+                stmt->setUInt32(0, guid.GetEntry());
+                CharacterDatabase.Execute(stmt);
+                DelinkBotMember(guid);
+            }
+
+            // Update subgroup
+            member_witerator slot = _getMemberWSlot(guid);
+            if (slot != m_memberSlots.end())
+            {
+                SubGroupCounterDecrease(slot->group);
+                m_memberSlots.erase(slot);
+            }
+
+            SendUpdate();
+
+            // do not disband raid group if bot owner logging out within dungeon
+            // 1-player raid groups will not happen unless player is gm - bots will rejoin at login
+            if (GetMembersCount() < 2 && isRaidGroup() && !(isBGGroup() || isBFGroup()) && GetLeaderGUID())
+            {
+                Player const* player = ObjectAccessor::FindPlayer(GetLeaderGUID());
+                Map const* map = player ? player->FindMap() : nullptr;
+                if (!(map && map->IsDungeon() && player && player->GetSession()->PlayerLogout()))
+                    Disband();
+            }
+            else if (GetMembersCount() < ((isBGGroup() || isLFGGroup() || isBFGroup()) ? 1u : 2u))
+            {
+                Disband();
+                return false;
+            }
+
+            return true;
+        }
+        else
+        {
+            Disband();
+            return false;
+        }
+    }
+    //end npcbot
 
     Player* player = ObjectAccessor::FindConnectedPlayer(guid);
     if (player)
@@ -714,47 +815,6 @@ bool Group::RemoveMember(ObjectGuid guid, RemoveMethod const& method /*= GROUP_R
     if (isLFGGroup() && method == GROUP_REMOVEMETHOD_KICK)
         return !m_memberSlots.empty();
 
-    //npcbot: skip group size check before removing a bot
-    if (!guid.IsPlayer())
-    {
-        // Remove bot from group in DB
-        if (!isBGGroup() && !isBFGroup())
-        {
-            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_NPCBOT_GROUP_MEMBER);
-            stmt->setUInt32(0, guid.GetEntry());
-            CharacterDatabase.Execute(stmt);
-            DelinkMember(guid);
-
-        }
-        // Update subgroup
-        member_witerator slot = _getMemberWSlot(guid);
-        if (slot != m_memberSlots.end())
-        {
-            SubGroupCounterDecrease(slot->group);
-            m_memberSlots.erase(slot);
-        }
-
-        SendUpdate();
-
-        // do not disband raid group if bot owner logging out within dungeon
-        // 1-player raid groups will not happen unless player is gm - bots will rejoin at login
-        if (GetMembersCount() < 2 && isRaidGroup() && !(isBGGroup() || isBFGroup()) && GetLeaderGUID())
-        {
-            Player const* player = ObjectAccessor::FindPlayer(GetLeaderGUID());
-            Map const* map = player ? player->FindMap() : nullptr;
-            if (!(map && map->IsDungeon() && player && player->GetSession()->PlayerLogout()))
-                Disband();
-        }
-        else if (GetMembersCount() < ((isLFGGroup() || isBGGroup() || isBFGroup()) ? 1u : 2u))
-        {
-            Disband();
-            return false;
-        }
-
-        return true;
-    }
-    else
-    //end npcbot
     // remove member and change leader (if need) only if strong more 2 members _before_ member remove (BG/BF allow 1 member group)
     if (GetMembersCount() > ((isBGGroup() || isLFGGroup() || isBFGroup()) ? 1u : 2u))
     {
@@ -990,6 +1050,26 @@ void Group::Disband(bool hideDestroy /* = false */)
     Player* player;
     for (member_citerator citr = m_memberSlots.begin(); citr != m_memberSlots.end(); ++citr)
     {
+        //npcbot: set bot's group
+        if (citr->guid.IsCreature())
+        {
+            if (Creature const* cbot = BotDataMgr::FindBot(citr->guid.GetEntry()))
+            {
+                Creature* bot = const_cast<Creature*>(cbot);
+                if (isBGGroup() || isBFGroup())
+                    bot->RemoveFromBattlegroundOrBattlefieldRaid();
+                else
+                {
+                    if (bot->GetOriginalGroup() == this)
+                        bot->SetOriginalGroup(nullptr);
+                    else
+                        bot->SetBotGroup(nullptr);
+                }
+            }
+            continue;
+        }
+        //end npcbot
+
         player = ObjectAccessor::FindConnectedPlayer(citr->guid);
         if (!player)
             continue;
@@ -1052,6 +1132,12 @@ void Group::Disband(bool hideDestroy /* = false */)
         stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_GROUP_MEMBER_ALL);
         stmt->setUInt32(0, m_dbStoreId);
         trans->Append(stmt);
+
+        //npcbot: bot members deletion
+        stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_NPCBOT_GROUP_MEMBER_ALL);
+        stmt->setUInt32(0, m_dbStoreId);
+        trans->Append(stmt);
+        //end npcbot
 
         CharacterDatabase.CommitTransaction(trans);
 
@@ -1579,21 +1665,21 @@ void Group::MasterLoot(Loot* loot, WorldObject* pLootedObject)
     }
 }
 
-void Group::CountRollVote(ObjectGuid playerGUID, ObjectGuid Guid, uint8 Choice)
+bool Group::CountRollVote(ObjectGuid playerGUID, ObjectGuid Guid, uint8 Choice)
 {
     Rolls::iterator rollI = GetRoll(Guid);
     if (rollI == RollId.end())
-        return;
+        return false;
     Roll* roll = *rollI;
 
     Roll::PlayerVote::iterator itr = roll->playerVote.find(playerGUID);
     // this condition means that player joins to the party after roll begins
-    if (itr == roll->playerVote.end())
-        return;
+    if (itr == roll->playerVote.end() || itr->second != NOT_EMITED_YET)
+        return false;
 
     if (roll->getLoot())
         if (roll->getLoot()->items.empty())
-            return;
+            return false;
 
     switch (Choice)
     {
@@ -1621,6 +1707,8 @@ void Group::CountRollVote(ObjectGuid playerGUID, ObjectGuid Guid, uint8 Choice)
 
     if (roll->totalPass + roll->totalNeed + roll->totalGreed >= roll->totalPlayersRolling)
         CountTheRoll(rollI, nullptr);
+
+    return true;
 }
 
 //called when roll timer expires
@@ -1893,6 +1981,11 @@ void Group::SendUpdate()
 
 void Group::SendUpdateToPlayer(ObjectGuid playerGUID, MemberSlot* slot)
 {
+    //npcbot
+    if (!playerGUID.IsPlayer())
+        return;
+    //end npcbot
+
     Player* player = ObjectAccessor::FindConnectedPlayer(playerGUID);
 
     if (!player || !player->GetSession() || player->GetGroup() != this)
@@ -1933,6 +2026,10 @@ void Group::SendUpdateToPlayer(ObjectGuid playerGUID, MemberSlot* slot)
         uint8 onlineState = (member && !member->GetSession()->PlayerLogout()) ? MEMBER_STATUS_ONLINE : MEMBER_STATUS_OFFLINE;
         onlineState = onlineState | ((isBGGroup() || isBFGroup()) ? MEMBER_STATUS_PVP : 0);
 
+        //npcbot: bots are always online
+        onlineState |= citr->guid.IsCreature() ? 1 : 0;
+        //end npcbot
+
         data << citr->name;
         data << uint64(citr->guid);                     // guid
         data << uint8(onlineState);                     // online-state
@@ -1960,6 +2057,25 @@ void Group::SendUpdateToPlayer(ObjectGuid playerGUID, MemberSlot* slot)
 
     player->SendDirectMessage(&data);
 }
+
+//npcbot
+void Group::UpdateBotOutOfRange(Creature* creature)
+{
+    if (!creature || !creature->IsInWorld() || m_memberMgr.isEmpty())
+        return;
+
+    WorldPacket data;
+    BotMgr::BuildBotPartyMemberStatsChangedPacket(creature, &data);
+
+    Player* member;
+    for (GroupReference* itr = GetFirstMember(); itr != nullptr; itr = itr->next())
+    {
+        member = itr->GetSource();
+        if (member/* && (!member->IsInMap(creature) || !member->IsWithinDist(creature, member->GetSightRange(), false))*/)
+            member->SendDirectMessage(&data);
+    }
+}
+//end npcbot
 
 void Group::UpdatePlayerOutOfRange(Player* player)
 {
@@ -2088,6 +2204,24 @@ void Group::ChangeMembersGroup(ObjectGuid guid, uint8 group)
         CharacterDatabase.Execute(stmt);
     }
 
+    //npcbot
+    if (guid.IsCreature())
+    {
+        Creature const* cbot = BotDataMgr::FindBot(guid.GetEntry());
+        if (Creature* bot = cbot ? const_cast<Creature*>(cbot) : nullptr)
+        {
+            if (bot->GetBotGroup() == this)
+                bot->SetOriginalSubGroup(group);
+            else
+            {
+                // If player is in BG raid, it is possible that he is also in normal raid - and that normal raid is stored in m_originalGroup reference
+                prevSubGroup = bot->GetOriginalSubGroup();
+                bot->SetOriginalSubGroup(group);
+            }
+        }
+    }
+    else
+    //end npcbot
     // In case the moved player is online, update the player object with the new sub group references
     if (Player* player = ObjectAccessor::FindConnectedPlayer(guid))
     {
@@ -2844,6 +2978,28 @@ void Group::DelinkMember(ObjectGuid guid)
         ref = nextRef;
     }
 }
+
+//npcbot
+void Group::LinkBotMember(GroupBotReference* bRef)
+{
+    m_botMemberMgr.insertFirst(bRef);
+}
+
+void Group::DelinkBotMember(ObjectGuid guid)
+{
+    GroupBotReference* ref = m_botMemberMgr.getFirst();
+    while (ref)
+    {
+        GroupBotReference* nextRef = ref->next();
+        if (ref->GetSource()->GetGUID() == guid)
+        {
+            ref->unlink();
+            break;
+        }
+        ref = nextRef;
+    }
+}
+//end npcbot
 
 Group::BoundInstancesMap& Group::GetBoundInstances(Difficulty difficulty)
 {

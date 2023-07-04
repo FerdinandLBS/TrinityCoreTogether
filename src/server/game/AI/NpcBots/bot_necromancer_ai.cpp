@@ -228,25 +228,30 @@ public:
 
         void CheckUnholyFrenzy(uint32 diff)
         {
-            if (!IsSpellReady(UNHOLY_FRENZY_1, diff) || IAmFree() ||
-                me->GetLevel() < 30 || me->GetPower(POWER_MANA) < UNHOLY_FRENZY_COST || Rand() > 35)
+            if (!IsSpellReady(UNHOLY_FRENZY_1, diff) || me->GetLevel() < 30 || me->GetPower(POWER_MANA) < UNHOLY_FRENZY_COST || Rand() > 35)
                 return;
 
-            static auto frenzy_pred_player = [this](Unit const* pl) -> bool {
-                return (pl->GetVictim() && pl->IsInCombat() && IsMeleeClass(pl->GetClass()) && !IsTank(pl) &&
-                    me->GetDistance(pl) < 30 && pl->GetDistance(pl->GetVictim()) < 15 &&
-                    pl->getAttackers().empty() && !CCed(pl, true) &&
-                    !pl->HasAuraType(SPELL_AURA_PERIODIC_DAMAGE) && pl->GetHealth() >= me->GetMaxHealth());
+            static const auto frenzy_pred_player = [](Player const* pl, Unit const* nec) -> bool {
+                return (pl->GetVictim() && pl->IsInCombat() && IsMeleeClass(pl->GetClass()) && nec->GetDistance(pl) < 30 &&
+                    pl->GetDistance(pl->GetVictim()) < 15 && pl->getAttackers().empty() && !CCed(pl, true) &&
+                    !pl->HasAuraType(SPELL_AURA_PERIODIC_DAMAGE) && pl->GetHealth() >= nec->GetMaxHealth());
+            };
+
+            static const auto frenzy_pred_bot = [](Creature const* bot, Unit const* nec) -> bool {
+                return (IsMeleeClass(bot->GetBotClass()) && bot->GetVictim() && !bot->GetBotAI()->IsTank(bot) &&
+                    bot->GetBotAI()->HasRole(BOT_ROLE_DPS) && !bot->GetBotAI()->HasRole(BOT_ROLE_RANGED) &&
+                    nec->GetDistance(bot) < 30 && bot->GetDistance(bot->GetVictim()) < 15 &&
+                    bot->getAttackers().empty() && !CCed(bot, true) &&
+                    !bot->HasAuraType(SPELL_AURA_PERIODIC_DAMAGE) && bot->GetHealth() >= nec->GetMaxHealth());
             };
 
             Unit* target = nullptr;
 
             //master
-            if (frenzy_pred_player(master))
+            if (!IsTank(master) && frenzy_pred_player(master, me))
                 target = master;
-
             //minions
-            if (!target && HasRole(BOT_ROLE_DPS) && !_minions.empty())
+            else if (HasRole(BOT_ROLE_DPS) && !_minions.empty())
             {
                 for (Unit* minion : _minions)
                 {
@@ -259,46 +264,28 @@ public:
                 }
             }
 
-            //group (players + bots)
             if (!target)
             {
-                Group const* gr = master->GetGroup();
-                if (gr)
+                std::set<Unit*> targets;
+                if (Group const* gr = !IAmFree() ? master->GetGroup() : GetGroup())
                 {
-                    for (GroupReference const* itr = gr->GetFirstMember(); itr != nullptr; itr = itr->next())
+                    std::vector<Unit*> members = BotMgr::GetAllGroupMembers(gr);
+                    for (uint8 i = 0; i < 2 && !targets.empty(); ++i)
                     {
-                        Player* player = itr->GetSource();
-                        if (!player || player == master || player->IsBeingTeleported() || me->GetMap() != player->FindMap())
-                            continue;
-
-                        if (frenzy_pred_player(player))
+                        for (Unit* member : members)
                         {
-                            target = player;
-                            break;
+                            if (!(i == 0 ? member->IsPlayer() : member->IsNPCBot()) || me->GetMap() != member->FindMap() ||
+                                member->GetGUID() == master->GetGUID())
+                                continue;
+                            if (member->IsPlayer() ?
+                                (!IsTank(member) && frenzy_pred_player(member->ToPlayer(), me)) :
+                                frenzy_pred_bot(member->ToCreature(), me))
+                                targets.insert(member);
                         }
-
-                        if (!player->HaveBot())
-                            continue;
-
-                        BotMap const* map = player->GetBotMgr()->GetBotMap();
-                        for (BotMap::const_iterator it = map->begin(); it != map->end(); ++it)
-                        {
-                            Creature* bot = it->second;
-                            if (IsMeleeClass(bot->GetBotClass()) && bot->GetVictim() && !IsTank(bot) &&
-                                bot->GetBotAI()->HasRole(BOT_ROLE_DPS) && !bot->GetBotAI()->HasRole(BOT_ROLE_RANGED) &&
-                                me->GetDistance(bot) < 30 && bot->GetDistance(bot->GetVictim()) < 15 &&
-                                bot->getAttackers().empty() && !CCed(bot, true) &&
-                                !bot->HasAuraType(SPELL_AURA_PERIODIC_DAMAGE) && bot->GetHealth() >= me->GetMaxHealth())
-                            {
-                                target = bot;
-                                break;
-                            }
-                        }
-
-                        if (target)
-                            break;
                     }
                 }
+                if (!targets.empty())
+                    target = targets.size() == 1u ? *targets.begin() : Trinity::Containers::SelectRandomContainerElement(targets);
             }
 
             if (target && doCast(target, GetSpell(UNHOLY_FRENZY_1)))
@@ -308,7 +295,7 @@ public:
                 return;
             }
 
-            SetSpellCooldown(UNHOLY_FRENZY_1, 500); //fail
+            SetSpellCooldown(UNHOLY_FRENZY_1, 1000); //fail
         }
 
         void UpdateAI(uint32 diff) override
@@ -319,11 +306,11 @@ public:
             //Interrupt corpse-usage spells if no longer usable
             if (Spell const* spell = me->GetCurrentSpell(CURRENT_GENERIC_SPELL))
             {
-                if (Unit const* target = spell->m_targets.GetUnitTarget())
+                if ((spell->GetSpellInfo()->GetFirstRankSpell()->Id == RAISE_DEAD_1 ||
+                    spell->GetSpellInfo()->GetFirstRankSpell()->Id == CORPSE_EXPLOSION_1))
                 {
-                    if ((spell->GetSpellInfo()->GetFirstRankSpell()->Id == RAISE_DEAD_1 ||
-                        spell->GetSpellInfo()->GetFirstRankSpell()->Id == CORPSE_EXPLOSION_1) &&
-                        target->GetDisplayId() != target->GetNativeDisplayId())
+                    Unit const* target = ObjectAccessor::GetUnit(*me, spell->m_targets.GetObjectTargetGUID());
+                    if (target && target->GetDisplayId() != target->GetNativeDisplayId())
                         me->InterruptSpell(CURRENT_GENERIC_SPELL);
                 }
             }
@@ -365,6 +352,10 @@ public:
                 return;
 
             StartAttack(mytar, IsMelee());
+
+            CheckAttackState();
+            if (!me->IsAlive() || !mytar->IsAlive())
+                return;
 
             MoveBehind(mytar);
 
@@ -613,7 +604,6 @@ public:
             myPet->SetFaction(master->GetFaction());
             myPet->SetControlledByPlayer(!IAmFree());
             myPet->SetPvP(me->IsPvP());
-            myPet->SetUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED);
             myPet->SetByteValue(UNIT_FIELD_BYTES_2, 1, master->GetByteValue(UNIT_FIELD_BYTES_2, 1));
             myPet->SetUInt32Value(UNIT_CREATED_BY_SPELL, RAISE_DEAD_1);
 

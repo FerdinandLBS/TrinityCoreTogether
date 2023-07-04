@@ -58,6 +58,7 @@ Random(CreatureRandomMovementType::Walk), InteractionPauseTimer(sWorld->getIntCo
 
 //npcbot
 #include "bot_ai.h"
+#include "botmgr.h"
 #include "bpet_ai.h"
 //end npcbot
 
@@ -1354,11 +1355,8 @@ void Creature::SetLootRecipient(Unit* unit, bool withGroup)
     */
     //npcbot - loot recipient of bot's vehicle is owner
     Player* player = nullptr;
-    if (unit->IsVehicle() && unit->GetCharmerGUID().IsCreature() && unit->GetCreatorGUID().IsPlayer())
-    {
-        if (Unit* uowner = unit->GetCreator())
-            player = uowner->ToPlayer();
-    }
+    if (unit->IsVehicle() && unit->GetCharmerGUID().IsCreature() && unit->GetCreator() && unit->GetCreator()->IsPlayer())
+        player = unit->GetCreator()->ToPlayer();
     else
         player = unit->GetCharmerOrOwnerPlayerOrPlayerItself();
     //end npcbot
@@ -1998,9 +1996,18 @@ bool Creature::CanStartAttack(Unit const* who, bool force) const
         return false;
 
     // This set of checks is should be done only for creatures
+    //npcbot
+    /*
+    //end npcbot
     if ((IsImmuneToNPC() && !who->HasUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED))
         || (IsImmuneToPC() && who->HasUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED)))
         return false;
+    //npcbot
+    */
+    if ((IsImmuneToNPC() && !(who->HasUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED) || who->IsNPCBotOrPet())) ||
+        (IsImmuneToPC() && (who->HasUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED) || who->IsNPCBotOrPet())))
+        return false;
+    //end npcbot
 
     // Do not attack non-combat pets
     if (who->GetTypeId() == TYPEID_UNIT && who->GetCreatureType() == CREATURE_TYPE_NON_COMBAT_PET)
@@ -2094,11 +2101,6 @@ void Creature::setDeathState(DeathState s)
 
     if (s == JUST_DIED)
     {
-        //npcbot
-        if (bot_AI)
-            bot_AI->UnsummonAll();
-        //end npcbot
-
         m_corpseRemoveTime = GameTime::GetGameTime() + m_corpseDelay;
 
         uint32 respawnDelay = m_respawnDelay;
@@ -2529,6 +2531,11 @@ bool Creature::CanAssistTo(Unit const* u, Unit const* enemy, bool checkfaction /
     if (GetCharmerOrOwnerGUID())
         return false;
 
+    //npcbot
+    if (IsNPCBotOrPet())
+        return false;
+    //end npcbot
+
     // only from same creature faction
     if (checkfaction)
     {
@@ -2810,6 +2817,17 @@ void Creature::UpdateMovementFlags()
     // Do not update movement flags if creature is controlled by a player (charm/vehicle)
     if (IsMovedByClient())
         return;
+
+    //npcbot: do not update movement flags for vehicles controlled by npcbots
+    if (GetCharmerGUID().IsCreature())
+    {
+        if (CreatureTemplate const* bot_template = sObjectMgr->GetCreatureTemplate(GetCharmerGUID().GetEntry()))
+        {
+            if (bot_template->IsNPCBot())
+                return;
+        }
+    }
+    //end npcbot
 
     // Creatures with CREATURE_FLAG_EXTRA_NO_MOVE_FLAGS_UPDATE should control MovementFlags in your own scripts
     if (GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_NO_MOVE_FLAGS_UPDATE)
@@ -3281,6 +3299,15 @@ void Creature::SetDisplayId(uint32 modelId)
         SetBoundingRadius((IsPet() ? 1.0f : minfo->bounding_radius) * GetObjectScale());
         SetCombatReach((IsPet() ? DEFAULT_PLAYER_COMBAT_REACH : minfo->combat_reach) * GetObjectScale());
     }
+
+    //npcbot: send group update for bot pet
+    if (IsNPCBotPet())
+    {
+        if (Creature const* botPetOwner = GetBotPetAI() ? GetBotPetAI()->GetPetsOwner() : nullptr)
+            if (botPetOwner->GetBotAI()->GetGroup())
+                BotMgr::SetBotGroupUpdateFlag(botPetOwner, GROUP_UPDATE_FLAG_PET_MODEL_ID);
+    }
+    //end npcbot
 }
 
 void Creature::SetTarget(ObjectGuid guid)
@@ -3575,7 +3602,7 @@ void Creature::ExitVehicle(Position const* /*exitPosition*/)
 //NPCBOT
 bool Creature::LoadBotCreatureFromDB(ObjectGuid::LowType spawnId, Map* map, bool addToMap, bool generated, uint32 entry, Position const* pos)
 {
-    CreatureData const* data = sObjectMgr->GetCreatureData(spawnId);
+    CreatureData const* data = generated ? nullptr : sObjectMgr->GetCreatureData(spawnId);
     if (!data)
     {
         if (!generated)
@@ -3664,6 +3691,54 @@ bool Creature::IsFreeBot() const
 bool Creature::IsWandererBot() const
 {
     return bot_AI ? bot_AI->IsWanderer() : bot_pet_AI ? bot_pet_AI->IsWanderer() : false;
+}
+
+Group* Creature::GetBotGroup() const
+{
+    return bot_AI ? bot_AI->GetGroup() : nullptr;
+}
+void Creature::SetBotGroup(Group* group, int8 subgroup)
+{
+    if (bot_AI)
+        bot_AI->SetGroup(group, subgroup);
+}
+uint8 Creature::GetSubGroup() const
+{
+    return bot_AI ? bot_AI->GetSubGroup() : 0;
+}
+void Creature::SetSubGroup(uint8 subgroup)
+{
+    if (bot_AI)
+        bot_AI->SetSubGroup(subgroup);
+}
+
+void Creature::SetBattlegroundOrBattlefieldRaid(Group* group, int8 subgroup)
+{
+    if (bot_AI)
+        bot_AI->SetBattlegroundOrBattlefieldRaid(group, subgroup);
+}
+void Creature::RemoveFromBattlegroundOrBattlefieldRaid()
+{
+    if (bot_AI)
+        bot_AI->RemoveFromBattlegroundOrBattlefieldRaid();
+}
+Group* Creature::GetOriginalGroup() const
+{
+    return bot_AI ? bot_AI->GetOriginalGroup() : nullptr;
+}
+void Creature::SetOriginalGroup(Group* group, int8 subgroup)
+{
+    if (bot_AI)
+        bot_AI->SetOriginalGroup(group, subgroup);
+}
+uint8 Creature::GetOriginalSubGroup() const
+{
+    return bot_AI ? bot_AI->GetOriginalSubGroup() : 0;
+}
+void Creature::SetOriginalSubGroup(uint8 subgroup)
+{
+    if (bot_AI)
+        bot_AI->SetOriginalSubGroup(subgroup);
 }
 
 Battleground* Creature::GetBotBG() const

@@ -9,6 +9,7 @@
 class Battleground;
 class Creature;
 class GameObject;
+class Group;
 class Map;
 class Player;
 class Spell;
@@ -17,6 +18,7 @@ class Unit;
 class Vehicle;
 class WorldLocation;
 class WorldObject;
+class WorldPacket;
 
 class DPSTracker;
 
@@ -25,10 +27,12 @@ struct CleanDamage;
 struct GroupQueueInfo;
 struct Position;
 
+enum BattlegroundTypeId : uint32;
 enum CurrentSpellTypes : uint8;
 enum DamageEffectType : uint8;
 
 constexpr size_t TargetIconNamesCacheSize = 8u; // Group.h TARGETICONCOUNT
+constexpr size_t BracketsCount = DEFAULT_MAX_LEVEL / 10 + 1; //0-9, 10-19, 20-29, 30-39, 40-49, 50-59, 60-69, 70-79, 80-83
 
 enum BotAddResult
 {
@@ -69,6 +73,7 @@ enum BotAttackAngle
 };
 
 typedef std::unordered_map<ObjectGuid /*guid*/, Creature* /*bot*/> BotMap;
+typedef std::array<uint32, BracketsCount> BotBrackets;
 
 class TC_GAME_API BotMgr
 {
@@ -91,6 +96,7 @@ class TC_GAME_API BotMgr
         static bool ShowEquippedCloak();
         static bool ShowEquippedHelm();
         static bool SendEquipListItems();
+        static bool IsGearBankEnabled();
         static bool IsTransmogEnabled();
         static bool MixArmorClasses();
         static bool MixWeaponClasses();
@@ -103,6 +109,10 @@ class TC_GAME_API BotMgr
         static bool IsFoodInterruptedByMovement();
         static bool FilterRaces();
         static bool IsBotGenerationEnabledBGs();
+        static bool IsBotGenerationEnabledWorldMapId(uint32 mapId);
+        static bool IsBotHKEnabled();
+        static bool IsBotHKMessageEnabled();
+        static bool IsBotHKAchievementsEnabled();
         static uint8 GetMaxClassBots();
         static uint8 GetHealTargetIconFlags();
         static uint8 GetTankTargetIconFlags();
@@ -113,6 +123,8 @@ class TC_GAME_API BotMgr
         static uint32 GetBaseUpdateDelay();
         static uint32 GetOwnershipExpireTime();
         static uint32 GetDesiredWanderingBotsCount();
+        static uint32 GetBGTargetTeamPlayersCount(BattlegroundTypeId bgTypeId);
+        static float GetBotHKHonorRate();
         static float GetBotStatLimitDodge();
         static float GetBotStatLimitParry();
         static float GetBotStatLimitBlock();
@@ -125,11 +137,14 @@ class TC_GAME_API BotMgr
         static float GetBotWandererHealingMod();
         static float GetBotWandererHPMod();
         static float GetBotWandererSpeedMod();
+        static BotBrackets GetBotWandererLevelBrackets();
         static float GetBotDamageModByClass(uint8 botclass);
+        static float GetBotDamageModByLevel(uint8 botlevel);
 
         static void Initialize();
         static void ReloadConfig();
         static void LoadConfig(bool reload = false);
+        static void ResolveConfigConflicts();
 
         //onEvent hooks
         static void OnBotWandererKilled(Creature const* bot, Player* looter);
@@ -137,6 +152,7 @@ class TC_GAME_API BotMgr
         static void OnBotSpellInterrupt(Unit const* caster, CurrentSpellTypes spellType);
         static void OnBotSpellGo(Unit const* caster, Spell const* spell, bool ok = true);
         static void OnBotOwnerSpellGo(Unit const* caster, Spell const* spell, bool ok = true);
+        static void OnBotChannelFinish(Unit const* caster, Spell const* spell);
         static void OnVehicleSpellGo(Unit const* caster, Spell const* spell, bool ok = true);
         static void OnVehicleAttackedBy(Unit* attacker, Unit const* victim);
         static void OnBotDamageTaken(Unit* attacker, Unit* victim, uint32 damage, CleanDamage const* cleanDamage, DamageEffectType damagetype, SpellInfo const* spellInfo);
@@ -174,6 +190,8 @@ class TC_GAME_API BotMgr
         static bool LimitBots(Map const* map);
         static bool CanBotParryWhileCasting(Creature const* bot);
         static bool IsWanderingWorldBot(Creature const* bot);
+        static bool IsBotContestedPvP(Creature const* bot);
+        static void SetBotContestedPvP(Creature const* bot);
         bool RestrictBots(Creature const* bot, bool add) const;
         bool IsPartyInCombat() const;
         bool HasBotClass(uint8 botclass) const;
@@ -184,14 +202,18 @@ class TC_GAME_API BotMgr
         static uint32 GetNpcBotCost(uint8 level, uint8 botclass);
         static std::string GetNpcBotCostStr(uint8 level, uint8 botclass);
         static uint8 BotClassByClassName(std::string const& className);
+        static uint8 GetBotPlayerClass(uint8 bot_class);
+        static uint8 GetBotPlayerRace(uint8 bot_class, uint8 bot_race);
+        static uint8 GetBotPlayerClass(Creature const* bot);
+        static uint8 GetBotPlayerRace(Creature const* bot);
 
         std::string GetTargetIconString(uint8 icon) const;
 
         void OnTeleportFar(uint32 mapId, float x, float y, float z, float ori = 0.f);
         void OnOwnerSetGameMaster(bool on);
         void ReviveAllBots();
-        void SendBotCommandState(uint8 state);
-        void SendBotCommandStateRemove(uint8 state);
+        void SendBotCommandState(uint32 state);
+        void SendBotCommandStateRemove(uint32 state);
         void SendBotAwaitState(uint8 state);
         void RecallAllBots(bool teleport = false);
         void RecallBot(Creature* bot);
@@ -236,6 +258,17 @@ class TC_GAME_API BotMgr
         void UpdatePhaseForBots();
         void UpdatePvPForBots();
 
+        static void BuildBotPartyMemberStatsPacket(ObjectGuid bot_guid, WorldPacket* data);
+        static void BuildBotPartyMemberStatsChangedPacket(Creature const* bot, WorldPacket* data);
+        //static uint32 GetBotGroupUpdateFlag(Creature const* bot);
+        static void SetBotGroupUpdateFlag(Creature const* bot, uint32 flag);
+        static uint64 GetBotAuraUpdateMaskForRaid(Creature const* bot);
+        static void SetBotAuraUpdateMaskForRaid(Creature const* bot, uint8 slot);
+        static void ResetBotAuraUpdateMaskForRaid(Creature const* bot);
+        static uint64 GetBotPetAuraUpdateMaskForRaid(Creature const* botpet);
+        static void SetBotPetAuraUpdateMaskForRaid(Creature const* botpet, uint8 slot);
+        static void ResetBotPetAuraUpdateMaskForRaid(Creature const* botpet);
+
         void TrackDamage(Unit const* u, uint32 damage);
         uint32 GetDPSTaken(Unit const* u) const;
         int32 GetHPSTaken(Unit const* unit) const;
@@ -252,6 +285,8 @@ class TC_GAME_API BotMgr
         void UpdateTargetIconName(uint8 id, std::string const& name);
         void ResetTargetIconNames();
 
+        static std::vector<Unit*> GetAllGroupMembers(Group const* group);
+        static std::vector<Unit*> GetAllGroupMembers(Unit const* source);
         static void InviteBotToBG(ObjectGuid botguid, GroupQueueInfo* ginfo, Battleground* bg);
 
         static bool IsBotInAreaTriggerRadius(Creature const* bot, AreaTriggerEntry const* trigger);

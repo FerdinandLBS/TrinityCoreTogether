@@ -239,6 +239,7 @@ class BattlegroundWS : public Battleground
         //npcbot
         WorldSafeLocsEntry const* GetClosestGraveyardForBot(WorldLocation const& curPos, uint32 team) const override;
         void AddBot(Creature* bot) override;
+        void RemoveBot(ObjectGuid guid) override;
         bool UpdateBotScore(Creature const* bot, uint32 type, uint32 value, bool doAddHonor = true) override;
         void HandleBotKillPlayer(Creature* bot, Player* victim) override;
         void HandleBotKillBot(Creature* bot, Creature* victim) override;
