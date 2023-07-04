@@ -57,6 +57,24 @@ const char* getCustomGreeting(int entry) {
     return nullptr;
 }
 
+uint32 GetPorperSpellIdForLevel(uint32 basespell, uint8 lvl)
+{
+    SpellInfo const* info = sSpellMgr->GetSpellInfo(basespell);
+    if (!info)
+    {
+        return 0; //invalid spell id
+    }
+
+    uint32 spellId = basespell;
+
+    while (info != nullptr && lvl >= info->BaseLevel)
+    {
+        spellId = info->Id; //can use this spell
+        info = info->GetNextRankSpell(); //check next rank
+    }
+    return spellId;
+}
+
 Unit* SelectMostHpPctFriedly(Unit* who, float range, bool isCombat) {
     Unit* unit = nullptr;
     Trinity::MostHPPctInRange u_check(who, range, isCombat);
@@ -627,10 +645,10 @@ void AssistanceAI::DamageDealt(Unit* /*victim*/, uint32& /*damage*/, DamageEffec
 
 // Called at any Damage from any attacker (before damage apply)
 // Note: it for recalculation damage or special reaction at damage
-void AssistanceAI::DamageTaken(Unit* /*attacker*/, uint32& /*damage*/, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) {
+void AssistanceAI::DamageTaken(Unit* attacker, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) {
     switch (me->GetEntry()) {
     case 45006:
-        UpdateHumanRaceTalentBuffXP(me, 1);
+        UpdateHumanRaceTalentBuffXP(me, damage*200/me->GetMaxHealth() + 1);
         break;
     }
 }
@@ -976,19 +994,19 @@ void AssistanceAI::handleUndeadRaceTalent() {
         _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_MELEE;
         me->SetPowerType(Powers::POWER_RAGE);
 
-        AddSpellWithLevelLimit(355, 10);
-        AddSpellWithLevelLimit(78, 1);
+        AddSpellWithLevelLimit(GetPorperSpellIdForLevel(355, me->GetLevel()), 10);
+        AddSpellWithLevelLimit(GetPorperSpellIdForLevel(78, me->GetLevel()), 1);
         AddSpellWithLevelLimit(87260, 15);
         if (_class == ASSISTANCE_CLASS::TANK) {
             me->SetAttackTime(WeaponAttackType::BASE_ATTACK, 1500);
             AddSpellWithLevelLimit(46968, 60);
-            AddSpellWithLevelLimit(871, 28);
-            AddSpellWithLevelLimit(6343, 6);
+            AddSpellWithLevelLimit(GetPorperSpellIdForLevel(871, me->GetLevel()), 28);
+            AddSpellWithLevelLimit(GetPorperSpellIdForLevel(6343, me->GetLevel()), 6);
         }
         else {
-            AddSpellWithLevelLimit(12294, 40);
-            AddSpellWithLevelLimit(12970, 0);
-            AddSpellWithLevelLimit(46924, 60);
+            AddSpellWithLevelLimit(GetPorperSpellIdForLevel(12294, me->GetLevel()), 40);
+            AddSpellWithLevelLimit(GetPorperSpellIdForLevel(12970, me->GetLevel()), 0);
+            AddSpellWithLevelLimit(GetPorperSpellIdForLevel(46924, me->GetLevel()), 60);
             if (mainWeap && mainWeap->GetTemplate()->InventoryType == INVTYPE_2HWEAPON)
                 me->SetAttackTime(WeaponAttackType::BASE_ATTACK, 3100);
             else
@@ -1001,9 +1019,9 @@ void AssistanceAI::handleUndeadRaceTalent() {
         me->SetPowerType(Powers::POWER_ENERGY);
         //me->SetVirtualItem(0, 3268);
         //me->SetVirtualItem(1, 3268);
-        me->m_spells[0] = 1752;
-        me->m_spells[1] = 6774;
-        me->m_spells[2] = 2669;
+        me->m_spells[0] = GetPorperSpellIdForLevel(1752, me->GetLevel());
+        me->m_spells[1] = GetPorperSpellIdForLevel(6774, me->GetLevel());
+        me->m_spells[2] = GetPorperSpellIdForLevel(2669, me->GetLevel());
         break;
     case CLASS_PRIEST:
         _class = ASSISTANCE_CLASS::HEALER;
@@ -1016,10 +1034,10 @@ void AssistanceAI::handleUndeadRaceTalent() {
         _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_MELEE;
         me->SetPowerType(Powers::POWER_RUNIC_POWER);
         //me->SetVirtualItem(0, 3822);
-        me->m_spells[0] = 47541;
+        me->m_spells[0] = GetPorperSpellIdForLevel(47541, me->GetLevel());
         me->m_spells[1] = 81171;
         me->m_spells[2] = 81174;
-        me->m_spells[3] = 56222;
+        me->m_spells[3] = GetPorperSpellIdForLevel(56222, me->GetLevel());
         me->m_spells[4] = 81172;
         me->m_spells[5] = 81173;
         break;
@@ -1028,18 +1046,18 @@ void AssistanceAI::handleUndeadRaceTalent() {
         _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
         //me->SetVirtualItem(0, 20724);
         me->SetPowerType(Powers::POWER_MANA);
-        me->m_spells[0] = 120;
-        me->m_spells[1] = 133;
-        me->m_spells[2] = 10193;
+        me->m_spells[0] = GetPorperSpellIdForLevel(120, me->GetLevel());
+        me->m_spells[1] = GetPorperSpellIdForLevel(133, me->GetLevel());
+        me->m_spells[2] = GetPorperSpellIdForLevel(10193, me->GetLevel());
         break;
     case CLASS_WARLOCK:
         _class = ASSISTANCE_CLASS::DPS;
         _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
         //me->SetVirtualItem(0, 2549);
         me->SetPowerType(Powers::POWER_MANA);
-        me->m_spells[0] = 172;
-        me->m_spells[1] = 348;
-        me->m_spells[2] = 5720;
+        me->m_spells[0] = GetPorperSpellIdForLevel(172, me->GetLevel());
+        me->m_spells[1] = GetPorperSpellIdForLevel(348, me->GetLevel());
+        me->m_spells[2] = GetPorperSpellIdForLevel(5720, me->GetLevel());
         break;
     }
 

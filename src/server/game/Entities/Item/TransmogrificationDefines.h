@@ -1,4 +1,4 @@
-#ifndef DEF_TRANSMOGRIFICATION_DEFINES_H
+﻿#ifndef DEF_TRANSMOGRIFICATION_DEFINES_H
 #define DEF_TRANSMOGRIFICATION_DEFINES_H
 
 #include "Define.h"
@@ -51,6 +51,46 @@ inline const char* CanTransmogrifyResultMessage(TransmogResult result)
 {
     switch (result)
     {
+    case TransmogResult_Ok: return "物品已经幻化";
+    case TransmogResult_InvalidItemType: return "此类物品无法幻化";
+    case TransmogResult_ItemBlocked: return "这件物品无法被幻化";
+    case TransmogResult_FishingPoleBlocked: return "鱼竿无法被幻化";
+    case TransmogResult_InvalidItemQuality: return "这个稀有度的物品无法幻化";
+    case TransmogResult_RequiredEventNotActive: return "幻化条件没有被满足";
+    case TransmogResult_ItemMustHaveStats: return "物品必须拥有属性才能幻化";
+    case TransmogResult_InvalidFaction: return "你的阵营无法使用这件物品";
+    case TransmogResult_InvalidClass: return "你的职业无法使用这件物品";
+    case TransmogResult_InvalidRace: return "你的种族无法使用这件物品";
+    case TransmogResult_MissingProfiency: return "You do not have the profiency to use that item";
+    case TransmogResult_MissingSkill: return "You do not have the required skill to use that item";
+    case TransmogResult_TooLowSkill: return "You do not have the required skill level to use that item";
+    case TransmogResult_MissingSpell: return "You do not have the required spell to use that item";
+    case TransmogResult_TooLowLevelPlayer: return "Your level is too low to use that item";
+    case TransmogResult_TooLowLevelItem: return "The item is too low level";
+    case TransmogResult_TooHighLevelItem: return "The item is too high level";
+    case TransmogResult_ItemTypesDontMatch: return "The item types do not match";
+    case TransmogResult_ArmorTypesDontMatch: return "The armor types do not match";
+    case TransmogResult_WeaponTypesDontMatch: return "The weapon types do not match";
+    case TransmogResult_EquipSlotsDontMatch: return "The item equip slots do not allow transmogrifying";
+    case TransmogResult_InvalidSlot: return "Items equipped in this slot cannot be transmogrified";
+    case TransmogResult_NonexistantTransmog: return "The selected transmogrification does not exist";
+    case TransmogResult_EmptySlot: return "You do not have an item equipped in that slot";
+    case TransmogResult_NoPendingTarnsmogs: return "You have no pending transmogrifications";
+    case TransmogResult_CostChangedDuringTransaction: return "Cost changed during transaction";
+    case TransmogResult_NotEnoughMoney: return "Not enough money";
+    case TransmogResult_TooLongSetName: return "The set name is too long or too short";
+    case TransmogResult_NoTransmogrifications: return "You have no items equipped with pending or non-pending transmogrifications";
+    case TransmogResult_AtMaxSets: return "You cannot save more sets";
+    case TransmogResult_NonexistantSet: return "The set does not exist";
+    case TransmogResult_ItemNotFitForEnchantRequirements: return "The item is not fit for the enchant";
+    }
+    return nullptr;
+};
+/*
+inline const char* CanTransmogrifyResultMessage(TransmogResult result)
+{
+    switch (result)
+    {
         case TransmogResult_Ok: return "Item transmogrified";
         case TransmogResult_InvalidItemType: return "This type of item cannot be transmogrified";
         case TransmogResult_ItemBlocked: return "This item cannot be transmogrified";
@@ -86,6 +126,7 @@ inline const char* CanTransmogrifyResultMessage(TransmogResult result)
     }
     return nullptr;
 };
+*/
 const char* const TransmogResult_Ok_PendingMessage = "Pending transmog added";
 const char* const AddToCollectionMessageFmt = "%s has been added to your appearance collection.";
 const uint32 InvisibleEntry = std::numeric_limits<uint32>::max();

@@ -1274,11 +1274,12 @@ public:
                 return;
 
             Position p;
-
+            bot_ai* ai;
             p = sp->m_targets.GetDstPos()->GetPosition();
             if (target && target->ToCreature() && target->ToCreature()->IsNPCBot()) {
-                if (!target->GetOwner() || (target->GetOwner()->ToPlayer() != owner)) {
-                    owner->GetSession()->SendAreaTriggerMessage("?????");
+                ai = (bot_ai*)target->GetAI();
+                if (ai->GetBotOwner() != owner) {
+                    owner->GetSession()->SendAreaTriggerMessage("这不是你的NPCBot");
                     return;
                 }
                 ((bot_ai*)target->GetAI())->SetBotCommandState(BOT_COMMAND_STAY);
