@@ -64,6 +64,7 @@ class bot_ai : public CreatureAI
         void EnterEvadeMode(EvadeReason/* why*/ = EVADE_REASON_OTHER) override { }
         //void LeavingWorld() override { }
         void OnSpellStart(SpellInfo const* spellInfo) override { OnBotSpellStart(spellInfo); }
+        void OnDeath(Unit* attacker = nullptr);
         //bool CanRespawn() override { return IAmFree(); }
 
         virtual void OnBotSummon(Creature* /*summon*/) {}
@@ -284,6 +285,9 @@ class bot_ai : public CreatureAI
 
         uint32 GetEngageTimer() const { return _engageTimer; }
         void ResetEngageTimer(uint32 delay);
+
+        uint8 GetHealHpPctThreshold() const { return _healHpPctThreshold; }
+        void SetHealHpPctThreshold(uint8 threshold) { _healHpPctThreshold = threshold; }
 
         bool HasSpell(uint32 basespell) const;
         uint32 GetBaseSpell(std::string_view spell_name, LocaleConstant locale) const;
@@ -538,6 +542,8 @@ class bot_ai : public CreatureAI
         uint32 GetItemSpellCooldown(uint32 spellid) const;
         void CheckUsableItems(uint32 diff);
 
+        uint32 GetLastWMOArea() const { return _lastWMOAreaId; }
+
         Player* master;
         Player* _prevRRobin;
         Unit* opponent;
@@ -557,6 +563,7 @@ class bot_ai : public CreatureAI
 
     private:
         void FindMaster();
+        uint32 CalculateOwnershipCheckTime();
 
         void _OnHealthUpdate() const;
         void _OnManaUpdate() const;
@@ -672,6 +679,8 @@ class bot_ai : public CreatureAI
         //timers
         uint32 _reviveTimer, _powersTimer, _chaseTimer, _engageTimer, _potionTimer;
         uint32 lastdiff, checkAurasTimer, checkMasterTimer, roleTimer, ordersTimer, regenTimer, _updateTimerMedium, _updateTimerEx1;
+        uint32 _checkOwershipTimer;
+        uint32 _moveBehindTimer;
         uint32 _wmoAreaUpdateTimer;
         uint32 waitTimer;
         uint32 itemsAutouseTimer;
@@ -684,8 +693,10 @@ class bot_ai : public CreatureAI
         uint32 _saveDisabledSpellsTimer;
 
         uint32 _lastZoneId, _lastAreaId, _lastWMOAreaId;
+        uint32 _selfrez_spell_id;
 
         uint8 _unreachableCount, _jumpCount, _evadeCount;
+        uint8 _healHpPctThreshold;
         uint32 _roleMask;
         uint32 _usableItemSlotsMask;
         ObjectGuid::LowType _ownerGuid;

@@ -2,6 +2,7 @@
 #include "botmgr.h"
 #include "bottext.h"
 #include "bottraits.h"
+#include "Containers.h"
 #include "Group.h"
 #include "Log.h"
 #include "Map.h"
@@ -321,12 +322,12 @@ public:
 
                 if (me->GetPowerType() != POWER_MANA)
                 {
-                    //TC_LOG_ERROR("entities.player", "druid_bot::removeShapeshiftForm(): still has poweType %u!", uint32(me->GetPowerType()));
+                    //TC_LOG_ERROR("entities.player", "druid_bot::removeShapeshiftForm(): still has poweType {}!", uint32(me->GetPowerType()));
                     me->SetPowerType(POWER_MANA);
                 }
                 if (me->GetShapeshiftForm() != FORM_NONE)
                 {
-                    //TC_LOG_ERROR("entities.player", "druid_bot::removeShapeshiftForm(): still speshifted into %u!", uint32(me->GetShapeshiftForm()));
+                    //TC_LOG_ERROR("entities.player", "druid_bot::removeShapeshiftForm(): still speshifted into {}!", uint32(me->GetShapeshiftForm()));
                     me->RemoveAurasByType(SPELL_AURA_MOD_SHAPESHIFT, me->GetGUID(), nullptr, false);
                 }
 
@@ -1223,6 +1224,8 @@ public:
             if (!target || !target->IsAlive() || target->GetShapeshiftForm() == FORM_SPIRITOFREDEMPTION || me->GetDistance(target) > 40)
                 return false;
             uint8 hp = GetHealthPCT(target);
+            if (hp > GetHealHpPctThreshold())
+                return false;
             bool pointed = IsPointedHealTarget(target);
             if (hp > 95 && !(pointed && me->GetMap()->IsRaid()) &&
                 (!target->IsInCombat() || target->getAttackers().empty() || !IsTank(target) || !me->GetMap()->IsRaid()))
@@ -1678,7 +1681,7 @@ public:
                     }
                     break;
                 default:
-                    TC_LOG_ERROR("entities.player", "druid_bot::setStats(): NYI form %u", uint32(form));
+                    TC_LOG_ERROR("entities.player", "druid_bot::setStats(): NYI form {}", uint32(form));
                     setStats(BOT_STANCE_NONE);
                     return;
             }
@@ -2194,18 +2197,18 @@ public:
                 {
                     comboPoints++;
                     //debug
-                    //TC_LOG_ERROR("entities.player", "druid_bot CP GEN: %s adds 1, now %u", spell->SpellName[0], uint32(comboPoints));
+                    //TC_LOG_ERROR("entities.player", "druid_bot CP GEN: {} adds 1, now {}", spell->SpellName[0], uint32(comboPoints));
                     if (primalFuryProc)
                     {
                         comboPoints++;
                         //debug
-                        //TC_LOG_ERROR("entities.player", "druid_bot CP EX: now %u", uint32(comboPoints));
+                        //TC_LOG_ERROR("entities.player", "druid_bot CP EX: now {}", uint32(comboPoints));
                     }
                     if (comboPoints > 5)
                     {
                         comboPoints = 5;
                         //debug
-                        //TC_LOG_ERROR("entities.player", "druid_bot CP NOR: now %u", uint32(comboPoints));
+                        //TC_LOG_ERROR("entities.player", "druid_bot CP NOR: now {}", uint32(comboPoints));
                     }
                 }
                 //Combo point spending
@@ -2213,7 +2216,7 @@ public:
                 else if (spell->NeedsComboPoints())
                 {
                     //debug
-                    //TC_LOG_ERROR("entities.player", "druid_bot CP SPEND1: %u to 0", uint32(comboPoints));
+                    //TC_LOG_ERROR("entities.player", "druid_bot CP SPEND1: {} to 0", uint32(comboPoints));
                     if (lvl >= 25 && comboPoints > 0)
                     {
                         if (urand(1,100) <= uint32(comboPoints * 20))
@@ -2554,7 +2557,7 @@ public:
 
         void SummonedCreatureDespawn(Creature* summon) override
         {
-            //TC_LOG_ERROR("entities.unit", "SummonedCreatureDespawn: %s's %s", me->GetName().c_str(), summon->GetName().c_str());
+            //TC_LOG_ERROR("entities.unit", "SummonedCreatureDespawn: {}'s {}", me->GetName(), summon->GetName());
             //if (summon == botPet)
             //    botPet = nullptr;
             if (summon->GetEntry() == BOT_PET_FORCE_OF_NATURE)

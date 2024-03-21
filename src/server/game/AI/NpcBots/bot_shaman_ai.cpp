@@ -2,6 +2,7 @@
 #include "botmgr.h"
 #include "bottext.h"
 #include "bottraits.h"
+#include "Containers.h"
 #include "Group.h"
 #include "Item.h"
 #include "Log.h"
@@ -439,7 +440,7 @@ public:
                     Unit* to = ObjectAccessor::GetUnit(*me, _totems[i].first);
                     if (!to)
                     {
-                        TC_LOG_ERROR("entities.player", "%s has unexpectingly lost totem in slot %u!", me->GetName().c_str(), i);
+                        TC_LOG_ERROR("entities.player", "{} has unexpectingly lost totem in slot {}!", me->GetName(), i);
                         _totems[i].first = ObjectGuid::Empty;
                         continue;
                     }
@@ -1339,6 +1340,8 @@ public:
             if (!target || !target->IsAlive() || target->GetShapeshiftForm() == FORM_SPIRITOFREDEMPTION || me->GetDistance(target) > 40)
                 return false;
             uint8 hp = GetHealthPCT(target);
+            if (hp > GetHealHpPctThreshold())
+                return false;
             bool pointed = IsPointedHealTarget(target);
             if (hp > 90 && !(pointed && me->GetMap()->IsRaid()) &&
                 (!target->IsInCombat() || target->getAttackers().empty() || !IsTank(target) || !me->GetMap()->IsRaid()))
@@ -2116,7 +2119,7 @@ public:
 
         void SummonedCreatureDespawn(Creature* summon) override
         {
-            //TC_LOG_ERROR("entities.unit", "SummonedCreatureDespawn: %s's %s", me->GetName().c_str(), summon->GetName().c_str());
+            //TC_LOG_ERROR("entities.unit", "SummonedCreatureDespawn: {}'s {}", me->GetName(), summon->GetName());
             //if (summon == botPet)
             //    botPet = nullptr;
             if (summon->GetEntry() == BOT_PET_SPIRIT_WOLF)
@@ -2164,7 +2167,7 @@ public:
                     Unit* to = ObjectAccessor::GetUnit(*me, _totems[i].first);
                     if (!to)
                     {
-                        //TC_LOG_ERROR("entities.player", "%s has no totem in slot %u during remove!", me->GetName().c_str(), i);
+                        //TC_LOG_ERROR("entities.player", "{} has no totem in slot {} during remove!", me->GetName(), i);
                         continue;
                     }
                     to->ToTotem()->UnSummon();
@@ -2176,7 +2179,7 @@ public:
         {
             if (!summon)
             {
-                TC_LOG_ERROR("entities.player", "OnBotDespawn(): Shaman bot %s received NULL", me->GetName().c_str());
+                TC_LOG_ERROR("entities.player", "OnBotDespawn(): Shaman bot {} received NULL", me->GetName());
                 ASSERT(false);
                 //UnsummonAll();
                 return;
@@ -2185,7 +2188,7 @@ public:
             TempSummon const* totem = summon->ToTempSummon();
             if (!totem || !totem->IsTotem())
             {
-                //TC_LOG_ERROR("entities.player", "OnBotDespawn(): Shaman bot %s has despawned summon %s which is not a temp summon or not a totem...", me->GetName().c_str(), summon->GetName().c_str());
+                //TC_LOG_ERROR("entities.player", "OnBotDespawn(): Shaman bot {} has despawned summon {} which is not a temp summon or not a totem...", me->GetName(), summon->GetName());
                 return;
             }
 
@@ -2197,17 +2200,17 @@ public:
                 case SUMMON_SLOT_TOTEM_WATER:   slot = T_WATER; break;
                 case SUMMON_SLOT_TOTEM_AIR:     slot = T_AIR;   break;
                 default:
-                    TC_LOG_ERROR("entities.player", "OnBotDespawn(): Shaman bot %s has despawned totem %s in unknown slot %u", me->GetName().c_str(), summon->GetName().c_str(), totem->m_Properties->ID);
+                    TC_LOG_ERROR("entities.player", "OnBotDespawn(): Shaman bot {} has despawned totem {} in unknown slot {}", me->GetName(), summon->GetName(), totem->m_Properties->ID);
                     return;
             }
 
             if (_totems[slot].first == ObjectGuid::Empty)
-                TC_LOG_ERROR("entities.player", "OnBotDespawn(): Shaman bot %s has despawned totem %s while not having it registered!", me->GetName().c_str(), summon->GetName().c_str());
+                TC_LOG_ERROR("entities.player", "OnBotDespawn(): Shaman bot {} has despawned totem {} while not having it registered!", me->GetName(), summon->GetName());
             else if (_totems[slot].second._type == BOT_TOTEM_NONE || _totems[slot].second._type >= BOT_TOTEM_END)
-                TC_LOG_ERROR("entities.player", "OnBotDespawn(): Shaman bot %s has despawned totem %s with no type assigned!", me->GetName().c_str(), summon->GetName().c_str());
+                TC_LOG_ERROR("entities.player", "OnBotDespawn(): Shaman bot {} has despawned totem {} with no type assigned!", me->GetName(), summon->GetName());
 
             //here we reset totem category cd (not totem spell cd) if totem is destroyed
-            //TC_LOG_ERROR("entities.player", "OnBotDespawn(): %s despawned (%s : %u)", summon->GetName().c_str(), summon->IsAlive() ? "alive" : summon->isDying() ? "justdied" : "unk", (uint32)summon->getDeathState());
+            //TC_LOG_ERROR("entities.player", "OnBotDespawn(): {} despawned ({} : {})", summon->GetName(), summon->IsAlive() ? "alive" : summon->isDying() ? "justdied" : "unk", (uint32)summon->getDeathState());
             if (!summon->IsAlive()) // alive here means totem is being replaced or unsummoned through other means
                 TotemTimer[slot] = 0;
 
@@ -2221,7 +2224,7 @@ public:
             TempSummon const* totem = summon->ToTempSummon();
             if (!totem || !totem->IsTotem())
             {
-                //TC_LOG_ERROR("entities.player", "OnBotSummon(): Shaman bot %s has summoned creature %s which is not a temp summon or not a totem...", me->GetName().c_str(), summon->GetName().c_str());
+                //TC_LOG_ERROR("entities.player", "OnBotSummon(): Shaman bot {} has summoned creature {} which is not a temp summon or not a totem...", me->GetName(), summon->GetName());
                 return;
             }
 
@@ -2233,7 +2236,7 @@ public:
                 case SUMMON_SLOT_TOTEM_WATER:   slot = T_WATER; break;
                 case SUMMON_SLOT_TOTEM_AIR:     slot = T_AIR;   break;
                 default:
-                    TC_LOG_ERROR("entities.player", "OnBotSummon(): Shaman bot %s has summoned totem %s with unknown type %u", me->GetName().c_str(), summon->GetName().c_str(), totem->m_Properties->ID);
+                    TC_LOG_ERROR("entities.player", "OnBotSummon(): Shaman bot {} has summoned totem {} with unknown type {}", me->GetName(), summon->GetName(), totem->m_Properties->ID);
                     return;
             }
 
@@ -2288,7 +2291,7 @@ public:
                 case TOTEM_OF_WRATH_1:          btype = BOT_TOTEM_WRATH;                break;
                 default:
                 {
-                    TC_LOG_ERROR("scripts", "Unknown totem create spell %u!", createSpell);
+                    TC_LOG_ERROR("scripts", "Unknown totem create spell {}!", createSpell);
                     btype = BOT_TOTEM_NONE;
                     break;
                 }
@@ -2299,8 +2302,8 @@ public:
             _totems[slot].second._type = btype;
             me->m_SummonSlot[slot+1] = _totems[slot].first; //needed for scripts handlers
 
-            //TC_LOG_ERROR("entities.player", "shaman bot: summoned %s (type %u) at x=%.2f, y=%.2f, z=%.2f",
-            //    summon->GetName().c_str(), slot + 1, _totems[slot].second.pos.GetPositionX(), _totems[slot].second.pos.GetPositionY(), _totems[slot].second.pos.GetPositionZ());
+            //TC_LOG_ERROR("entities.player", "shaman bot: summoned {} (type {}) at x={}, y={}, z={}",
+            //    summon->GetName(), slot + 1, _totems[slot].second.pos.GetPositionX(), _totems[slot].second.pos.GetPositionY(), _totems[slot].second.pos.GetPositionZ());
 
             //TODO: gets overriden in Spell::EffectSummonType (end)
             //Without setting creator correctly it will be impossible to use summon X elemental totems
@@ -2761,9 +2764,9 @@ public:
                 //    baseId = sSpellMgr->GetSpellInfo(base)->GetFirstRankSpell()->Id;
                 //if (target->GetEntry() == 70025 && cre->GetGUID() != me->GetGUID())
                 //{
-                //    TC_LOG_ERROR("spells","totemMask: unit %s, %s (%u), owner %s (crSp %u, base %u), istotem %u", target->GetName().c_str(),
+                //    TC_LOG_ERROR("spells","totemMask: unit {}, {} ({}), owner {} (crSp {}, base {}), istotem {}", target->GetName(),
                 //        itr->second->GetBase()->GetSpellInfo()->SpellName[0], itr->second->GetBase()->GetId(),
-                //        cre ? cre->GetName().c_str() : "unk", base, baseId, uint32(cre->IsTotem()));
+                //        cre ? cre->GetName() : "unk", base, baseId, uint32(cre->IsTotem()));
                 //}
                 sumonSpell = cre ? cre->GetUInt32Value(UNIT_CREATED_BY_SPELL) : 0;
                 if (!sumonSpell || !cre->IsTotem())

@@ -2,6 +2,7 @@
 #include "botspell.h"
 #include "bpet_ai.h"
 #include "CellImpl.h"
+#include "Containers.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "MotionMaster.h"

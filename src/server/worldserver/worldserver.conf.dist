@@ -4371,11 +4371,13 @@ NpcBot.Enable = 1
 
 #
 #    NpcBot.MaxBots
-#        Description: Maximum number of bots allowed for players.
-#        Default:     1
+#        Description: Maximum number of bots allowed for players per level bracket:
+#                     0-9, 10-19, 20,29, ... , 70-79, 80+.
+#        Default:     1,1,1,1,1,1,1,1,1 - (1 for all levels)
+#                     0,1,2,3,4,5,6,7,8 - (1 per 10 levels)
 #        Max:         39
 
-NpcBot.MaxBots = 1
+NpcBot.MaxBots = 1,1,1,1,1,1,1,1,1
 
 #
 #    NpcBot.MaxBotsPerClass
@@ -4402,13 +4404,26 @@ NpcBot.Botgiver.FilterRaces = 0
 NpcBot.BaseFollowDistance = 30
 
 #
-#    NpcBot.XpReduction
-#        Description: XP percent penalty for each bot used starting with second.
-#        Example:     3 bots, xp reduction is 20: ((3-1)*20) = 40%, 60% exp gained only.
+#    NpcBot.XpReduction.Amount
+#    NpcBot.XpReduction.StartingNumber
+#        Description: XP percent penalty for each bot used starting with <StartingNumber>.
+#        Example:     3 bots, reduction is 20, start is 2: ((3-(2-1))*20) = 40%, 60% exp gained.
 #        Note:        Maximum overall xp reduction is 90%.
-#        Default:     0
+#        Default:     0 - (NpcBot.XpReduction.Amount)
+#                     2 - (NpcBot.XpReduction.StartingNumber)
 
-NpcBot.XpReduction = 0
+NpcBot.XpReduction.Amount         = 0
+NpcBot.XpReduction.StartingNumber = 2
+
+#
+#    NpcBot.MountLevel.60
+#    NpcBot.MountLevel.100
+#        Description: Minimum level for bots to be able to use ground mounts
+#        Default:     20 - (NpcBot.MountLevel.60)
+#                     40 - (NpcBot.MountLevel.100)
+
+NpcBot.MountLevel.60  = 20
+NpcBot.MountLevel.100 = 40
 
 #
 #    NpcBot.HealTargetIconMask
@@ -4529,6 +4544,15 @@ NpcBot.Enable.Raid          = 0
 NpcBot.Enable.BG            = 0
 NpcBot.Enable.Arena         = 0
 NpcBot.Enable.DungeonFinder = 1
+
+#
+#    NpcBot.DisableInstances
+#        Description: When NpcBot.Enable.Dungeon or/and NpcBot.Enable.Raid options are set to 1
+#                     excludes certain instance map ids, preventing bots from entering those maps
+#        Default:     "" - (None)
+#                     "509,531" - (Disable AQ20 and AQ40)
+
+NpcBot.DisableInstances = ""
 
 #
 #    NpcBot.Limit.Dungeon
@@ -4739,13 +4763,21 @@ NpcBot.InfoPacketsLimit = -1
 
 #
 #    NpcBot.OwnershipExpireTime
-#        Description: Maxmum time since last account login (in seconds) before bot ownership
-#                     is automatically cancelled (at server loading).
-#        Note:        All items will be refund and mailed back to player.
+#        Description: Time (in seconds) before bot ownership is automatically cancelled.
+#        Note:        NPCBot ownership may only expire after player goes offline.
+#        Note2:       All items will be mailed back to player as usual.
 #        Default:     0 - (Disabled)
 #                     604800 - (7 Days)
 
 NpcBot.OwnershipExpireTime = 0
+
+#
+#    NpcBot.OwnershipExpireMode
+#        Description: Ownership expiration mode. Determines when the timer starts.
+#        Default:     0 - (Player goes offline, timer resets if player logs back in)
+#                     1 - (Player hires the bot, timer never resets)
+
+NpcBot.OwnershipExpireMode = 0
 
 #
 #    NpcBot.EnrageOnDismiss
@@ -4785,6 +4817,16 @@ NpcBot.WanderingBots.Continents.Levels = 25,15,15,10,5,10,20,0,0
 NpcBot.WanderingBots.Continents.Maps = 0,1,530,571
 
 #
+#    NpcBot.WanderingBots.Continents.XPGain
+#        Description: XP gained by wandering bots mutiplier. Directly affects bot leveling rate.
+#        Default:     1.0 - (100% XP gained)
+#                     0.1 - (10% XP gained)
+#        Minimum:     0.0
+#        Maximum:   100.0
+
+NpcBot.WanderingBots.Continents.XPGain = 1.0
+
+#
 #    NpcBot.WanderingBots.BG.Enable
 #        Description: Allow wandering bots generation for Battlegrounds.
 #        Note:        Bots are temporarily borrowed from non-spawned bots pool.
@@ -4792,6 +4834,23 @@ NpcBot.WanderingBots.Continents.Maps = 0,1,530,571
 #                     1 - (Enable)
 
 NpcBot.WanderingBots.BG.Enable = 0
+
+#
+#    NpcBot.WanderingBots.BG.CapLevel
+#        Description: Enforce BG bot maximum level limit set by Expansion and MaxPlayerLevel
+#                     config paramter values.
+#        Default:     0 - (Disabled)
+#                     1 - (Enable)
+
+NpcBot.WanderingBots.BG.CapLevel = 0
+
+#
+#    NpcBot.WanderingBots.BG.CapLevelByFirstPlayer
+#        Description: Prevent setting BG bot level higher than player triggering its generation
+#        Default:     0 - (Disabled)
+#                     1 - (Enable)
+
+NpcBot.WanderingBots.BG.CapLevelByFirstPlayer = 0
 
 #
 #    NpcBot.WanderingBots.BG.TargetTeamPlayersCount.<BGTYPE>

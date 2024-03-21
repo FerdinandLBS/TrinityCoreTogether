@@ -24,6 +24,7 @@
 #include "Position.h"
 #include "SharedDefines.h"
 #include "SpellDefines.h"
+#include "UniqueTrackablePtr.h"
 #include <memory>
 
 namespace WorldPackets
@@ -395,6 +396,7 @@ class TC_GAME_API Spell
         ObjectGuid m_castItemGUID;
         uint32 m_castItemEntry;
         uint8 m_cast_count;
+        bool m_fromClient;
         uint32 m_glyphIndex;
         SpellCastTargets m_targets;
 
@@ -461,6 +463,9 @@ class TC_GAME_API Spell
         Spell** m_selfContainer;                            // pointer to our spell container (if applicable)
 
         std::string GetDebugInfo() const;
+
+        Trinity::unique_weak_ptr<Spell> GetWeakPtr() const;
+
         void CallScriptOnResistAbsorbCalculateHandlers(DamageInfo const& damageInfo, uint32& resistAmount, int32& absorbAmount);
 
     protected:

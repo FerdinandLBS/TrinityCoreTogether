@@ -27,6 +27,7 @@
 #include "GameTime.h"
 #include "GridNotifiersImpl.h"
 #include "Group.h"
+#include "GroupMgr.h"
 #include "MiscPackets.h"
 #include "Object.h"
 #include "ObjectAccessor.h"
@@ -150,7 +151,6 @@ Battleground::~Battleground()
     for (uint32 i = 0; i < size; ++i)
         DelObject(i);
 
-    sBattlegroundMgr->RemoveBattleground(GetTypeID(), GetInstanceID());
     // unload map
     if (m_Map)
     {
@@ -272,7 +272,7 @@ inline void Battleground::_CheckSafePositions(uint32 diff)
                 Position const* startPos = GetTeamStartPosition(Battleground::GetTeamIndexByTeamId(player->GetBGTeam()));
                 if (pos.GetExactDistSq(startPos) > maxDist)
                 {
-                    TC_LOG_DEBUG("bg.battleground", "BATTLEGROUND: Sending %s back to start location (map: %u) (possible exploit)", player->GetName().c_str(), GetMapId());
+                    TC_LOG_DEBUG("bg.battleground", "BATTLEGROUND: Sending {} back to start location (map: {}) (possible exploit)", player->GetName(), GetMapId());
                     player->TeleportTo(GetMapId(), startPos->GetPositionX(), startPos->GetPositionY(), startPos->GetPositionZ(), startPos->GetOrientation());
                 }
             }
@@ -465,7 +465,7 @@ inline void Battleground::_ProcessJoin(uint32 diff)
 
         if (!FindBgMap())
         {
-            TC_LOG_ERROR("bg.battleground", "Battleground::_ProcessJoin: map (map id: %u, instance id: %u) is not created!", m_MapId, m_InstanceID);
+            TC_LOG_ERROR("bg.battleground", "Battleground::_ProcessJoin: map (map id: {}, instance id: {}) is not created!", m_MapId, m_InstanceID);
             EndNow();
             return;
         }
@@ -615,8 +615,8 @@ Player* Battleground::_GetPlayer(ObjectGuid guid, bool offlineRemove, char const
         // should this be ObjectAccessor::FindConnectedPlayer() to return players teleporting ?
         player = ObjectAccessor::FindPlayer(guid);
         if (!player)
-            TC_LOG_ERROR("bg.battleground", "Battleground::%s: player (%s) not found for BG (map: %u, instance id: %u)!",
-                context, guid.ToString().c_str(), m_MapId, m_InstanceID);
+            TC_LOG_ERROR("bg.battleground", "Battleground::{}: player ({}) not found for BG (map: {}, instance id: {})!",
+                context, guid.ToString(), m_MapId, m_InstanceID);
     }
     return player;
 }
@@ -675,7 +675,7 @@ void Battleground::SendBroadcastText(uint32 id, ChatMsg msgType, WorldObject con
 {
     if (!sObjectMgr->GetBroadcastText(id))
     {
-        TC_LOG_ERROR("bg.battleground", "Battleground::SendBroadcastText: `broadcast_text` (ID: %u) was not found", id);
+        TC_LOG_ERROR("bg.battleground", "Battleground::SendBroadcastText: `broadcast_text` (ID: {}) was not found", id);
         return;
     }
 
@@ -1063,7 +1063,7 @@ void Battleground::RemovePlayerAtLeave(ObjectGuid guid, bool Transport, bool Sen
         if (Transport)
             player->TeleportToBGEntryPoint();
 
-        TC_LOG_DEBUG("bg.battleground", "Removed player %s from Battleground.", player->GetName().c_str());
+        TC_LOG_DEBUG("bg.battleground", "Removed player {} from Battleground.", player->GetName());
     }
 
     //battleground object will be deleted next Battleground::Update() call
@@ -1157,7 +1157,7 @@ void Battleground::Reset()
     m_Events = 0;
 
     if (m_InvitedAlliance > 0 || m_InvitedHorde > 0)
-        TC_LOG_ERROR("bg.battleground", "Battleground::Reset: one of the counters is not 0 (alliance: %u, horde: %u) for BG (map: %u, instance id: %u)!",
+        TC_LOG_ERROR("bg.battleground", "Battleground::Reset: one of the counters is not 0 (alliance: {}, horde: {}) for BG (map: {}, instance id: {})!",
             m_InvitedAlliance, m_InvitedHorde, m_MapId, m_InstanceID);
 
     m_InvitedAlliance = 0;
@@ -1196,7 +1196,7 @@ void Battleground::StartBattleground()
     sBattlegroundMgr->AddBattleground(this);
 
     if (m_IsRated)
-        TC_LOG_DEBUG("bg.arena", "Arena match type: %u for Team1Id: %u - Team2Id: %u started.", m_ArenaType, m_ArenaTeamIds[TEAM_ALLIANCE], m_ArenaTeamIds[TEAM_HORDE]);
+        TC_LOG_DEBUG("bg.arena", "Arena match type: {} for Team1Id: {} - Team2Id: {} started.", m_ArenaType, m_ArenaTeamIds[TEAM_ALLIANCE], m_ArenaTeamIds[TEAM_HORDE]);
 }
 
 void Battleground::AddPlayer(Player* player)
@@ -1301,6 +1301,7 @@ void Battleground::AddOrSetPlayerToCorrectBgGroup(Player* player, uint32 team)
         group = new Group;
         SetBgRaid(team, group);
         group->Create(player);
+        sGroupMgr->AddGroup(group);
     }
     else                                            // raid already exist
     {
@@ -1351,7 +1352,7 @@ void Battleground::EventPlayerLoggedIn(Player* player)
 {
     ObjectGuid guid = player->GetGUID();
     // player is correct pointer
-    for (GuidDeque::iterator itr = m_OfflineQueue.begin(); itr != m_OfflineQueue.end(); ++itr)
+    for (auto itr = m_OfflineQueue.begin(); itr != m_OfflineQueue.end(); ++itr)
     {
         if (*itr == guid)
         {
@@ -1646,7 +1647,7 @@ bool Battleground::AddObject(uint32 type, uint32 entry, float x, float y, float 
     // Temporally add safety check for bad spawns and send log (object rotations need to be rechecked in sniff)
     if (!rotation0 && !rotation1 && !rotation2 && !rotation3)
     {
-        TC_LOG_DEBUG("bg.battleground", "Battleground::AddObject: gameoobject [entry: %u, object type: %u] for BG (map: %u) has zeroed rotation fields, "
+        TC_LOG_DEBUG("bg.battleground", "Battleground::AddObject: gameoobject [entry: {}, object type: {}] for BG (map: {}) has zeroed rotation fields, "
             "orientation used temporally, but please fix the spawn", entry, type, m_MapId);
 
         rot = QuaternionData::fromEulerAnglesZYX(o, 0.f, 0.f);
@@ -1658,7 +1659,7 @@ bool Battleground::AddObject(uint32 type, uint32 entry, float x, float y, float 
     GameObject* go = new GameObject;
     if (!go->Create(GetBgMap()->GenerateLowGuid<HighGuid::GameObject>(), entry, GetBgMap(), PHASEMASK_NORMAL, Position(x, y, z, o), rot, 255, goState))
     {
-        TC_LOG_ERROR("bg.battleground", "Battleground::AddObject: cannot create gameobject (entry: %u) for BG (map: %u, instance id: %u)!",
+        TC_LOG_ERROR("bg.battleground", "Battleground::AddObject: cannot create gameobject (entry: {}) for BG (map: {}, instance id: {})!",
                 entry, m_MapId, m_InstanceID);
         delete go;
         return false;
@@ -1714,8 +1715,8 @@ void Battleground::DoorClose(uint32 type)
         }
     }
     else
-        TC_LOG_ERROR("bg.battleground", "Battleground::DoorClose: door gameobject (type: %u, %s) not found for BG (map: %u, instance id: %u)!",
-            type, BgObjects[type].ToString().c_str(), m_MapId, m_InstanceID);
+        TC_LOG_ERROR("bg.battleground", "Battleground::DoorClose: door gameobject (type: {}, {}) not found for BG (map: {}, instance id: {})!",
+            type, BgObjects[type].ToString(), m_MapId, m_InstanceID);
 }
 
 void Battleground::DoorOpen(uint32 type)
@@ -1726,8 +1727,8 @@ void Battleground::DoorOpen(uint32 type)
         obj->SetGoState(GO_STATE_ACTIVE);
     }
     else
-        TC_LOG_ERROR("bg.battleground", "Battleground::DoorOpen: door gameobject (type: %u, %s) not found for BG (map: %u, instance id: %u)!",
-            type, BgObjects[type].ToString().c_str(), m_MapId, m_InstanceID);
+        TC_LOG_ERROR("bg.battleground", "Battleground::DoorOpen: door gameobject (type: {}, {}) not found for BG (map: {}, instance id: {})!",
+            type, BgObjects[type].ToString(), m_MapId, m_InstanceID);
 }
 
 GameObject* Battleground::GetBGObject(uint32 type, bool logError)
@@ -1736,11 +1737,11 @@ GameObject* Battleground::GetBGObject(uint32 type, bool logError)
     if (!obj)
     {
         if (logError)
-            TC_LOG_ERROR("bg.battleground", "Battleground::GetBGObject: gameobject (type: %u, %s) not found for BG (map: %u, instance id: %u)!",
-                type, BgObjects[type].ToString().c_str(), m_MapId, m_InstanceID);
+            TC_LOG_ERROR("bg.battleground", "Battleground::GetBGObject: gameobject (type: {}, {}) not found for BG (map: {}, instance id: {})!",
+                type, BgObjects[type].ToString(), m_MapId, m_InstanceID);
         else
-            TC_LOG_INFO("bg.battleground", "Battleground::GetBGObject: gameobject (type: %u, %s) not found for BG (map: %u, instance id: %u)!",
-                type, BgObjects[type].ToString().c_str(), m_MapId, m_InstanceID);
+            TC_LOG_INFO("bg.battleground", "Battleground::GetBGObject: gameobject (type: {}, {}) not found for BG (map: {}, instance id: {})!",
+                type, BgObjects[type].ToString(), m_MapId, m_InstanceID);
     }
     return obj;
 }
@@ -1751,11 +1752,11 @@ Creature* Battleground::GetBGCreature(uint32 type, bool logError)
     if (!creature)
     {
         if (logError)
-            TC_LOG_ERROR("bg.battleground", "Battleground::GetBGCreature: creature (type: %u, %s) not found for BG (map: %u, instance id: %u)!",
-                type, BgCreatures[type].ToString().c_str(), m_MapId, m_InstanceID);
+            TC_LOG_ERROR("bg.battleground", "Battleground::GetBGCreature: creature (type: {}, {}) not found for BG (map: {}, instance id: {})!",
+                type, BgCreatures[type].ToString(), m_MapId, m_InstanceID);
         else
-            TC_LOG_INFO("bg.battleground", "Battleground::GetBGCreature: creature (type: %u, %s) not found for BG (map: %u, instance id: %u)!",
-                type, BgCreatures[type].ToString().c_str(), m_MapId, m_InstanceID);
+            TC_LOG_INFO("bg.battleground", "Battleground::GetBGCreature: creature (type: {}, {}) not found for BG (map: {}, instance id: {})!",
+                type, BgCreatures[type].ToString(), m_MapId, m_InstanceID);
     }
     return creature;
 }
@@ -1811,7 +1812,7 @@ Creature* Battleground::AddCreature(uint32 entry, uint32 type, float x, float y,
 
     if (!creature->Create(map->GenerateLowGuid<HighGuid::Unit>(), map, PHASEMASK_NORMAL, entry, { x, y, z, o }))
     {
-        TC_LOG_ERROR("bg.battleground", "Battleground::AddCreature: cannot create creature (entry: %u) for BG (map: %u, instance id: %u)!",
+        TC_LOG_ERROR("bg.battleground", "Battleground::AddCreature: cannot create creature (entry: {}) for BG (map: {}, instance id: {})!",
             entry, m_MapId, m_InstanceID);
         delete creature;
         return nullptr;
@@ -1822,7 +1823,7 @@ Creature* Battleground::AddCreature(uint32 entry, uint32 type, float x, float y,
     CreatureTemplate const* cinfo = sObjectMgr->GetCreatureTemplate(entry);
     if (!cinfo)
     {
-        TC_LOG_ERROR("bg.battleground", "Battleground::AddCreature: creature template (entry: %u) does not exist for BG (map: %u, instance id: %u)!",
+        TC_LOG_ERROR("bg.battleground", "Battleground::AddCreature: creature template (entry: {}) does not exist for BG (map: {}, instance id: {})!",
             entry, m_MapId, m_InstanceID);
         delete creature;
         return nullptr;
@@ -1859,8 +1860,8 @@ bool Battleground::DelCreature(uint32 type)
         return true;
     }
 
-    TC_LOG_ERROR("bg.battleground", "Battleground::DelCreature: creature (type: %u, %s) not found for BG (map: %u, instance id: %u)!",
-        type, BgCreatures[type].ToString().c_str(), m_MapId, m_InstanceID);
+    TC_LOG_ERROR("bg.battleground", "Battleground::DelCreature: creature (type: {}, {}) not found for BG (map: {}, instance id: {})!",
+        type, BgCreatures[type].ToString(), m_MapId, m_InstanceID);
     BgCreatures[type].Clear();
     return false;
 }
@@ -1877,8 +1878,8 @@ bool Battleground::DelObject(uint32 type)
         BgObjects[type].Clear();
         return true;
     }
-    TC_LOG_ERROR("bg.battleground", "Battleground::DelObject: gameobject (type: %u, %s) not found for BG (map: %u, instance id: %u)!",
-        type, BgObjects[type].ToString().c_str(), m_MapId, m_InstanceID);
+    TC_LOG_ERROR("bg.battleground", "Battleground::DelObject: gameobject (type: {}, {}) not found for BG (map: {}, instance id: {})!",
+        type, BgObjects[type].ToString(), m_MapId, m_InstanceID);
     BgObjects[type].Clear();
     return false;
 }
@@ -1894,8 +1895,8 @@ bool Battleground::RemoveObjectFromWorld(uint32 type)
         BgObjects[type].Clear();
         return true;
     }
-    TC_LOG_INFO("bg.battleground", "Battleground::RemoveObjectFromWorld: gameobject (type: %u, %s) not found for BG (map: %u, instance id: %u)!",
-        type, BgObjects[type].ToString().c_str(), m_MapId, m_InstanceID);
+    TC_LOG_INFO("bg.battleground", "Battleground::RemoveObjectFromWorld: gameobject (type: {}, {}) not found for BG (map: {}, instance id: {})!",
+        type, BgObjects[type].ToString(), m_MapId, m_InstanceID);
     return false;
 }
 
@@ -1917,7 +1918,7 @@ bool Battleground::AddSpiritGuide(uint32 type, float x, float y, float z, float 
         //creature->CastSpell(creature, SPELL_SPIRIT_HEAL_CHANNEL, true);
         return true;
     }
-    TC_LOG_ERROR("bg.battleground", "Battleground::AddSpiritGuide: cannot create spirit guide (type: %u, entry: %u) for BG (map: %u, instance id: %u)!",
+    TC_LOG_ERROR("bg.battleground", "Battleground::AddSpiritGuide: cannot create spirit guide (type: {}, entry: {}) for BG (map: {}, instance id: {})!",
         type, entry, m_MapId, m_InstanceID);
     EndNow();
     return false;
@@ -1967,7 +1968,7 @@ void Battleground::HandleTriggerBuff(ObjectGuid go_guid)
 {
     if (!FindBgMap())
     {
-        TC_LOG_ERROR("bg.battleground", "Battleground::HandleTriggerBuff called with null bg map, %s", go_guid.ToString().c_str());
+        TC_LOG_ERROR("bg.battleground", "Battleground::HandleTriggerBuff called with null bg map, {}", go_guid.ToString());
         return;
     }
 
@@ -1981,8 +1982,8 @@ void Battleground::HandleTriggerBuff(ObjectGuid go_guid)
         index--;
     if (index < 0)
     {
-        TC_LOG_ERROR("bg.battleground", "Battleground::HandleTriggerBuff: cannot find buff gameobject (%s, entry: %u, type: %u) in internal data for BG (map: %u, instance id: %u)!",
-            go_guid.ToString().c_str(), obj->GetEntry(), obj->GetGoType(), m_MapId, m_InstanceID);
+        TC_LOG_ERROR("bg.battleground", "Battleground::HandleTriggerBuff: cannot find buff gameobject ({}, entry: {}, type: {}) in internal data for BG (map: {}, instance id: {})!",
+            go_guid.ToString(), obj->GetEntry(), obj->GetGoType(), m_MapId, m_InstanceID);
         return;
     }
 
@@ -2085,6 +2086,7 @@ void Battleground::HandleBotKillPlayer(Creature* killer, Player* victim)
     {
         // To be able to remove insignia -- ONLY IN Battlegrounds
         victim->SetUnitFlag(UNIT_FLAG_SKINNABLE);
+        RewardXPAtKill(killer, victim);
     }
 }
 void Battleground::HandleBotKillBot(Creature* killer, Creature* victim)
@@ -2114,6 +2116,8 @@ void Battleground::HandleBotKillBot(Creature* killer, Creature* victim)
                 UpdateBotScore(teamedBot, SCORE_HONORABLE_KILLS, 1);
         }
     }
+    if (!isArena() && !victim->GetLootRecipient()) // Prevent double reward (AI->KilledUnit (killing blow) and Unit::Kill (recipient))
+        RewardXPAtKill(killer, victim);
 }
 void Battleground::HandlePlayerKillBot(Creature* victim, Player* killer)
 {
@@ -2145,6 +2149,8 @@ void Battleground::HandlePlayerKillBot(Creature* victim, Player* killer)
                 UpdateBotScore(teamedBot, SCORE_HONORABLE_KILLS, 1);
         }
     }
+    if (!isArena())
+        RewardXPAtKill(killer, victim);
 }
 
 TeamId Battleground::GetOtherTeamId(TeamId teamId) const
@@ -2262,8 +2268,8 @@ int32 Battleground::GetObjectType(ObjectGuid guid)
     for (uint32 i = 0; i < BgObjects.size(); ++i)
         if (BgObjects[i] == guid)
             return i;
-    TC_LOG_ERROR("bg.battleground", "Battleground::GetObjectType: player used gameobject (%s) which is not in internal data for BG (map: %u, instance id: %u), cheating?",
-        guid.ToString().c_str(), m_MapId, m_InstanceID);
+    TC_LOG_ERROR("bg.battleground", "Battleground::GetObjectType: player used gameobject ({}) which is not in internal data for BG (map: {}, instance id: {}), cheating?",
+        guid.ToString(), m_MapId, m_InstanceID);
     return -1;
 }
 
@@ -2308,24 +2314,92 @@ void Battleground::RewardXPAtKill(Player* killer, Player* victim)
         killer->RewardPlayerAndGroupAtKill(victim, true);
 }
 
+//npcbot
+void Battleground::RewardXPAtKill(Player* killer, Creature* victim)
+{
+    if (sWorld->getBoolConfig(CONFIG_BG_XP_FOR_KILL) && killer && victim)
+        killer->RewardPlayerAndGroupAtKill(victim, true);
+}
+
+void Battleground::RewardXPAtKill(Creature* killer, Player* victim)
+{
+    if (sWorld->getBoolConfig(CONFIG_BG_XP_FOR_KILL) && killer && victim)
+    {
+        Player* pkiller = killer->IsFreeBot() ? nullptr : killer->GetBotOwner();
+        if (!pkiller)
+        {
+            uint32 team = (BotDataMgr::GetTeamIdForFaction(killer->GetFaction()) == TEAM_ALLIANCE) ? ALLIANCE : HORDE;
+            if (Group const* group = GetBgRaid(team))
+            {
+                float mindist = SIZE_OF_GRIDS;
+                for (GroupReference const* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+                {
+                    if (Player* gPlayer = itr->GetSource())
+                    {
+                        float dist = gPlayer->GetExactDist2d(victim);
+                        if (dist < mindist)
+                        {
+                            mindist = dist;
+                            pkiller = gPlayer;
+                        }
+                    }
+                }
+            }
+        }
+        if (pkiller && pkiller->IsAtGroupRewardDistance(victim))
+            pkiller->RewardPlayerAndGroupAtKill(victim, true);
+    }
+}
+
+void Battleground::RewardXPAtKill(Creature* killer, Creature* victim)
+{
+    if (sWorld->getBoolConfig(CONFIG_BG_XP_FOR_KILL) && killer && victim)
+    {
+        Player* pkiller = killer->IsFreeBot() ? nullptr : killer->GetBotOwner();
+        if (!pkiller)
+        {
+            uint32 team = (BotDataMgr::GetTeamIdForFaction(killer->GetFaction()) == TEAM_ALLIANCE) ? ALLIANCE : HORDE;
+            if (Group const* group = GetBgRaid(team))
+            {
+                float mindist = SIZE_OF_GRIDS;
+                for (GroupReference const* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+                {
+                    if (Player* gPlayer = itr->GetSource())
+                    {
+                        float dist = gPlayer->GetExactDist2d(victim);
+                        if (dist < mindist)
+                        {
+                            mindist = dist;
+                            pkiller = gPlayer;
+                        }
+                    }
+                }
+            }
+        }
+        if (pkiller && pkiller->IsAtGroupRewardDistance(victim))
+            pkiller->RewardPlayerAndGroupAtKill(victim, true);
+    }
+}
+//end npcbot
+
 uint32 Battleground::GetTeamScore(uint32 teamId) const
 {
     if (teamId == TEAM_ALLIANCE || teamId == TEAM_HORDE)
         return m_TeamScores[teamId];
 
-    TC_LOG_ERROR("bg.battleground", "GetTeamScore with wrong Team %u for BG %u", teamId, GetTypeID());
+    TC_LOG_ERROR("bg.battleground", "GetTeamScore with wrong Team {} for BG {}", teamId, GetTypeID());
     return 0;
 }
 
 void Battleground::HandleAreaTrigger(Player* player, uint32 trigger)
 {
-    TC_LOG_DEBUG("bg.battleground", "Unhandled AreaTrigger %u in Battleground %u. Player coords (x: %f, y: %f, z: %f)",
+    TC_LOG_DEBUG("bg.battleground", "Unhandled AreaTrigger {} in Battleground {}. Player coords (x: {}, y: {}, z: {})",
                    trigger, player->GetMapId(), player->GetPositionX(), player->GetPositionY(), player->GetPositionZ());
 }
 
 bool Battleground::CheckAchievementCriteriaMeet(uint32 criteriaId, Player const* /*source*/, Unit const* /*target*/, uint32 /*miscvalue1*/)
 {
-    TC_LOG_ERROR("bg.battleground", "Battleground::CheckAchievementCriteriaMeet: No implementation for criteria %u", criteriaId);
+    TC_LOG_ERROR("bg.battleground", "Battleground::CheckAchievementCriteriaMeet: No implementation for criteria {}", criteriaId);
     return false;
 }
 

@@ -3,6 +3,7 @@
 #include "botmgr.h"
 #include "botspell.h"
 #include "bottraits.h"
+#include "Containers.h"
 #include "Creature.h"
 #include "ScriptMgr.h"
 /*

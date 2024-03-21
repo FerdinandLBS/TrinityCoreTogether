@@ -811,7 +811,7 @@ TC_API_EXPORT EnumText EnumUtils<SpellAttr4>::ToString(SpellAttr4 value)
         case SPELL_ATTR4_UNK24: return { "SPELL_ATTR4_UNK24", "Unknown attribute 24@Attr4", "Shoot-type spell?" };
         case SPELL_ATTR4_IS_PET_SCALING: return { "SPELL_ATTR4_IS_PET_SCALING", "Pet Scaling aura", "" };
         case SPELL_ATTR4_CAST_ONLY_IN_OUTLAND: return { "SPELL_ATTR4_CAST_ONLY_IN_OUTLAND", "Only in Outland/Northrend", "" };
-        case SPELL_ATTR4_INHERIT_CRIT_FROM_AURA: return { "SPELL_ATTR4_INHERIT_CRIT_FROM_AURA", "Inherit critical chance from triggering aura", "" };
+        case SPELL_ATTR4_FORCE_DISPLAY_CASTBAR: return { "SPELL_ATTR4_FORCE_DISPLAY_CASTBAR", "Force Display Castbar", "" };
         case SPELL_ATTR4_UNK28: return { "SPELL_ATTR4_UNK28", "Unknown attribute 28@Attr4", "" };
         case SPELL_ATTR4_UNK29: return { "SPELL_ATTR4_UNK29", "Unknown attribute 29@Attr4", "" };
         case SPELL_ATTR4_UNK30: return { "SPELL_ATTR4_UNK30", "Unknown attribute 30@Attr4", "" };
@@ -855,7 +855,7 @@ TC_API_EXPORT SpellAttr4 EnumUtils<SpellAttr4>::FromIndex(size_t index)
         case 24: return SPELL_ATTR4_UNK24;
         case 25: return SPELL_ATTR4_IS_PET_SCALING;
         case 26: return SPELL_ATTR4_CAST_ONLY_IN_OUTLAND;
-        case 27: return SPELL_ATTR4_INHERIT_CRIT_FROM_AURA;
+        case 27: return SPELL_ATTR4_FORCE_DISPLAY_CASTBAR;
         case 28: return SPELL_ATTR4_UNK28;
         case 29: return SPELL_ATTR4_UNK29;
         case 30: return SPELL_ATTR4_UNK30;
@@ -896,7 +896,7 @@ TC_API_EXPORT size_t EnumUtils<SpellAttr4>::ToIndex(SpellAttr4 value)
         case SPELL_ATTR4_UNK24: return 24;
         case SPELL_ATTR4_IS_PET_SCALING: return 25;
         case SPELL_ATTR4_CAST_ONLY_IN_OUTLAND: return 26;
-        case SPELL_ATTR4_INHERIT_CRIT_FROM_AURA: return 27;
+        case SPELL_ATTR4_FORCE_DISPLAY_CASTBAR: return 27;
         case SPELL_ATTR4_UNK28: return 28;
         case SPELL_ATTR4_UNK29: return 29;
         case SPELL_ATTR4_UNK30: return 30;
@@ -1173,7 +1173,7 @@ TC_API_EXPORT EnumText EnumUtils<SpellAttr7>::ToString(SpellAttr7 value)
     {
         case SPELL_ATTR7_UNK0: return { "SPELL_ATTR7_UNK0", "Unknown attribute 0@Attr7", "" };
         case SPELL_ATTR7_IGNORE_DURATION_MODS: return { "SPELL_ATTR7_IGNORE_DURATION_MODS", "Ignore duration modifiers", "" };
-        case SPELL_ATTR7_REACTIVATE_AT_RESURRECT: return { "SPELL_ATTR7_REACTIVATE_AT_RESURRECT", "Reactivate at resurrect (client only)", "" };
+        case SPELL_ATTR7_DISABLE_AURA_WHILE_DEAD: return { "SPELL_ATTR7_DISABLE_AURA_WHILE_DEAD", "Disable Aura While Dead", "" };
         case SPELL_ATTR7_IS_CHEAT_SPELL: return { "SPELL_ATTR7_IS_CHEAT_SPELL", "Is cheat spell", "Cannot cast if caster doesn't have UnitFlag2 & UNIT_FLAG2_ALLOW_CHEAT_SPELLS" };
         case SPELL_ATTR7_UNK4: return { "SPELL_ATTR7_UNK4", "Unknown attribute 4@Attr7", "Soulstone related?" };
         case SPELL_ATTR7_SUMMON_PLAYER_TOTEM: return { "SPELL_ATTR7_SUMMON_PLAYER_TOTEM", "Summons player-owned totem", "" };
@@ -1217,7 +1217,7 @@ TC_API_EXPORT SpellAttr7 EnumUtils<SpellAttr7>::FromIndex(size_t index)
     {
         case 0: return SPELL_ATTR7_UNK0;
         case 1: return SPELL_ATTR7_IGNORE_DURATION_MODS;
-        case 2: return SPELL_ATTR7_REACTIVATE_AT_RESURRECT;
+        case 2: return SPELL_ATTR7_DISABLE_AURA_WHILE_DEAD;
         case 3: return SPELL_ATTR7_IS_CHEAT_SPELL;
         case 4: return SPELL_ATTR7_UNK4;
         case 5: return SPELL_ATTR7_SUMMON_PLAYER_TOTEM;
@@ -1258,7 +1258,7 @@ TC_API_EXPORT size_t EnumUtils<SpellAttr7>::ToIndex(SpellAttr7 value)
     {
         case SPELL_ATTR7_UNK0: return 0;
         case SPELL_ATTR7_IGNORE_DURATION_MODS: return 1;
-        case SPELL_ATTR7_REACTIVATE_AT_RESURRECT: return 2;
+        case SPELL_ATTR7_DISABLE_AURA_WHILE_DEAD: return 2;
         case SPELL_ATTR7_IS_CHEAT_SPELL: return 3;
         case SPELL_ATTR7_UNK4: return 4;
         case SPELL_ATTR7_SUMMON_PLAYER_TOTEM: return 5;
