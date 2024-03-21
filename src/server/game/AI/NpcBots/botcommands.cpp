@@ -1,25 +1,27 @@
+#include "Bag.h"
 #include "bot_ai.h"
 #include "botdatamgr.h"
 #include "botdump.h"
 #include "botgearscore.h"
 #include "botmgr.h"
 #include "botwanderful.h"
-#include "Bag.h"
-#include "Chat.h"
 #include "CharacterCache.h"
+#include "Chat.h"
+#include "Containers.h"
 #include "Creature.h"
 #include "DatabaseEnv.h"
 #include "DBCStores.h"
-#include "Language.h"
 #include "GameClient.h"
 #include "Group.h"
 #include "Item.h"
+#include "Language.h"
 #include "Log.h"
 #include "Map.h"
 #include "MapManager.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "Player.h"
+#include "QueryPackets.h"
 #include "RBAC.h"
 #include "ScriptMgr.h"
 #include "SpellInfo.h"
@@ -30,7 +32,6 @@
 #include "World.h"
 #include "WorldDatabase.h"
 #include "WorldSession.h"
-#include "QueryPackets.h"
 
 /*
 Name: script_bot_commands
@@ -354,7 +355,7 @@ private:
             case 493: // Moonglade
                 return { 46, 60 };
             default:
-                TC_LOG_ERROR("scripts", "GetZoneLevels: no choice for zoneId %u", zoneId);
+                TC_LOG_ERROR("scripts", "GetZoneLevels: no choice for zoneId {}", zoneId);
                 return { 1, 60 };
         }
     }
@@ -720,7 +721,7 @@ public:
         });
         std::string val_str = ss.str();
         val_str.resize(val_str.size() - 1u);
-        trans->PAppend(val_str.c_str());
+        trans->PAppend("{}", val_str.c_str());
         WorldDatabase.CommitTransaction(trans);
 
         handler->SendSysMessage("Saved.");
@@ -861,7 +862,7 @@ public:
                 wpc->SetMaxPower(POWER_MANA, uint32(uwp->GetLinks().size()));
                 wpc->SetFullPower(POWER_MANA);
             }
-            trans->PAppend("UPDATE creature_template_npcbot_wander_nodes SET links='%s' WHERE id=%u", uwp->FormatLinks().c_str(), uwp->GetWPId());
+            trans->PAppend("UPDATE creature_template_npcbot_wander_nodes SET links='{}' WHERE id={}", uwp->FormatLinks().c_str(), uwp->GetWPId());
         });
         WorldDatabase.DirectCommitTransaction(trans);
     }
@@ -939,7 +940,7 @@ public:
             if (Creature* creature = wp->GetCreature())
                 if (creature->GetLevel() != minl)
                     creature->SetLevel(minl);
-            WorldDatabase.PExecute("UPDATE creature_template_npcbot_wander_nodes SET minlevel=%u, maxlevel=%u WHERE id=%u",
+            WorldDatabase.PExecute("UPDATE creature_template_npcbot_wander_nodes SET minlevel={}, maxlevel={} WHERE id={}",
                 uint32(minl), uint32(maxl), wp->GetWPId());
         });
 
@@ -982,7 +983,7 @@ public:
             if (creature->GetLevel() != *minlevel)
                 creature->SetLevel(*minlevel);
 
-        WorldDatabase.PExecute("UPDATE creature_template_npcbot_wander_nodes SET minlevel=%u, maxlevel=%u WHERE id=%u",
+        WorldDatabase.PExecute("UPDATE creature_template_npcbot_wander_nodes SET minlevel={}, maxlevel={} WHERE id={}",
             uint32(*minlevel), uint32(*maxlevel), wpId);
 
         return true;
@@ -1013,7 +1014,7 @@ public:
                 handler->PSendSysMessage("Adding WP %u '%s' flag %u", wpId, wp->GetName().c_str(), uint32(flags));
                 const_cast<WanderNode*>(wp)->SetFlags(BotWPFlags(flags));
             }
-            WorldDatabase.PExecute("UPDATE creature_template_npcbot_wander_nodes SET flags=%u WHERE id=%u", wp->GetFlags(), wpId);
+            WorldDatabase.PExecute("UPDATE creature_template_npcbot_wander_nodes SET flags={} WHERE id={}", wp->GetFlags(), wpId);
         });
 
         return true;
@@ -1051,7 +1052,7 @@ public:
             wp->SetFlags(BotWPFlags(*flags));
         }
 
-        WorldDatabase.PExecute("UPDATE creature_template_npcbot_wander_nodes SET flags=%u WHERE id=%u", wp->GetFlags(), wpId);
+        WorldDatabase.PExecute("UPDATE creature_template_npcbot_wander_nodes SET flags={} WHERE id={}", wp->GetFlags(), wpId);
 
         return true;
     }
@@ -1080,7 +1081,7 @@ public:
         handler->PSendSysMessage("Changing WP %u '%s' name to '%s'", wpId, wp->GetName().c_str(), newname->c_str());
         wp->SetName(*newname);
 
-        WorldDatabase.PExecute("UPDATE creature_template_npcbot_wander_nodes SET name='%s' WHERE id=%u", wp->GetName().c_str(), wpId);
+        WorldDatabase.PExecute("UPDATE creature_template_npcbot_wander_nodes SET name='{}' WHERE id={}", wp->GetName().c_str(), wpId);
 
         return true;
     }
@@ -1110,7 +1111,7 @@ public:
         if (Creature* creature = wp->GetCreature())
             creature->NearTeleportTo(*player);
 
-        WorldDatabase.PExecute("UPDATE creature_template_npcbot_wander_nodes SET x=%f,y=%f,z=%f,o=%f WHERE id=%u",
+        WorldDatabase.PExecute("UPDATE creature_template_npcbot_wander_nodes SET x={},y={},z={},o={} WHERE id={}",
             wp->m_positionX, wp->m_positionY, wp->m_positionZ, wp->GetOrientation(), wp->GetWPId());
 
         handler->PSendSysMessage("WP %u '%s' was successfully moved.", wp->GetWPId(), wp->GetName().c_str());
@@ -1233,7 +1234,7 @@ public:
             wpc->ToTempSummon()->DespawnOrUnsummon();
         WanderNode::RemoveWP(wp);
 
-        WorldDatabase.PExecute("DELETE FROM creature_template_npcbot_wander_nodes WHERE id=%u", wpId);
+        WorldDatabase.PExecute("DELETE FROM creature_template_npcbot_wander_nodes WHERE id={}", wpId);
 
         handler->PSendSysMessage("WP %u '%s' was successfully deleted.", wpId, wpName.c_str());
 
@@ -1718,7 +1719,7 @@ public:
         }
         else
         {
-            auto class_name = *bot_name;
+            auto const& class_name = *bot_name;
             for (auto const c : class_name)
             {
                 if (!std::islower(c))
@@ -1800,10 +1801,40 @@ public:
             target_guid = bot->GetTarget();
         else if (target_token == "mytarget")
             target_guid = owner->GetTarget();
+        else if (target_token == "star")
+            target_guid = owner->GetGroup()->GetTargetIcons()[0];
+        else if (target_token == "circle")
+            target_guid = owner->GetGroup()->GetTargetIcons()[1];
+        else if (target_token == "diamond")
+            target_guid = owner->GetGroup()->GetTargetIcons()[2];
+        else if (target_token == "triangle")
+            target_guid = owner->GetGroup()->GetTargetIcons()[3];
+        else if (target_token == "moon")
+            target_guid = owner->GetGroup()->GetTargetIcons()[4];
+        else if (target_token == "square")
+            target_guid = owner->GetGroup()->GetTargetIcons()[5];
+        else if (target_token == "cross")
+            target_guid = owner->GetGroup()->GetTargetIcons()[6];
+        else if (target_token == "skull")
+            target_guid = owner->GetGroup()->GetTargetIcons()[7];
+        else if (target_token->size() == 1u && owner->GetGroup() && std::isdigit(target_token->front()))
+        {
+            uint8 digit = static_cast<uint8>(std::stoi(std::string(*target_token)));
+            switch (digit)
+            {
+                case 1: case 2: case 3: case 4: case 5: case 6: case 7: case 8:
+                    target_guid = owner->GetGroup()->GetTargetIcons()[digit - 1];
+                    break;
+                default:
+                    target_guid = ObjectGuid::Empty;
+                    break;
+            }
+        }
         else
         {
             handler->PSendSysMessage("Invalid target token '%s'!", *target_token);
-            handler->SendSysMessage("Valid target tokens:\n    '','bot','self', 'me','master', 'mypet', 'myvehicle', 'target', 'mytarget'");
+            handler->SendSysMessage("Valid target tokens:\n    '','bot','self', 'me','master', 'mypet', 'myvehicle', 'target', 'mytarget', "
+                "'star','1', 'circle','2', 'diamond','3', 'triangle','4', 'moon','5', 'square','6', 'cross','7', 'skull','8'");
             return true;
         }
 
@@ -2847,6 +2878,11 @@ public:
         const_cast<Creature*>(bot)->CombatStop();
         bot->GetBotAI()->Reset();
         bot->GetBotAI()->canUpdate = false;
+
+        CreatureData const* data = ASSERT_NOTNULL(sObjectMgr->GetCreatureData(bot->GetSpawnId()));
+        if (bot->IsInWorld() && data->mapId != bot->GetMap()->GetId())
+            bot->GetMap()->AddObjectToRemoveList(const_cast<Creature*>(bot));
+
         Creature::DeleteFromDB(bot->GetSpawnId());
 
         BotDataMgr::UpdateNpcBotData(bot->GetEntry(), NPCBOT_UPDATE_ERASE);
@@ -2929,7 +2965,7 @@ public:
         cdata->mapId = player->GetMapId();
 
         WorldDatabase.PExecute(
-            "UPDATE creature SET position_x = %.3f, position_y = %.3f, position_z = %.3f, orientation = %.3f, map = %u WHERE guid = %u",
+            "UPDATE creature SET position_x = {}, position_y = {}, position_z = {}, orientation = {}, map = {} WHERE guid = {}",
             cdata->spawnPoint.GetPositionX(), cdata->spawnPoint.GetPositionY(), cdata->spawnPoint.GetPositionZ(), cdata->spawnPoint.GetOrientation(), uint32(cdata->mapId), lowguid);
 
         if (bot->GetBotAI()->IAmFree() && bot->IsInWorld() && !bot->IsInCombat() && bot->IsAlive())
@@ -3030,12 +3066,12 @@ public:
         uint32 modelId = can_change_appearance ? SoundSetModelsArray[RaceToRaceOffset[*race]][*gender][soundset ? *soundset - 1 : urand(0u, 2u)] : 0;
 
         uint32 newentry = 0;
-        QueryResult creres = WorldDatabase.PQuery("SELECT entry FROM creature_template WHERE entry = %u", BOT_ENTRY_CREATE_BEGIN);
+        QueryResult creres = WorldDatabase.PQuery("SELECT entry FROM creature_template WHERE entry = {}", BOT_ENTRY_CREATE_BEGIN);
         if (!creres)
             newentry = BOT_ENTRY_CREATE_BEGIN;
         else
         {
-            creres = WorldDatabase.PQuery("SELECT MIN(entry) FROM creature_template WHERE entry >= %u AND entry IN (SELECT entry FROM creature_template) AND entry+1 NOT IN (SELECT entry FROM creature_template)", BOT_ENTRY_CREATE_BEGIN);
+            creres = WorldDatabase.PQuery("SELECT MIN(entry) FROM creature_template WHERE entry >= {} AND entry IN (SELECT entry FROM creature_template) AND entry+1 NOT IN (SELECT entry FROM creature_template)", BOT_ENTRY_CREATE_BEGIN);
             ASSERT(creres);
             Field* field = creres->Fetch();
             newentry = field[0].GetUInt32() + 1;
@@ -3043,16 +3079,16 @@ public:
 
         WorldDatabaseTransaction trans = WorldDatabase.BeginTransaction();
         trans->Append("DROP TEMPORARY TABLE IF EXISTS creature_template_temp_npcbot_create");
-        trans->PAppend("CREATE TEMPORARY TABLE creature_template_temp_npcbot_create ENGINE=MEMORY SELECT * FROM creature_template WHERE entry = (SELECT entry FROM creature_template_npcbot_extras WHERE class = %u LIMIT 1)", uint32(*bclass));
-        trans->PAppend("UPDATE creature_template_temp_npcbot_create SET entry = %u, name = \"%s\"", newentry, namestr.c_str());
+        trans->PAppend("CREATE TEMPORARY TABLE creature_template_temp_npcbot_create ENGINE=MEMORY SELECT * FROM creature_template WHERE entry = (SELECT entry FROM creature_template_npcbot_extras WHERE class = {} LIMIT 1)", uint32(*bclass));
+        trans->PAppend("UPDATE creature_template_temp_npcbot_create SET entry = {}, name = \"{}\"", newentry, namestr.c_str());
         if (modelId)
-            trans->PAppend("UPDATE creature_template_temp_npcbot_create SET modelid1 = %u", modelId);
+            trans->PAppend("UPDATE creature_template_temp_npcbot_create SET modelid1 = {}", modelId);
         trans->Append("INSERT INTO creature_template SELECT * FROM creature_template_temp_npcbot_create");
         trans->Append("DROP TEMPORARY TABLE creature_template_temp_npcbot_create");
-        trans->PAppend("REPLACE INTO creature_template_npcbot_extras VALUES (%u, %u, %u)", newentry, uint32(*bclass), uint32(*race));
-        trans->PAppend("REPLACE INTO creature_equip_template SELECT %u, 1, ids.itemID1, ids.itemID2, ids.itemID3, -1 FROM (SELECT itemID1, itemID2, itemID3 FROM creature_equip_template WHERE CreatureID = (SELECT entry FROM creature_template_npcbot_extras WHERE class = %u LIMIT 1)) ids", newentry, uint32(*bclass));
+        trans->PAppend("REPLACE INTO creature_template_npcbot_extras VALUES ({}, {}, {})", newentry, uint32(*bclass), uint32(*race));
+        trans->PAppend("REPLACE INTO creature_equip_template SELECT {}, 1, ids.itemID1, ids.itemID2, ids.itemID3, -1 FROM (SELECT itemID1, itemID2, itemID3 FROM creature_equip_template WHERE CreatureID = (SELECT entry FROM creature_template_npcbot_extras WHERE class = {} LIMIT 1)) ids", newentry, uint32(*bclass));
         if (can_change_appearance)
-            trans->PAppend("REPLACE INTO creature_template_npcbot_appearance VALUES (%u, \"%s\", %u, %u, %u, %u, %u, %u)",
+            trans->PAppend("REPLACE INTO creature_template_npcbot_appearance VALUES ({}, \"{}\", {}, {}, {}, {}, {}, {})",
                 newentry, namestr.c_str(), uint32(*gender), uint32(*skin), uint32(*face), uint32(*hairstyle), uint32(*haircolor), uint32(*features));
         WorldDatabase.DirectCommitTransaction(trans);
 
@@ -3204,7 +3240,7 @@ public:
                 ss << "\n" << counter << ") " << bot->GetEntry() << ": "
                     << bot->GetName() << " - |c" << bot_color_str << bot_class_str << "|r - "
                     << "level " << uint32(bot->GetLevel()) << " - \"" << zone_name << "\" - "
-                    << (bot->IsFreeBot() ? (bot->GetBotAI()->GetBotOwnerGuid() ? "inactive (owned)" : "free") : "active");
+                    << (bot->IsFreeBot() ? bot->GetBotAI()->GetBotOwnerGuid() ? "inactive (owned)" : bot->GetBotAI()->IsWanderer() ? "wandering" : "free" : "active");
             }
         }
 

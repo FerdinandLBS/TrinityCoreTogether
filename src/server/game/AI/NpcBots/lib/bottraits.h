@@ -85,7 +85,7 @@ CanAffectVictimSchools(Unit const* target, Schools... schools)
 
     if (!all_schools_valid(schools...))
     {
-        TC_LOG_ERROR("entities.player", "bot_ai::CanAffectVictimSchools(): trying to check invalid spell school, first: %u", uint32(results.at(0).first));
+        TC_LOG_ERROR("entities.player", "bot_ai::CanAffectVictimSchools(): trying to check invalid spell school, first: {}", uint32(results.at(0).first));
         return results;
     }
 

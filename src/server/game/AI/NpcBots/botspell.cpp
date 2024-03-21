@@ -135,7 +135,7 @@ void GenerateBotCustomSpellProcs()
             {
                 if (spellEffectInfo.IsAura())
                 {
-                    TC_LOG_ERROR("scripts", "Bot spell %u has ProcFlags %u, but it's of non-proc aura type, needs a correction", spellInfo.Id, spellInfo.ProcFlags);
+                    TC_LOG_ERROR("scripts", "Bot spell {} has ProcFlags {}, but it's of non-proc aura type, needs a correction", spellInfo.Id, spellInfo.ProcFlags);
                     break;
                 }
             }
@@ -199,7 +199,7 @@ void GenerateBotCustomSpellProcs()
         botSpellProcOverrides[spellInfo.Id] = std::move(procEntry);
     }
 
-    TC_LOG_INFO("server.loading", ">> Bot spell proc overrides generated for %u spells", uint32(botSpellProcOverrides.size()));
+    TC_LOG_INFO("server.loading", ">> Bot spell proc overrides generated for {} spells", uint32(botSpellProcOverrides.size()));
 
 }
 
@@ -1407,7 +1407,6 @@ void GenerateBotCustomSpells()
     sinfo->AttributesEx |= SPELL_ATTR1_CANT_BE_REDIRECTED | SPELL_ATTR1_CANT_BE_REFLECTED;
     sinfo->AttributesEx2 |= SPELL_ATTR2_NOT_RESET_AUTO_ACTIONS/* | SPELL_ATTR2_CANT_CRIT*/;
     sinfo->AttributesEx4 |= SPELL_ATTR4_IGNORE_RESISTANCES;
-    sinfo->AttributesEx4 &= ~(SPELL_ATTR4_INHERIT_CRIT_FROM_AURA);
 
     sinfo->_effects[0].Effect = SPELL_EFFECT_WEAPON_DAMAGE;
     sinfo->_effects[0].TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ENEMY);
@@ -2081,7 +2080,7 @@ void GenerateBotCustomSpells()
         }
     }
 
-    TC_LOG_INFO("server.loading", ">> Bot spellInfo overrides generated for %u spells", uint32(botSpellInfoOverrides.size()));
+    TC_LOG_INFO("server.loading", ">> Bot spellInfo overrides generated for {} spells", uint32(botSpellInfoOverrides.size()));
 
     GenerateBotCustomSpellProcs();
 }

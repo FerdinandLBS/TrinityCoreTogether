@@ -258,7 +258,7 @@ enum TrinityStrings
     LANG_RESET_TALENTS_ONLINE             = 213,
     LANG_RESET_TALENTS_OFFLINE            = 214,
     LANG_RESET_SPELLS                     = 215,
-    LANG_RESET_TALENTS                    = 216,
+    // unused                             = 216,
 
     LANG_RESETALL_UNKNOWN_CASE            = 217,
     LANG_RESETALL_SPELLS                  = 218,
@@ -447,7 +447,9 @@ enum TrinityStrings
     LANG_COMMAND_LEARN_ALL_RECIPES_HELP   = 392,
     LANG_COMMAND_LEARN_ALL_TALENTS_HELP   = 393,
     LANG_COMMAND_LEARN_ALL_PETTALENT_HELP = 394,
-    // Room for more level 2                395-399 not used
+    LANG_COMMAND_BG_START_HELP            = 395,
+    LANG_COMMAND_BG_STOP_HELP             = 396,
+    // Room for more level 2                397-399 not used
 
     // level 3 chat
     LANG_SCRIPTS_RELOADED                 = 400,
@@ -895,7 +897,7 @@ enum TrinityStrings
     LANG_NO_PET_FOUND                     = 1123,
     LANG_WRONG_PET_TYPE                   = 1124,
     LANG_COMMAND_LEARN_PET_TALENTS        = 1125,
-    LANG_RESET_PET_TALENTS                = 1126,
+    // unused                             = 1126,
     LANG_RESET_PET_TALENTS_ONLINE         = 1127,
     LANG_TAXINODE_ENTRY_LIST_CHAT         = 1128,
     LANG_TAXINODE_ENTRY_LIST_CONSOLE      = 1129,
@@ -1013,7 +1015,9 @@ enum TrinityStrings
     LANG_CMDPARSER_CURRENCY_NO_EXIST      = 1516, // master branch ONLY
     LANG_CMDPARSER_QUEST_NO_EXIST         = 1517, // RESERVED future cherry-pick
 
-    // 1516-1998 - free
+    // 1516-1996 - free
+    LANG_DEBUG_AREATRIGGER_ENTITY_ENTERED = 1997, // master branch ONLY
+    LANG_DEBUG_AREATRIGGER_ENTITY_LEFT    = 1998, // master branch ONLY
     LANG_DEBUG_AREATRIGGER_LEFT           = 1999, // master branch ONLY
     // Ticket Strings 2000-2030
     LANG_COMMAND_TICKETNEW                = 2000,

@@ -323,7 +323,7 @@ public:
         {
             if (IsInContactWithWater())
             {
-                //TC_LOG_ERROR("scripts", "ApplyClassDamageMultiplierMelee: %s now in water", me->GetName().c_str());
+                //TC_LOG_ERROR("scripts", "ApplyClassDamageMultiplierMelee: {} now in water", me->GetName());
                 damage *= 3;
             }
         }
@@ -332,7 +332,7 @@ public:
         {
             if (IsInContactWithWater())
             {
-                //TC_LOG_ERROR("scripts", "ApplyClassDamageMultiplierMelee: %s now in water", me->GetName().c_str());
+                //TC_LOG_ERROR("scripts", "ApplyClassDamageMultiplierMelee: {} now in water", me->GetName());
                 damage *= 3;
             }
         }
@@ -346,7 +346,7 @@ public:
 
             if (IsInContactWithWater())
             {
-                //TC_LOG_ERROR("scripts", "ApplyClassDamageMultiplierSpell: %s now in water", me->GetName().c_str());
+                //TC_LOG_ERROR("scripts", "ApplyClassDamageMultiplierSpell: {} now in water", me->GetName());
                 fdamage *= 3.f;
             }
 
@@ -638,14 +638,14 @@ public:
 
         void SummonedCreatureDies(Creature* /*summon*/, Unit* /*killer*/) override
         {
-            //TC_LOG_ERROR("entities.unit", "SummonedCreatureDies: %s's %s", me->GetName().c_str(), summon->GetName().c_str());
+            //TC_LOG_ERROR("entities.unit", "SummonedCreatureDies: {}'s {}", me->GetName(), summon->GetName());
             //if (summon == botPet)
             //    botPet = nullptr;
         }
 
         void SummonedCreatureDespawn(Creature* summon) override
         {
-            //TC_LOG_ERROR("entities.unit", "SummonedCreatureDespawn: %s's %s", me->GetName().c_str(), summon->GetName().c_str());
+            //TC_LOG_ERROR("entities.unit", "SummonedCreatureDespawn: {}'s {}", me->GetName(), summon->GetName());
             if (_minions.find(summon) != _minions.end())
                 _minions.erase(summon);
         }

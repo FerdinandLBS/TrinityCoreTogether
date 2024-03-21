@@ -162,13 +162,23 @@ inline void KillRewarder::_RewardXP(Player* player, float rate)
         xp *= player->GetTotalAuraMultiplier(SPELL_AURA_MOD_XP_PCT);
 
         //npcbot 4.2.2.1. Apply NpcBot XP reduction
-        if (player->GetNpcBotsCount() > 1)
+        uint8 bots_count = 0;
+        if (_group)
         {
-            if (uint8 xp_reduction = BotMgr::GetNpcBotXpReduction())
+            for (GroupReference const* itr = _group->GetFirstMember(); itr != nullptr; itr = itr->next())
             {
-                uint32 ratePct = std::max<int32>(100 - ((player->GetNpcBotsCount() - 1) * xp_reduction), 10);
-                xp = xp * ratePct / 100;
+                if (Player const* gPlayer = itr->GetSource())
+                    bots_count = std::max<uint8>(bots_count, gPlayer->GetNpcBotsCount());
             }
+        }
+        else
+            bots_count = player->GetNpcBotsCount();
+        uint8 xp_reduction = BotMgr::GetNpcBotXpReduction();
+        uint8 xp_reduction_start = BotMgr::GetNpcBotXpReductionStartingNumber();
+        if (xp_reduction_start > 0 && xp_reduction > 0 && bots_count >= xp_reduction_start)
+        {
+            uint32 ratePct = std::max<int32>(100 - ((bots_count - (xp_reduction_start - 1)) * xp_reduction), 10);
+            xp = xp * ratePct / 100;
         }
         //end npcbot
 

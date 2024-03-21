@@ -66,6 +66,7 @@ enum RogueBaseSpells
     AMBUSH_1                            = 8676,
 
     DISTRACT_1                          = 1725, //NYI
+    DISARM_TRAP_1                       = 1842, //Unused, see bot_ai::ProcessImmediateNonAttackTarget()
 
     //Poisons
     CRIPPLING_POISON_1                  = 3408,
@@ -176,7 +177,7 @@ static const uint32 Rogue_spells_cc_arr[] =
 static const uint32 Rogue_spells_support_arr[] =
 { /*EXPOSE_ARMOR_1, DISTRACT_1, PICK_LOCK_1,*/ STEALTH_1, ADRENALINE_RUSH_1, BLADE_FLURRY_1, CLOAK_OF_SHADOWS_1,
 COLD_BLOOD_1, DISMANTLE_1, EVASION_1, FEINT_1, HUNGER_FOR_BLOOD_1, PREMEDITATION_1, PREPARATION_1, SHADOW_DANCE_1,
-SHADOWSTEP_1, SLICE_DICE_1, SPRINT_1, TRICKS_OF_THE_TRADE_1, VANISH_1, THISTLE_TEA,
+SHADOWSTEP_1, SLICE_DICE_1, SPRINT_1, TRICKS_OF_THE_TRADE_1, VANISH_1, DISARM_TRAP_1, THISTLE_TEA,
 /*CRIPPLING_POISON_1, INSTANT_POISON_1, DEADLY_POISON_1, WOUND_POISON_1, MIND_NUMBING_POISON_1, ANESTHETIC_POISON_1*/ };
 
 static const std::vector<uint32> Rogue_spells_damage(FROM_ARRAY(Rogue_spells_damage_arr));
@@ -296,7 +297,8 @@ public:
             if (!CheckAttackTarget())
             {
                 if (!me->IsInCombat() && Rand() < 5 && me->HasAuraType(SPELL_AURA_MOD_STEALTH) &&
-                    !me->GetAuraEffect(SPELL_AURA_MOD_INCREASE_SPEED, SPELLFAMILY_ROGUE, 0x800, 0x0, 0x0)) //vanish
+                    !me->GetAuraEffect(SPELL_AURA_MOD_INCREASE_SPEED, SPELLFAMILY_ROGUE, 0x800, 0x0, 0x0) && //vanish
+                    !(!HasRole(BOT_ROLE_DPS) && GetLastWMOArea() == 29476))
                     me->RemoveAurasDueToSpell(STEALTH_1);
                 return;
             }
@@ -1317,6 +1319,8 @@ public:
             //Glyph of Ambush: + 5 yd range for Ambush
             if (/*lvl >= 18 && */baseId == AMBUSH_1)
                 flatbonus += 5.f;
+            if (baseId == DISARM_TRAP_1)
+                flatbonus += 10.f;
 
             maxrange = maxrange * (1.0f + pctbonus) + flatbonus;
         }
@@ -1462,11 +1466,11 @@ public:
                 baseId == SETUP_EFFECT || baseId == INITIATIVE_EFFECT || baseId == HONOR_AMONG_THIEVES_EFFECT)
             {
                 ++comboPoints;
-                //TC_LOG_ERROR("entities.player", "rogue_bot CP GEN2: %s adds 1, now %u", spell->SpellName[0], uint32(comboPoints));
+                //TC_LOG_ERROR("entities.player", "rogue_bot CP GEN2: {} adds 1, now {}", spell->SpellName[0], uint32(comboPoints));
                 if (comboPoints > 5)
                 {
                     comboPoints = 5;
-                    //TC_LOG_ERROR("entities.player", "rogue_bot CP NOR2: now %u", uint32(comboPoints));
+                    //TC_LOG_ERROR("entities.player", "rogue_bot CP NOR2: now {}", uint32(comboPoints));
                 }
             }
             //Combo point generating from spells
@@ -1478,7 +1482,7 @@ public:
                 (baseId == MUTILATE_1 || baseId == PREMEDITATION_1 || baseId == CHEAP_SHOT_1) ?
                     comboPoints += 2 : ++comboPoints;
 
-                //TC_LOG_ERROR("entities.player", "rogue_bot CP GEN1: %s adds %u, now %u",
+                //TC_LOG_ERROR("entities.player", "rogue_bot CP GEN1: {} adds {}, now {}",
                 //    spell->SpellName[0], (baseId == MUTILATE_1 || baseId == PREMEDITATION_1 || baseId == CHEAP_SHOT_1) ?
                 //    2 : 1, uint32(comboPoints));
 
@@ -1486,13 +1490,13 @@ public:
                 if (baseId == SINISTER_STRIKE_1 && glyphSSProc)
                 {
                     ++comboPoints;
-                    //TC_LOG_ERROR("entities.player", "rogue_bot CP GEN1: glyphSS proc, now %u", uint32(comboPoints));
+                    //TC_LOG_ERROR("entities.player", "rogue_bot CP GEN1: glyphSS proc, now {}", uint32(comboPoints));
                 }
 
                 if (comboPoints > 5)
                 {
                     comboPoints = 5;
-                    //TC_LOG_ERROR("entities.player", "rogue_bot CP NOR1: now %u", uint32(comboPoints));
+                    //TC_LOG_ERROR("entities.player", "rogue_bot CP NOR1: now {}", uint32(comboPoints));
                 }
             }
             //if (spellId == EVISCERATE || spellId == KIDNEY_SHOT || spellId == SLICE_DICE || spellId == RUPTURE || spellId == EXPOSE_ARMOR || spellId == ENVENOM)
@@ -1503,7 +1507,7 @@ public:
                 //comboPoints = 0;
                 combopointsSpent = true; //envenom problem - cps spent before aura application
 
-                //TC_LOG_ERROR("entities.player", "rogue_bot CP SPEND1: %u to 0", tempCP);
+                //TC_LOG_ERROR("entities.player", "rogue_bot CP SPEND1: {} to 0", tempCP);
 
                 //Relentless Strikes: moved to OnClassSpellGo (triggered even without hitting the target)
 
@@ -1851,6 +1855,7 @@ public:
             //InitSpellMap(EXPOSE_ARMOR_1);
             InitSpellMap(DISMANTLE_1);
             InitSpellMap(FEINT_1);
+            InitSpellMap(DISARM_TRAP_1);
 
             InitSpellMap(BACKSTAB_1);
             InitSpellMap(SINISTER_STRIKE_1);

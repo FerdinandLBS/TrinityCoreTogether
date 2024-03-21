@@ -1,6 +1,7 @@
 #include "bpet_ai.h"
 #include "bot_GridNotifiers.h"
 #include "botmgr.h"
+#include "Containers.h"
 #include "LFGMgr.h"
 #include "Log.h"
 #include "Map.h"
@@ -70,7 +71,7 @@ float constexpr CryptLordPetPositionAnglesByPosNumber[CRYPT_LORD_MAX_PET_POSITIO
     3.9269910f //5*M_PI/4
 };
 
-extern uint8 GroupIconsFlags[TARGETICONCOUNT];
+extern uint8 GroupIconsFlags[TARGET_ICONS_COUNT];
 
 static uint16 __rand; //calculated for each bot separately once every updateAI tick
 
@@ -82,6 +83,7 @@ bot_pet_ai::bot_pet_ai(Creature* creature) : CreatureAI(creature)
     m_botCommandState = BOT_COMMAND_FOLLOW;
     regenTimer = 0;
     waitTimer = 0;
+    _moveBehindTimer = 0;
     indoorsTimer = 0;
     outdoorsTimer = 0;
     GC_Timer = 0;
@@ -435,7 +437,7 @@ uint32 bot_pet_ai::GetData(uint32 data) const
         case BOTPETAI_MISC_MAX_ATTACKERS:
             return 0;
         default:
-            TC_LOG_DEBUG("entities.unit", "bot_pet_ai::GetData(): unk data type %u!", data);
+            TC_LOG_DEBUG("entities.unit", "bot_pet_ai::GetData(): unk data type {}!", data);
             return 0;
     }
 }
@@ -520,7 +522,7 @@ void bot_pet_ai::SetPetStats(bool force)
         case BOT_PET_LOCUST_SWARM:
             break;
         default:
-            TC_LOG_ERROR("entities.player", "bot_pet_ai::SetPetStats(): unk pet type %u, aborting", myType);
+            TC_LOG_ERROR("entities.player", "bot_pet_ai::SetPetStats(): unk pet type {}, aborting", myType);
             return;
     }
 
@@ -696,7 +698,7 @@ void bot_pet_ai::SetPetStats(bool force)
             me->SetCreateStat(STAT_STAMINA, level * 5 + 20);
             me->SetCreateStat(STAT_INTELLECT, level * 2 + 25);
             me->SetCreateStat(STAT_SPIRIT,  level * 2 + 30);
-            TC_LOG_ERROR("entities.unit", "SetPetStats(): pInfo is NULL, setting default stats for pet %u", myType);
+            TC_LOG_ERROR("entities.unit", "SetPetStats(): pInfo is NULL, setting default stats for pet {}", myType);
         }
     }
 
@@ -874,7 +876,7 @@ void bot_pet_ai::SetPetStats(bool force)
             break;
         case BOT_CLASS_WARLOCK:
             atpower += 0.57f * spdtotal;
-            //TC_LOG_ERROR("entities.player", "SetPetStat(): atpower += 0.57 of %i = %.2f", spdtotal, atpower);
+            //TC_LOG_ERROR("entities.player", "SetPetStat(): atpower += 0.57 of {} = {}2f", spdtotal, atpower);
             break;
         case BOT_CLASS_DREADLORD:
             atpower += spdtotal * 6;
@@ -1315,7 +1317,7 @@ void bot_pet_ai::SetPetStats(bool force)
         //Innate 5%
         m_totalhp *= 1.05f;
     }
-    //TC_LOG_ERROR("entities.player", "SetPetStat(): hp stamval %.1f, stammult %.1f, base %u, total %.2f", stamValue, stamMult, botPet->GetCreateHealth(), m_totalhp);
+    //TC_LOG_ERROR("entities.player", "SetPetStat(): hp stamval {}1f, stammult {}1f, base {}, total {}2f", stamValue, stamMult, botPet->GetCreateHealth(), m_totalhp);
     bool fullhp = me->GetHealth() == me->GetMaxHealth();
     float pct = fullhp ? 100.f : me->GetHealthPct(); // needs for regeneration
     me->SetStatFlatModifier(UNIT_MOD_HEALTH, BASE_VALUE, m_totalhp);
@@ -1346,7 +1348,7 @@ void bot_pet_ai::SetPetStats(bool force)
         //additional: store stat
         me->SetStat(STAT_INTELLECT, int32(intValue));
         float m_totalmana = intValue * intMult/* + me->GetCreatePowerValue(POWER_MANA)*/ + (IAmFree() ? level * 25.f : 0); //+2000/+0 mana at 80
-        //TC_LOG_ERROR("entities.player", "SetPetStat(): mana intValue %.1f, intMult %.1f, base %u, total %.2f", intValue, intMult, botPet->GetCreatePowerValue(POWER_MANA), m_totalmana);
+        //TC_LOG_ERROR("entities.player", "SetPetStat(): mana intValue {}1f, intMult {}1f, base {}, total {}2f", intValue, intMult, botPet->GetCreatePowerValue(POWER_MANA), m_totalmana);
         bool fullmana = me->GetPower(POWER_MANA) == me->GetMaxPower(POWER_MANA);
         pct = fullmana ? 100.f : (float(me->GetPower(POWER_MANA)) * 100.f) / float(me->GetMaxPower(POWER_MANA));
         me->SetStatFlatModifier(UNIT_MOD_MANA, BASE_VALUE, m_totalmana);
@@ -1426,7 +1428,7 @@ bool bot_pet_ai::IsInBotParty(Unit const* unit) const
         if (gr->IsMember(unit->GetGUID()))
             return true;
         //pointed target case
-        for (uint8 i = 0; i != TARGETICONCOUNT; ++i)
+        for (uint8 i = 0; i != TARGET_ICONS_COUNT; ++i)
             if (BotMgr::GetHealTargetIconFlags() & GroupIconsFlags[i] &&
                 !((BotMgr::GetOffTankTargetIconFlags() | BotMgr::GetDPSTargetIconFlags()) & GroupIconsFlags[i]))
                 if (ObjectGuid guid = gr->GetTargetIcons()[i])
@@ -1464,22 +1466,22 @@ void bot_pet_ai::RefreshAura(uint32 spellId, int8 count, Unit* target) const
 {
     if (count < 0 || count > 10)
     {
-        TC_LOG_ERROR("entities.player", "bot_pet_ai::RefreshAura(): count is out of bounds (%i) for bot %s (botclass: %u, entry: %u)",
-            int32(count), me->GetName().c_str(), uint32(petOwner->GetBotClass()), me->GetEntry());
+        TC_LOG_ERROR("entities.player", "bot_pet_ai::RefreshAura(): count is out of bounds ({}) for bot {} (botclass: {}, entry: {})",
+            int32(count), me->GetName(), uint32(petOwner->GetBotClass()), me->GetEntry());
         return;
     }
     if (!spellId)
     {
-        TC_LOG_ERROR("entities.player", "bot_pet_ai::RefreshAura(): spellId is 0 for bot %s (botclass: %u, entry: %u)",
-            me->GetName().c_str(), uint32(petOwner->GetBotClass()), me->GetEntry());
+        TC_LOG_ERROR("entities.player", "bot_pet_ai::RefreshAura(): spellId is 0 for bot {} (botclass: {}, entry: {})",
+            me->GetName(), uint32(petOwner->GetBotClass()), me->GetEntry());
         return;
     }
 
     SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
     if (!spellInfo)
     {
-        TC_LOG_ERROR("entities.player", "bot_pet_ai::RefreshAura(): Invalid spellInfo for spell %u! Bot - %s (botclass: %u, entry: %u)",
-            spellId, me->GetName().c_str(), uint32(petOwner->GetBotClass()), me->GetEntry());
+        TC_LOG_ERROR("entities.player", "bot_pet_ai::RefreshAura(): Invalid spellInfo for spell {}! Bot - {} (botclass: {}, entry: {})",
+            spellId, me->GetName(), uint32(petOwner->GetBotClass()), me->GetEntry());
         return;
     }
 
@@ -1540,7 +1542,7 @@ Unit* bot_pet_ai::_getTarget(bool &reset) const
     if (dropTarget)
         return nullptr;
 
-    if (mytar && (!IAmFree() || me->GetDistance(mytar) < BOT_MAX_CHASE_RANGE) && me->IsValidAttackTarget(mytar) && !petOwner->GetBotAI()->IsPointedNoDPSTarget(mytar))
+    if (mytar && (!IAmFree() || me->GetDistance(mytar) < float(BOT_MAX_CHASE_RANGE)) && me->IsValidAttackTarget(mytar) && !petOwner->GetBotAI()->IsPointedNoDPSTarget(mytar))
     {
         if (me->GetDistance(mytar) > (!IsPetMelee() ? 20.f : 5.f) && m_botCommandState != COMMAND_STAY && m_botCommandState != COMMAND_FOLLOW)
             reset = true;
@@ -1693,18 +1695,15 @@ void bot_pet_ai::CheckAttackState()
 
 void bot_pet_ai::MoveBehind(Unit const* target) const
 {
-    if (HasBotCommandState(BOT_COMMAND_MASK_UNMOVING)) return;
-    if (!IsPetMelee() || CCed(me, true)) return;
-    if (JumpingOrFalling()) return;
+    if (_moveBehindTimer > lastdiff || HasBotCommandState(BOT_COMMAND_MASK_UNMOVING) || !IsPetMelee() || CCed(me, true) || JumpingOrFalling())
+        return;
 
-    if (target->GetVictim() != me && !CCed(target) &&
-        target->IsWithinCombatRange(me, ATTACK_DISTANCE) &&
-        target->HasInArc(float(M_PI), me))
+    if (target->GetVictim() != me && !CCed(target) && target->IsWithinCombatRange(me, ATTACK_DISTANCE) && target->HasInArc(float(M_PI), me))
     {
         float x,y,z;
         target->GetNearPoint(me, x, y, z, me->GetCombatReach(), me->GetAbsoluteAngle(target));
         me->GetMotionMaster()->MovePoint(me->GetMapId(), x, y, z);
-        waitTimer = 500;
+        const_cast<bot_pet_ai*>(this)->_moveBehindTimer = urand(1000, 4000);
     }
 }
 bool bot_pet_ai::_canRegenerate() const
@@ -1776,7 +1775,7 @@ void bot_pet_ai::Regenerate()
             else
                 addvalue = petOwner->GetFloatValue(UNIT_FIELD_POWER_REGEN_FLAT_MODIFIER);
 
-            addvalue *= sWorld->getRate(RATE_POWER_MANA) * REGEN_CD * 0.001f; //regenTimer threshold / 1000
+            addvalue *= sWorld->getRate(RATE_POWER_MANA) * float(REGEN_CD) * 0.001f; //regenTimer threshold / 1000
             if (addvalue < 0.0f)
                 addvalue = 0.0f;
 
@@ -1865,7 +1864,7 @@ uint32 bot_pet_ai::InitSpell(Unit const* caster, uint32 spell)
     SpellInfo const* info = sSpellMgr->GetSpellInfo(spell);
     if (!info)
     {
-        TC_LOG_ERROR("entities.player", "InitSpell(): No SpellInfo found for spell %u", spell);
+        TC_LOG_ERROR("entities.player", "InitSpell(): No SpellInfo found for spell {}", spell);
         return 0; //weird spell with no info, disable it
     }
 
@@ -1889,7 +1888,7 @@ void bot_pet_ai::InitSpellMap(uint32 basespell, bool forceadd, bool forwardRank)
     SpellInfo const* info = sSpellMgr->GetSpellInfo(basespell);
     if (!info)
     {
-        TC_LOG_ERROR("entities.player", "bot_pet_ai::InitSpellMap(): No SpellInfo found for base spell %u", basespell);
+        TC_LOG_ERROR("entities.player", "bot_pet_ai::InitSpellMap(): No SpellInfo found for base spell {}", basespell);
         return; //invalid spell id
     }
 
@@ -1972,7 +1971,7 @@ void bot_pet_ai::SetSpellCategoryCooldown(SpellInfo const* spellInfo, uint32 msC
         {
             if (itr->first != 7814) // Lash of Pain
             {
-                TC_LOG_ERROR("scripts", "Warning: SetSpellCategoryCooldown: %u has baseId %u but category %u, not %u!",
+                TC_LOG_ERROR("scripts", "Warning: SetSpellCategoryCooldown: {} has baseId {} but category {}, not {}!",
                     info->Id, itr->first, info->GetCategory(), category);
             }
         }
@@ -1988,7 +1987,7 @@ void bot_pet_ai::ReleaseSpellCooldown(uint32 basespell)
 
     if (!baseInfo->IsCooldownStartedOnEvent())
     {
-        TC_LOG_ERROR("spells", "bot_pet_ai::ReleaseSpellCooldown is called for wrong spell %u!", basespell);
+        TC_LOG_ERROR("spells", "bot_pet_ai::ReleaseSpellCooldown is called for wrong spell {}!", basespell);
         return;
     }
 
@@ -2039,7 +2038,7 @@ void bot_pet_ai::AdjustTankingPosition() const
     if (myattackers.size() < 2)
         return;
 
-    //TC_LOG_ERROR("entities.player", "AdjustTankingPosition() by %s", me->GetName().c_str());
+    //TC_LOG_ERROR("entities.player", "AdjustTankingPosition() by {}", me->GetName());
 
     uint32 bCount = 0;
     for (Unit::AttackerSet::const_iterator itr = myattackers.begin(); itr != myattackers.end(); ++itr)
@@ -2053,7 +2052,7 @@ void bot_pet_ai::AdjustTankingPosition() const
     if (bCount == 0)
         return;
 
-    //TC_LOG_ERROR("entities.player", "AdjustTankingPosition(): atts %u, behind %u", uint32(myattackers.size()), bCount);
+    //TC_LOG_ERROR("entities.player", "AdjustTankingPosition(): atts {}, behind {}", uint32(myattackers.size()), bCount);
 
     //calculate new position
     float x = me->GetPositionX();
@@ -2261,7 +2260,7 @@ void bot_pet_ai::DamageDealt(Unit* victim, uint32& damage, DamageEffectType /*da
 
 void bot_pet_ai::IsSummonedBy(WorldObject* summoner)
 {
-    //TC_LOG_ERROR("entities.unit", "bot_pet_ai::IsSummonedBy for %s by %s", me->GetName().c_str(), summoner->GetName().c_str());
+    //TC_LOG_ERROR("entities.unit", "bot_pet_ai::IsSummonedBy for {} by {}", me->GetName(), summoner->GetName());
     //ASSERT(!petOwner);
     //ASSERT(summoner->GetTypeId() == TYPEID_UNIT);
     petOwner = summoner->ToCreature();
@@ -2327,7 +2326,7 @@ void bot_pet_ai::OnBotPetSpellInterrupted(SpellSchoolMask schoolMask, uint32 unT
         if (info->PreventionType != SPELL_PREVENTION_TYPE_SILENCE) continue;
 
         itr->second->cooldown += unTimeMs;
-        //TC_LOG_ERROR("entities.player", "OnBotPetSpellInterrupted(): Adding cooldown (%u, new: %u) to spell %s (id: %u, schoolmask: %u), reqSchoolMask = %u",
+        //TC_LOG_ERROR("entities.player", "OnBotPetSpellInterrupted(): Adding cooldown ({}, new: {}) to spell {} (id: {}, schoolmask: {}), reqSchoolMask = {}",
         //    unTimeMs, itr->second.second, info->SpellName[0], info->Id, info->SchoolMask, schoolMask);
     }
 
@@ -2572,6 +2571,7 @@ void bot_pet_ai::CommonTimers(uint32 diff)
     if (GC_Timer > diff)            GC_Timer -= diff;
     if (checkAurasTimer > diff)     checkAurasTimer -= diff;
     if (waitTimer > diff)           waitTimer -= diff;
+    if (_moveBehindTimer > diff)    _moveBehindTimer -= diff;
 
     if (_updateTimerMedium > diff)  _updateTimerMedium -= diff;
     if (_updateTimerEx1 > diff)     _updateTimerEx1 -= diff;

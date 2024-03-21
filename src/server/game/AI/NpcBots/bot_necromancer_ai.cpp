@@ -5,6 +5,7 @@
 #include "bottext.h"
 #include "bottraits.h"
 #include "CellImpl.h"
+#include "Containers.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "Group.h"

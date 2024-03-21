@@ -1,6 +1,7 @@
 #include "bot_ai.h"
 #include "botspell.h"
 #include "bpet_ai.h"
+#include "Containers.h"
 #include "MotionMaster.h"
 #include "ScriptMgr.h"
 #include "SpellAuras.h"
