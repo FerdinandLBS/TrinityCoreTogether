@@ -1,0 +1,11 @@
+\. D:\games\wowserver\TrinityCoreTogether\sql\Bots\updates\auth\2021_09_14_00_rbac_permissions.sql 
+\. D:\games\wowserver\TrinityCoreTogether\sql\Bots\updates\auth\2021_09_14_01_rbac_linked_permissions.sql 
+\. D:\games\wowserver\TrinityCoreTogether\sql\Bots\updates\auth\2021_12_29_00_rbac_permissions.sql 
+\. D:\games\wowserver\TrinityCoreTogether\sql\Bots\updates\auth\2021_12_29_01_rbac_linked_permissions.sql 
+\. D:\games\wowserver\TrinityCoreTogether\sql\Bots\updates\auth\2022_06_24_00_rbac_permissions.sql 
+\. D:\games\wowserver\TrinityCoreTogether\sql\Bots\updates\auth\2022_06_24_01_rbac_linked_permissions.sql 
+\. D:\games\wowserver\TrinityCoreTogether\sql\Bots\updates\auth\2022_07_04_00_rbac_permissions.sql 
+\. D:\games\wowserver\TrinityCoreTogether\sql\Bots\updates\auth\2022_07_04_01_rbac_linked_permissions.sql 
+\. D:\games\wowserver\TrinityCoreTogether\sql\Bots\updates\auth\2022_11_30_00_rbac_permissions.sql 
+\. D:\games\wowserver\TrinityCoreTogether\sql\Bots\updates\auth\2022_11_30_rbac_linked_permissions.sql 
+\. D:\games\wowserver\TrinityCoreTogether\sql\Bots\updates\auth\2023_08_12_00_rbac_linked_permissions.sql 
