@@ -802,6 +802,7 @@ class TC_GAME_API Unit : public WorldObject
         void ScheduleAIChange();
         void PushAI(UnitAI* newAI);
         bool PopAI();
+        bool IsAssistUnit(void) { return (GetEntry() >= 45000 && GetEntry() < 70000); }
     protected:
         void SetAI(UnitAI* newAI);
         UnitAI* GetTopAI() const { return i_AIs.empty() ? nullptr : i_AIs.top().get(); }

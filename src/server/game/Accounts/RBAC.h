@@ -748,7 +748,6 @@ enum RBACPermissions
     RBAC_PERM_COMMAND_RELOAD_VEHICLE_TEMPLATE                = 881,
     RBAC_PERM_COMMAND_BG_START                               = 884,
     RBAC_PERM_COMMAND_BG_STOP                                = 885,
-    RBAC_PERM_COMMAND_TARGET_CAST                            = 900,
     //
     // IF YOU ADD NEW PERMISSIONS, ADD THEM IN MASTER BRANCH AS WELL!
     //

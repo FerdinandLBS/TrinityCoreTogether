@@ -1,4 +1,5 @@
 -- 常数修改
+update world.creature_loot_template set Chance=100 where QuestRequired=1; -- 任务物品100%掉落
 update world.item_template set stackable=200 where stackable=20;
 update world.item_template set stackable=1000 where entry=6265; -- 灵魂碎片
 UPDATE `world`.`item_template` SET `maxcount`='0' WHERE `entry`='6265';
@@ -22,8 +23,36 @@ delete from world.playercreateinfo_item;
 delete from world.playercreateinfo_action where action>=81000;
 delete from world.trainer_spell where SpellId>=81000;
 delete from npc_vendor where entry>45000;
-delete from world.spell_target_position where entry >= 80000;
-delete from world.gameobject_template where entry >= 250001;
+delete from world.npc_vendor where entry=43500;
+delete from world.spell_target_position where ID >= 80000;
+delete from world.gameobject_template where entry >= 250000;
+delete from world.playercreateinfo where race = 12 or race = 9;
+delete from world.player_levelstats where race = 12 or race = 9;
+drop table if exists world.assists_addon;
+delete from world.trinity_string where entry >= 20080;
+
+-- NPC
+-- 小黑杨
+INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES 
+('43500', '0', '0', '0', '0', '0', '857', '0', '0', '0', '小黑羊', '微微的守护者', '', '0', '80', '80', '0', '1665', '128', '1.2', '1.24286', '1.3', '0', '0', '2000', '2000', '1', '1', '1', '32768', '2048', '0', '0', '7', '2048', '0', '0', '0', '0', '0', '0', '0', 'SmartAI', '0', '1', '30', '0', '1', '1', '1', '0', '0', '1', '0', '0', '0', '', '12340');
+INSERT INTO world.npc_vendor (`entry`, `slot`, `item`) VALUES ('43500', '0', '2770');
+INSERT INTO world.npc_vendor (`entry`, `slot`, `item`) VALUES ('43500', '1', '2840');
+INSERT INTO world.npc_vendor (`entry`, `slot`, `item`) VALUES ('43500', '2', '2835');
+INSERT INTO world.npc_vendor (`entry`, `slot`, `item`) VALUES ('43500', '3', '2447');
+INSERT INTO world.npc_vendor (`entry`, `slot`, `item`) VALUES ('43500', '4', '2934');
+INSERT INTO world.npc_vendor (`entry`, `slot`, `item`) VALUES ('43500', '5', '6339');
+INSERT INTO world.npc_vendor (`entry`, `slot`, `item`) VALUES ('43500', '6', '60103');
+INSERT INTO world.npc_vendor (`entry`, `slot`, `item`) VALUES ('43500', '7', '60104');
+INSERT INTO world.npc_vendor (`entry`, `slot`, `item`) VALUES ('43500', '8', '44452');
+
+
+-- 微微
+INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES 
+('43501', '0', '0', '0', '0', '0', '19193', '0', '0', '0', '微微', '牧羊姑娘', '', '0', '80', '80', '0', '1665', '2', '1', '1.14286', '1', '1', '0', '2000', '2000', '1', '1', '2', '32768', '2048', '0', '0', '7', '2048', '0', '0', '0', '0', '0', '0', '0', 'SmartAI', '1', '1', '30', '1', '1', '1', '1', '0', '0', '1', '0', '0', '0', '', '12340');
+-- Spawn
+INSERT INTO `world`.`creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `modelid`, `equipment_id`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `wander_distance`, `currentwaypoint`, `curhealth`, `curmana`, `MovementType`, `npcflag`, `unit_flags`, `dynamicflags`, `ScriptName`, `VerifiedBuild`) VALUES ('223820', '43501', '1', '0', '0', '1', '1', '0', '0', '16242.1', '16304.9', '20.899', '6.18652', '300', '0', '0', '128220', '3994', '0', '0', '0', '0', '', '0');
+INSERT INTO `world`.`creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `modelid`, `equipment_id`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `wander_distance`, `currentwaypoint`, `curhealth`, `curmana`, `MovementType`, `npcflag`, `unit_flags`, `dynamicflags`, `ScriptName`, `VerifiedBuild`) VALUES ('223821', '43500', '1', '0', '0', '1', '1', '0', '0', '16242.1', '16306.1', '20.9002', '6.11739', '300', '0', '0', '160260', '0', '0', '0', '0', '0', '', '0');
+
 
 -- portal
 
@@ -32,9 +61,134 @@ INSERT INTO `world`.`spell_target_position` (`ID`, `EffectIndex`, `MapID`, `Posi
 INSERT INTO `world`.`gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconName`, `castBarCaption`, `unk1`, `size`, `Data0`, `Data1`, `Data2`, `Data3`, `Data4`, `Data5`, `Data6`, `Data7`, `Data8`, `Data9`, `Data10`, `Data11`, `Data12`, `Data13`, `Data14`, `Data15`, `Data16`, `Data17`, `Data18`, `Data19`, `Data20`, `Data21`, `Data22`, `Data23`, `AIName`, `ScriptName`, `VerifiedBuild`) VALUES ('250004', '22', '7849', 'GM岛传送门', '', '', '', '1', '80000', '0', '1', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '', '', '12340');
 
 -- bot control
+delete from world.playercreateinfo_spell_custom where Spell >= 87000;
+INSERT INTO `world`.`playercreateinfo_spell_custom` (`racemask`, `classmask`, `Spell`) VALUES ('0', '0', '87003');
+INSERT INTO `world`.`playercreateinfo_spell_custom` (`racemask`, `classmask`, `Spell`) VALUES ('0', '0', '87004');
+INSERT INTO `world`.`playercreateinfo_spell_custom` (`racemask`, `classmask`, `Spell`) VALUES ('0', '0', '87001');
+
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('87003', 'spell_bot_auto_format');
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('87004', 'spell_bot_hold_format');
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('87001', 'spell_bot_surroud_format');
+
+-- customized Assistance addon
+CREATE TABLE `world`.`assists_addon` (
+  `entry` int unsigned NOT NULL PRIMARY KEY,
+  `str_inh` float,
+  `agi_inh` float,
+  `sta_inh` float,
+  `int_inh` float,
+  `spi_inh` float,
+  `text1` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `text2` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `text3` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `class` int,
+  `type` int,
+  `awake_time` float,
+  `eff_spell` int,
+  `flag` int,
+  `distance` float,
+  `angle` float
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+INSERT INTO world.assists_addon (`entry`, `str_inh`, `agi_inh`, `sta_inh`, `int_inh`, `spi_inh`,`text1`,`text2`,`text3`,`class`,`type`,`awake_time`, `eff_spell`, `flag`, `distance`,`angle`)
+VALUES
+(46003, 0.15, 2.15, 0.25, 0.15, 0.15, '', '', '', 3, 0, 0, 0, 0, 1.0, 4.7123889795), -- Hellhound
+(46004, 0.15, 2.15, 0.25, 0.15, 0.15, '', '', '', 3, 0, 0, 0, 0, 1.0, 4.7123889795), -- Succubus
+(46005, 2.15, 2.15, 0.65, 0.15, 0.15, '', '', '', 3, 0, 0, 0, 0, 1.0, 4.7123889795), -- Felguard
+(46020, 0.15, 0.15, 0.15, 0.15, 0.15, '为了洛丹伦', '有人受伤吗？', '', 2, 1, 1500, 85907, 0, 0, 0), -- War3 Priest
+(46025, 1.15, 1.15, 1.35, 0.15, 0.15, '', '', '', 3, 1, 0, 0, 0, 1.0, 4.7123889795),  -- Imp
+(46029, 1.15, 1.15, 1.35, 0.15, 0.15, '', '', '', 0, 1, 0, 81108, 3, 0, 0),  -- Demo Gate
+(45002, 0.4, 0.3, 0.3, 0.4, 0.4, '', '', '', 3, 1, 0, 0, 0, 0, 0), -- Dragonhawk
+(45004, 0.3, 0.3, 0.3, 0.3, 0.3, '为主人效命', '我，服从', '我醒来了', 0, 0, 0, 0, 0, 0, 0), -- Undead Race Talent Unit
+(45005, 0.0, 0.0, 0.15, 0.35, 0.35, '', '', '', 3, 1, 0, 0, 0, 0, 0), -- Wild Imp
+(45006, 0.1, 0.1, 0.1, 0.35, 0.35, '', '', '', 3, 0, 0, 7791, 0, 0, 0), -- Hunman Race Talent Unit
+(45007, 0.0, 0.0, 0.0, 0.0, 0.0, '', '', '', 0, 1, 0, 0, 2, 0, 0), -- Mana Wyrm. Blood Elf Talent
+(45008, 0.2, 0.2, 0.2, 0.4, 0.4, '', '', '', 3, 1, 0, 0, 0, 0, 0), -- Albert. Dwarf Talent
+(45009, 0.2, 0.2, 0.2, 0.4, 0.4, '', '', '', 3, 1, 0, 0, 0, 0, 0), -- Black Stone. Dwarf Talent
+(45010, 0.4, 0.4, 0.2, 0.2, 0.2, '', '', '', 3, 0, 0, 0, 0, 0, 0), -- Thunder Hammer. Dwarf Talent
+(45011, 0.2, 0.2, 0.2, 0.4, 0.4, '', '', '', 2, 1, 0, 0, 0, 0, 0); -- Ligth. Dwarf Talent
+
+-- Insert trinity strings
+INSERT INTO world.trinity_string (`entry`,`content_default`) VALUES
+(20090,'晋升 - 卫兵'),
+(20091,'晋升 - 魔法士'),
+(20092,'晋升 - 圣光信徒'),
+(20093,'你已经雇佣了一名矮人探险者'),
+(20094, '鹰巢山'),
+(20095, '黑石山'),
+(20096, '造物者圣台'),
+(20100,'|cff05E605传送服务|r'),
+(20101,'关闭'),
+(20102,'<<< 后退'),
+(20110,'|cffFF8800GM岛|r'),
+(20111,'|cffFF0005外域|r'),
+(20112,'|cff0143FF诺森德|r'),
+(20113,'|cff05F3255人副本|r'),
+(20114,'|cffFF0BFF团队副本|r'),
+(20120,'暴风城'),
+(20121,'铁炉堡'),
+(20122,'达纳苏斯'),
+(20123,'埃索达'),
+(20124,'奥格瑞玛'),
+(20125,'雷霆崖'),
+(20126,'幽暗城'),
+(20127,'银月城'),
+(20128,'苏伦的养殖场'),
+(20129,'布瑞尔'),
+(20130,'血蹄村'),
+(20131,'森金村'),
+(20132,'冻石农场'),
+(20133,'东谷伐木场'),
+(20134,'钢架补给站'),
+(20135,'德莱尼的骑术村子'),
+(20150,'棘齿城'),
+(20151,'藏宝海湾'),
+(20152,'热沙岗'),
+(20160,'沙塔斯'),
+(20161,'地狱火堡垒'),
+(20162,'盘牙水库'),
+(20163,'奥金顿'),
+(20164,'风暴战舰'),
+(20165,'戈鲁尔巢穴'),
+(20166,'黑暗神庙'),
+(20167,'时光之穴'),
+(20170,'达拉然'),
+(20171,'龙眠神殿'),
+(20172,'魔枢'),
+(20173,'乌特加德堡垒'),
+(20174,'古代王国'),
+(20175,'古达克'),
+(20176,'风暴群山'),
+(20177,'银色比武场'),
+(20178,'冰冠堡垒'),
+(20179,'纳克萨玛斯'),
+(20180,'达克萨隆要塞'),
+(20190,'熔火之心(60)'),
+(20191,'黑翼之巢(80)'),
+(20192,'安其拉(60)'),
+(20193,'祖尔格拉布(60)'),
+(20194,'祖阿曼(70)'),
+(20195,'卡拉赞(70)'),
+(20196,'奥妮克希亚巢穴(80)'),
+(20200,'怒焰裂谷 15 - 21'),
+(20201,'死亡矿井 15 - 21'),
+(20202,'哀嚎洞穴 15 - 25'),
+(20203,'影牙城堡 16 - 26'),
+(20204,'黑暗深渊 20 - 30'),
+(20205,'暴风城监狱 20 - 30'),
+(20206,'诺莫瑞根 24 - 34'),
+(20207,'血色修道院 26 - 40'),
+(20208,'剃刀沼泽 25 - 30'),
+(20209,'剃刀高地 34 - 40'),
+(20210,'奥达曼 35 - 40'),
+(20211,'祖尔法拉克 43 - 46'),
+(20212,'玛拉顿 43 - 48'),
+(20213,'厄运之槌 54 - 58'),
+(20214,'通灵学院 59 - 61'),
+(20215,'斯坦索姆 56 - 60'),
+(20216,'黑石深渊 49 - 57'),
+(20217,'沉没的神庙 50- 60'),
+(20218,'黑石塔 55 - 65');
 
 -- 角色初始优化
 insert into world.playercreateinfo_item (`race`, `class`, `itemid`, `amount`) VALUES ('0', '6', '40582', '-1');
@@ -44,28 +198,6 @@ insert into world.playercreateinfo_item (`race`, `class`, `itemid`, `amount`) VA
 insert into world.playercreateinfo_item (`race`, `class`, `itemid`, `amount`) VALUES ('0', '0', '11602', '1');
 insert into world.playercreateinfo_item (`race`, `class`, `itemid`, `amount`) VALUES ('0', '0', '28395', '1');
 insert into world.playercreateinfo_item (`race`, `class`, `itemid`, `amount`) VALUES ('0', '0', '24490', '1');
-
--- 雷神
-INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES 
-('45003', '0', '0', '0', '0', '0', '32670', '0', '0', '0', '雷神', '', 'vehichleCursor', '0', '1', '80', '0', '188', '0', '1', '1.14286', '6', '0', '0', '2000', '2000', '1', '1', '1', '0', '2048', '0', '0', '72', '0', '0', '0', '0', '0', '780', '0', '0', '', '0', '1', '7', '1', '1', '1', '1', '0', '1', '1', '0', '0', '0', '', '12340');
-INSERT INTO `world`.`trainer_spell` (`TrainerId`, `SpellId`, `MoneyCost`, `ReqSkillLine`, `ReqSkillRank`, `ReqAbility1`, `ReqAbility2`, `ReqAbility3`, `ReqLevel`, `VerifiedBuild`) VALUES ('89', '81151', '950000', '202', '450', '0', '0', '0', '0', '0');
-INSERT INTO `world`.`item_template` (`entry`, `class`, `subclass`, `SoundOverrideSubclass`, `name`, `displayid`, `Quality`, `Flags`, `FlagsExtra`, `BuyCount`, `BuyPrice`, `SellPrice`, `InventoryType`, `AllowableClass`, `AllowableRace`, `ItemLevel`, `RequiredLevel`, `RequiredSkill`, `RequiredSkillRank`, `requiredspell`, `requiredhonorrank`, `RequiredCityRank`, `RequiredReputationFaction`, `RequiredReputationRank`, `maxcount`, `stackable`, `ContainerSlots`, `StatsCount`, `stat_type1`, `stat_value1`, `stat_type2`, `stat_value2`, `stat_type3`, `stat_value3`, `stat_type4`, `stat_value4`, `stat_type5`, `stat_value5`, `stat_type6`, `stat_value6`, `stat_type7`, `stat_value7`, `stat_type8`, `stat_value8`, `stat_type9`, `stat_value9`, `stat_type10`, `stat_value10`, `ScalingStatDistribution`, `ScalingStatValue`, `dmg_min1`, `dmg_max1`, `dmg_type1`, `dmg_min2`, `dmg_max2`, `dmg_type2`, `armor`, `holy_res`, `fire_res`, `nature_res`, `frost_res`, `shadow_res`, `arcane_res`, `delay`, `ammo_type`, `RangedModRange`, `spellid_1`, `spelltrigger_1`, `spellcharges_1`, `spellppmRate_1`, `spellcooldown_1`, `spellcategory_1`, `spellcategorycooldown_1`, `spellid_2`, `spelltrigger_2`, `spellcharges_2`, `spellppmRate_2`, `spellcooldown_2`, `spellcategory_2`, `spellcategorycooldown_2`, `spellid_3`, `spelltrigger_3`, `spellcharges_3`, `spellppmRate_3`, `spellcooldown_3`, `spellcategory_3`, `spellcategorycooldown_3`, `spellid_4`, `spelltrigger_4`, `spellcharges_4`, `spellppmRate_4`, `spellcooldown_4`, `spellcategory_4`, `spellcategorycooldown_4`, `spellid_5`, `spelltrigger_5`, `spellcharges_5`, `spellppmRate_5`, `spellcooldown_5`, `spellcategory_5`, `spellcategorycooldown_5`, `bonding`, `description`, `PageText`, `LanguageID`, `PageMaterial`, `startquest`, `lockid`, `Material`, `sheath`, `RandomProperty`, `RandomSuffix`, `block`, `itemset`, `MaxDurability`, `area`, `Map`, `BagFamily`, `TotemCategory`, `socketColor_1`, `socketContent_1`, `socketColor_2`, `socketContent_2`, `socketColor_3`, `socketContent_3`, `socketBonus`, `GemProperties`, `RequiredDisenchantSkill`, `ArmorDamageModifier`, `duration`, `ItemLimitCategory`, `HolidayId`, `ScriptName`, `DisenchantID`, `FoodType`, `minMoneyLoot`, `maxMoneyLoot`, `flagsCustom`, `VerifiedBuild`) VALUES ('60001', '14', '0', '-1', '迷你雷神', '4375', '5', '64', '0', '1', '300', '0', '0', '-1', '-1', '300', '80', '202', '450', '0', '0', '0', '0', '0', '1', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '81152', '0', '-1', '-1', '0', '24', '60000', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '', '0', '0', '0', '0', '0', '8', '0', '0', '0', '0', '0', '0', '0', '0', '128', '0', '0', '0', '0', '0', '0', '0', '0', '0', '-1', '0', '0', '0', '0', '', '0', '0', '0', '0', '0', '12340');
-UPDATE `world`.`item_template` SET `class` = '7', `subclass` = '3', `stackable` = '0' WHERE (`entry` = '60001');
-UPDATE `world`.`item_template` SET `displayid` = '68742' WHERE (`entry` = '60001');
-UPDATE `world`.`creature_template` SET `HealthModifier` = '700', `ArmorModifier` = '100', `DamageModifier` = '5' WHERE (`entry` = '45003');
-
-INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81152', 'spell_mini_thor_vehicle');
-INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81155', 'spell_mini_thor_cannon');
-INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81158', 'spell_mini_thor_nuc');
-INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45003', '0', '81155', '12340');
-INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45003', '1', '49691', '12340');
-INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45003', '2', '81154', '12340');
-INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45003', '3', '81003', '12340');
-
-
--- 召唤可乘坐地狱火alter
-INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81109', 'spell_hellfire_vehicle_warlock');
-INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('88001', 'spell_hellfire_vehicle_warlock');
 
 -- 多重施法
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81123', 'spell_multiple_trigger_aura');
@@ -98,7 +230,7 @@ UPDATE `world`.`creature_template` SET `modelid1` = '14255', `scale` = '1' WHERE
 INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES 
 ('46015', '0', '0', '0', '0', '0', '18916', '0', '0', '0', '魔眼', '', '', '0', '1', '80', '0', '16', '0', '1', '1.14286', '0.2', '0', '0', '2000', '2000', '1', '1', '1', '0', '2048', '0', '0', '3', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '1', '1', '1', '0.3', '1', '0.9', '1', '0', '0', '1', '0', '0', '0', 'AssistanceAI', '12340');
 INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES 
-('46016', '0', '0', '0', '0', '0', '21503', '0', '0', '0', '狂乱祭司', '', '', '0', '1', '80', '0', '1813', '0', '1', '1.14286', '0.3', '0', '0', '2000', '2000', '1', '1', '1', '0', '2048', '0', '0', '3', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '1', '1', '1', '0.3', '1', '1.6', '1', '0', '0', '1', '0', '0', '0', 'AssistanceAI', '12340');
+('46016', '0', '0', '0', '0', '0', '21503', '0', '0', '0', '狂乱祭司', '', '', '0', '1', '80', '0', '1813', '0', '1', '1.14286', '0.3', '0', '0', '2000', '2000', '1', '1', '1', '0', '2048', '0', '0', '3', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '1', '1', '1', '0.3', '1', '1.6', '1', '0', '0', '1', '0', '0', '2048', 'AssistanceAI', '12340');
 INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES 
 ('46025', '0', '0', '0', '0', '0', '4449', '0', '0', '0', '小鬼', '', '', '0', '1', '80', '0', '90', '0', '1', '1.14286', '1', '0', '0', '2000', '2000', '1', '1', '8', '0', '2048', '0', '23', '3', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '0', '1', '0.2915', '0.2915', '0.3', '1', '1', '0', '0', '1', '0', '0', '0', 'AssistanceAI', '12340');
 INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES 
@@ -124,14 +256,19 @@ INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `
 -- INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES ('46001', '0', '0', '0', '0', '0', '7920', '0', '0', '0', '聪明的机械小鸡', '', '', '0', '1', '80', '0', '188', '0', '1', '1.14286', '1', '0', '0', '2000', '2200', '1', '1', '1', '0', '2048', '0', '0', '12', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '0', '1', '0.1', '1', '1', '1', '1', '0', '0', '1', '0', '0', '66', 'AssistanceAI', '12340');
 
 -- 亡灵种族技能
-INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES ('45004', '0', '0', '0', '0', '0', '9786', '0', '0', '0', '次级骷髅', '', '', '0', '1', '80', '0', '152', '0', '1', '1.14286', '1', '0', '0', '2000', '2000', '1', '1', '2', '0', '2048', '0', '0', '6', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '1', '1', '0.5', '0.8', '1', '0.5', '1', '0', '0', '1', '0', '0', '0', 'AssistanceAI', '12340');
-UPDATE `world`.`creature_template` SET `unit_class` = '1' WHERE (`entry` = '45004');
+INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES 
+('45004', '0', '0', '0', '0', '0', '9786', '0', '0', '0', '次级骷髅', '', '', '0', '1', '80', '0', '152', '0', '1', '1.14286', '1', '0', '0', '2000', '2000', '1', '1', '2', '0', '2048', '0', '0', '6', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '1', '1', '0.5', '0.8', '1', '0.5', '1', '0', '0', '1', '0', '0', '0', 'AssistanceAI', '12340');
 INSERT INTO `world`.`playercreateinfo_action` (`race`, `class`, `button`, `action`, `type`) VALUES ('5', '1', '3', '81170', '0');
 INSERT INTO `world`.`playercreateinfo_action` (`race`, `class`, `button`, `action`, `type`) VALUES ('5', '4', '5', '81170', '0');
 INSERT INTO `world`.`playercreateinfo_action` (`race`, `class`, `button`, `action`, `type`) VALUES ('5', '5', '3', '81170', '0');
-INSERT INTO `world`.`playercreateinfo_action` (`race`, `class`, `button`, `action`, `type`) VALUES ('5', '6', '3', '81170', '0');
+INSERT INTO `world`.`playercreateinfo_action` (`race`, `class`, `button`, `action`, `type`) VALUES ('5', '6', '6', '81170', '0');
 INSERT INTO `world`.`playercreateinfo_action` (`race`, `class`, `button`, `action`, `type`) VALUES ('5', '8', '3', '81170', '0');
 INSERT INTO `world`.`playercreateinfo_action` (`race`, `class`, `button`, `action`, `type`) VALUES ('5', '9', '3', '81170', '0');
+
+-- 巨魔种族技能
+INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES 
+('45002', '0', '0', '0', '0', '0', '21831', '0', '0', '0', '龙鹰之灵', '', '', '0', '1', '80', '0', '104', '0', '1', '1.14286', '0.7', '0', '0', '2000', '2000', '1', '1', '2', '0', '2048', '0', '0', '7', '0', '0', '0', '0', '0', '0', '0', '0', '																					AssistanceAI', '0', '1', '1', '1', '1', '1', '1', '0', '0', '1', '0', '0', '64', '																					AssistanceAI', '12340');
+INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45002', '0', '81352', '12340');
 
 -- 兽人种族技能
 INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES 
@@ -140,9 +277,11 @@ UPDATE `world`.`creature_template` SET `scale`='0.2' WHERE `entry`='45005';
 UPDATE `world`.`creature_template` SET `DamageModifier`='0.4' WHERE `entry`='45005';
 
 -- 人类种族技能
-INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES ('45006', '0', '0', '0', '0', '0', '3277', '3276', '0', '0', '老乡', '', '', '0', '1', '80', '0', '0', '0', '1', '1.14286', '1', '0', '0', '2000', '2000', '1', '1', '1', '0', '2048', '0', '0', '6', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '1', '1', '0.3', '0.8', '1', '0.1', '1', '0', '0', '1', '0', '0', '0', 'AssistanceAI', '12340');
+INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES ('45006', '0', '0', '0', '0', '0', '3277', '3276', '0', '0', '老乡', '', '', '0', '1', '80', '0', '0', '0', '1', '1.14286', '1', '0', '0', '2000', '2000', '1', '1', '1', '0', '2048', '0', '0', '6', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '1', '1', '0.2', '0.4', '1', '0.1', '1', '0', '0', '1', '0', '0', '0', 'AssistanceAI', '12340');
 UPDATE `world`.`creature_template` SET `faction` = '1', `modelid2`=8489 WHERE (`entry` = '45006');
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81190', 'spell_human_race_talent_aura');
+INSERT INTO `world`.`creature_equip_template` (`CreatureID`, `ID`, `ItemID1`, `ItemID2`, `ItemID3`, `VerifiedBuild`) VALUES
+('45006', '1', '1485', '0', '0', '12340');
 
 -- 侏儒种族技能
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81251', 'spell_gnome_race_talent_aura');
@@ -160,7 +299,7 @@ INSERT INTO `world`.`playercreateinfo_action` (`race`, `class`, `button`, `actio
 INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES ('45007', '0', '0', '0', '0', '0', '16217', '0', '0', '0', '法力浮龙', '0', '1', '1', '0', '7', '0', '1', '1.1', '0.5', '0', '0', '2000', '2000', '1', '1', '2', '0', '2048', '0', '0', '1', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '1', '1', '0.1', '0.1', '1', '1', '1', '0', '100', '1', '0', '0', '0', '', '12340');
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81300', 'spell_bloodelf_race_talent_trigger_aura');
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81303', 'spell_bloodelf_race_talent_aura');
-delete from world.spell_script_names where ScriptName='spell_bloodelf_arcane_torrent';
+delete from `world`.`spell_script_names` where ScriptName='spell_bloodelf_arcane_torrent';
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('50613', 'spell_bloodelf_arcane_torrent');
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('25046', 'spell_bloodelf_arcane_torrent');
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('28730', 'spell_bloodelf_arcane_torrent');
@@ -184,6 +323,11 @@ INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `
 INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45010', '2', '81197', '12340');
 INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45011', '0', '81358', '12340');
 INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45011', '1', '81359', '12340');
+INSERT INTO `world`.`creature_equip_template` (`CreatureID`, `ID`, `ItemID1`, `ItemID2`, `ItemID3`, `VerifiedBuild`) VALUES
+('45009', '1', '1664', '0', '0', '12340'),
+('45010', '1', '12796', '12796', '0', '12340'),
+('45011', '1', '5541', '2916', '0', '12340');
+
 UPDATE `world`.`creature_template` SET `unit_flags` = '0', `ScriptName` = 'AssistanceAI' WHERE (`entry` = '45008');
 UPDATE `world`.`creature_template` SET `unit_flags` = '0', `ScriptName` = 'AssistanceAI' WHERE (`entry` = '45009');
 UPDATE `world`.`creature_template` SET `unit_flags` = '0', `flags_extra` = '0', `ScriptName` = 'AssistanceAI' WHERE (`entry` = '45010');
@@ -211,19 +355,16 @@ UPDATE `world`.`gameobject_template` SET `size` = '0.01', `Data0` = '4', `Data5`
 INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES ('47000', '0', '0', '0', '0', '0', '15382', '0', '0', '0', 'tank', '', 'vehichleCursor', '0', '1', '1', '0', '35', '0', '1', '1.14286', '1', '0', '0', '2000', '2000', '1', '1', '1', '0', '2048', '0', '0', '72', '0', '0', '0', '0', '0', '780', '0', '0', '', '0', '1', '1', '1', '1', '1', '1', '0', '1', '1', '0', '0', '0', '', '12340');
 INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('47000', '0', '88002', '12340');
 
--- 烟花
-INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('82000', 'spell_happy_new_year');
-
 -- 传送书
 INSERT INTO `world`.`item_template` (`entry`, `class`, `subclass`, `SoundOverrideSubclass`, `name`, `displayid`, `Quality`, `Flags`, `FlagsExtra`, `BuyCount`, `BuyPrice`, `SellPrice`, `InventoryType`, `AllowableClass`, `AllowableRace`, `ItemLevel`, `RequiredLevel`, `RequiredSkill`, `RequiredSkillRank`, `requiredspell`, `requiredhonorrank`, `RequiredCityRank`, `RequiredReputationFaction`, `RequiredReputationRank`, `maxcount`, `stackable`, `ContainerSlots`, `StatsCount`, `stat_type1`, `stat_value1`, `stat_type2`, `stat_value2`, `stat_type3`, `stat_value3`, `stat_type4`, `stat_value4`, `stat_type5`, `stat_value5`, `stat_type6`, `stat_value6`, `stat_type7`, `stat_value7`, `stat_type8`, `stat_value8`, `stat_type9`, `stat_value9`, `stat_type10`, `stat_value10`, `ScalingStatDistribution`, `ScalingStatValue`, `dmg_min1`, `dmg_max1`, `dmg_type1`, `dmg_min2`, `dmg_max2`, `dmg_type2`, `armor`, `holy_res`, `fire_res`, `nature_res`, `frost_res`, `shadow_res`, `arcane_res`, `delay`, `ammo_type`, `RangedModRange`, `spellid_1`, `spelltrigger_1`, `spellcharges_1`, `spellppmRate_1`, `spellcooldown_1`, `spellcategory_1`, `spellcategorycooldown_1`, `spellid_2`, `spelltrigger_2`, `spellcharges_2`, `spellppmRate_2`, `spellcooldown_2`, `spellcategory_2`, `spellcategorycooldown_2`, `spellid_3`, `spelltrigger_3`, `spellcharges_3`, `spellppmRate_3`, `spellcooldown_3`, `spellcategory_3`, `spellcategorycooldown_3`, `spellid_4`, `spelltrigger_4`, `spellcharges_4`, `spellppmRate_4`, `spellcooldown_4`, `spellcategory_4`, `spellcategorycooldown_4`, `spellid_5`, `spelltrigger_5`, `spellcharges_5`, `spellppmRate_5`, `spellcooldown_5`, `spellcategory_5`, `spellcategorycooldown_5`, `bonding`, `description`, `PageText`, `LanguageID`, `PageMaterial`, `startquest`, `lockid`, `Material`, `sheath`, `RandomProperty`, `RandomSuffix`, `block`, `itemset`, `MaxDurability`, `area`, `Map`, `BagFamily`, `TotemCategory`, `socketColor_1`, `socketContent_1`, `socketColor_2`, `socketContent_2`, `socketColor_3`, `socketContent_3`, `socketBonus`, `GemProperties`, `RequiredDisenchantSkill`, `ArmorDamageModifier`, `duration`, `ItemLimitCategory`, `HolidayId`, `ScriptName`, `DisenchantID`, `FoodType`, `minMoneyLoot`, `maxMoneyLoot`, `flagsCustom`, `VerifiedBuild`) VALUES ('60000', '15', '0', '-1', '穿越魔典', '24072', '5', '64', '0', '1', '0', '0', '0', '-1', '-1', '1', '0', '0', '0', '0', '0', '0', '0', '0', '1', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '1', '', '0', '0', '0', '0', '0', '-1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '-1', '0', '0', '0', '0', 'telebook_script', '0', '0', '0', '0', '0', '12340');
 UPDATE `world`.`item_template` SET `spellid_1`='85002', `description`='从你一睁眼开始，这本充满力量的魔典就属于你。' WHERE `entry`='60000';
 
 -- new races
-UPDATE `world`.`playercreateinfo_skills` SET `raceMask` = '946' WHERE (`raceMask` = '690') and (`classMask` = '0') and (`skill` = '109');
-delete from world.playercreateinfo_skills where raceMask=2048;
-delete from world.playercreateinfo where race=12 or race=9;
-delete from world.player_levelstats where race=12 or race=9;
-INSERT INTO `world`.`playercreateinfo_skills` (`raceMask`, `classMask`, `skill`, `rank`, `comment`) VALUES ('2048', '0', '789', '0', 'Wogen - Racial');
+-- UPDATE `world`.`playercreateinfo_skills` SET `raceMask` = '946' WHERE (`raceMask` = '690') and (`classMask` = '0') and (`skill` = '109');
+-- delete from world.playercreateinfo_skills where raceMask=2048;
+-- delete from world.playercreateinfo where race=12 or race=9;
+-- delete from world.player_levelstats where race=12 or race=9;
+-- INSERT INTO `world`.`playercreateinfo_skills` (`raceMask`, `classMask`, `skill`, `rank`, `comment`) VALUES ('2048', '0', '789', '0', 'Wogen - Racial');
 
 INSERT INTO `world`.`playercreateinfo` (`race`, `class`, `map`, `zone`, `position_x`, `position_y`, `position_z`, `orientation`) VALUES ('12', '1', '0', '12', '-8949.95', '-132.493', '83.5312', '0');
 INSERT INTO `world`.`playercreateinfo` (`race`, `class`, `map`, `zone`, `position_x`, `position_y`, `position_z`, `orientation`) VALUES ('12', '2', '0', '12', '-8949.95', '-132.493', '83.5312', '0');
@@ -1284,10 +1425,23 @@ INSERT INTO `world`.`player_levelstats` (`race`, `class`, `level`, `str`, `agi`,
 INSERT INTO `world`.`player_levelstats` (`race`, `class`, `level`, `str`, `agi`, `sta`, `inte`, `spi`) VALUES ('9', '9', '80', '62', '64', '99', '156', '169');
 
 
--- Item enhancement
+-- [Item enhancement]
+
+-- Init
 delete from world.item_enchantment_template where entry=9001 or entry=9002 or entry=9003 or entry=9004;
+
+-- Upgrade Item
+INSERT INTO `world`.`item_template` (`entry`, `class`, `subclass`, `SoundOverrideSubclass`, `name`, `displayid`, `Quality`, `Flags`, `FlagsExtra`, `BuyCount`, `BuyPrice`, `SellPrice`, `InventoryType`, `AllowableClass`, `AllowableRace`, `ItemLevel`, `RequiredLevel`, `RequiredSkill`, `RequiredSkillRank`, `requiredspell`, `requiredhonorrank`, `RequiredCityRank`, `RequiredReputationFaction`, `RequiredReputationRank`, `maxcount`, `stackable`, `ContainerSlots`, `StatsCount`, `stat_type1`, `stat_value1`, `stat_type2`, `stat_value2`, `stat_type3`, `stat_value3`, `stat_type4`, `stat_value4`, `stat_type5`, `stat_value5`, `stat_type6`, `stat_value6`, `stat_type7`, `stat_value7`, `stat_type8`, `stat_value8`, `stat_type9`, `stat_value9`, `stat_type10`, `stat_value10`, `ScalingStatDistribution`, `ScalingStatValue`, `dmg_min1`, `dmg_max1`, `dmg_type1`, `dmg_min2`, `dmg_max2`, `dmg_type2`, `armor`, `holy_res`, `fire_res`, `nature_res`, `frost_res`, `shadow_res`, `arcane_res`, `delay`, `ammo_type`, `RangedModRange`, `spellid_1`, `spelltrigger_1`, `spellcharges_1`, `spellppmRate_1`, `spellcooldown_1`, `spellcategory_1`, `spellcategorycooldown_1`, `spellid_2`, `spelltrigger_2`, `spellcharges_2`, `spellppmRate_2`, `spellcooldown_2`, `spellcategory_2`, `spellcategorycooldown_2`, `spellid_3`, `spelltrigger_3`, `spellcharges_3`, `spellppmRate_3`, `spellcooldown_3`, `spellcategory_3`, `spellcategorycooldown_3`, `spellid_4`, `spelltrigger_4`, `spellcharges_4`, `spellppmRate_4`, `spellcooldown_4`, `spellcategory_4`, `spellcategorycooldown_4`, `spellid_5`, `spelltrigger_5`, `spellcharges_5`, `spellppmRate_5`, `spellcooldown_5`, `spellcategory_5`, `spellcategorycooldown_5`, `bonding`, `description`, `PageText`, `LanguageID`, `PageMaterial`, `startquest`, `lockid`, `Material`, `sheath`, `RandomProperty`, `RandomSuffix`, `block`, `itemset`, `MaxDurability`, `area`, `Map`, `BagFamily`, `TotemCategory`, `socketColor_1`, `socketContent_1`, `socketColor_2`, `socketContent_2`, `socketColor_3`, `socketContent_3`, `socketBonus`, `GemProperties`, `RequiredDisenchantSkill`, `ArmorDamageModifier`, `duration`, `ItemLimitCategory`, `HolidayId`, `ScriptName`, `DisenchantID`, `FoodType`, `minMoneyLoot`, `maxMoneyLoot`, `flagsCustom`, `VerifiedBuild`) VALUES ('60103', '0', '8', '-1', '兵器石', '39193', '5', '64', '0', '1', '0', '0', '0', '-1', '-1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '200', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '85004', '0', '-1', '-1', '1000', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '1', '包含着神奇魔力的小石头，里面荧光流转，似乎是活的', '0', '0', '0', '0', '0', '-1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '-1', '0', '0', '0', '0', '', '0', '0', '0', '0', '0', '12340');
+INSERT INTO `world`.`item_template` (`entry`, `class`, `subclass`, `SoundOverrideSubclass`, `name`, `displayid`, `Quality`, `Flags`, `FlagsExtra`, `BuyCount`, `BuyPrice`, `SellPrice`, `InventoryType`, `AllowableClass`, `AllowableRace`, `ItemLevel`, `RequiredLevel`, `RequiredSkill`, `RequiredSkillRank`, `requiredspell`, `requiredhonorrank`, `RequiredCityRank`, `RequiredReputationFaction`, `RequiredReputationRank`, `maxcount`, `stackable`, `ContainerSlots`, `StatsCount`, `stat_type1`, `stat_value1`, `stat_type2`, `stat_value2`, `stat_type3`, `stat_value3`, `stat_type4`, `stat_value4`, `stat_type5`, `stat_value5`, `stat_type6`, `stat_value6`, `stat_type7`, `stat_value7`, `stat_type8`, `stat_value8`, `stat_type9`, `stat_value9`, `stat_type10`, `stat_value10`, `ScalingStatDistribution`, `ScalingStatValue`, `dmg_min1`, `dmg_max1`, `dmg_type1`, `dmg_min2`, `dmg_max2`, `dmg_type2`, `armor`, `holy_res`, `fire_res`, `nature_res`, `frost_res`, `shadow_res`, `arcane_res`, `delay`, `ammo_type`, `RangedModRange`, `spellid_1`, `spelltrigger_1`, `spellcharges_1`, `spellppmRate_1`, `spellcooldown_1`, `spellcategory_1`, `spellcategorycooldown_1`, `spellid_2`, `spelltrigger_2`, `spellcharges_2`, `spellppmRate_2`, `spellcooldown_2`, `spellcategory_2`, `spellcategorycooldown_2`, `spellid_3`, `spelltrigger_3`, `spellcharges_3`, `spellppmRate_3`, `spellcooldown_3`, `spellcategory_3`, `spellcategorycooldown_3`, `spellid_4`, `spelltrigger_4`, `spellcharges_4`, `spellppmRate_4`, `spellcooldown_4`, `spellcategory_4`, `spellcategorycooldown_4`, `spellid_5`, `spelltrigger_5`, `spellcharges_5`, `spellppmRate_5`, `spellcooldown_5`, `spellcategory_5`, `spellcategorycooldown_5`, `bonding`, `description`, `PageText`, `LanguageID`, `PageMaterial`, `startquest`, `lockid`, `Material`, `sheath`, `RandomProperty`, `RandomSuffix`, `block`, `itemset`, `MaxDurability`, `area`, `Map`, `BagFamily`, `TotemCategory`, `socketColor_1`, `socketContent_1`, `socketColor_2`, `socketContent_2`, `socketColor_3`, `socketContent_3`, `socketBonus`, `GemProperties`, `RequiredDisenchantSkill`, `ArmorDamageModifier`, `duration`, `ItemLimitCategory`, `HolidayId`, `ScriptName`, `DisenchantID`, `FoodType`, `minMoneyLoot`, `maxMoneyLoot`, `flagsCustom`, `VerifiedBuild`) VALUES ('60104', '0', '8', '-1', '锻甲锤', '8287', '5', '64', '0', '1', '0', '0', '0', '-1', '-1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '200', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '85005', '0', '-1', '-1', '1000', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '0', '0', '0', '0', '-1', '0', '-1', '1', '包含着神奇魔力的锤子', '0', '0', '0', '0', '0', '-1', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '-1', '0', '0', '0', '0', '', '0', '0', '0', '0', '0', '12340');
+
+INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('85004', 'item_weapon_levelup');
+INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('85005', 'item_armor_levelup');
+INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('87015', 'spell_lvl4_ench_random_trigger_aura');
+INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('87018', 'spell_lvl4_ench_echo_trigger_aura');
+INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('87025', 'spell_lvl4_ench_feedback_trigger_aura');
+
 -- 非武器
-update world.item_template set RandomSuffix=9001 where Quality>=3 and InventoryType>0 and RandomProperty=0 and InventoryType<>0 and InventoryType<>18 and InventoryType<>24 and InventoryType<>27 and InventoryType<>13 and InventoryType<>14 and InventoryType<>15 and InventoryType<>17 and InventoryType<>21 and InventoryType<>22;
+update world.item_template set RandomSuffix=9001 where Quality>=3 and InventoryType>0 and RandomProperty=0 and RandomSuffix=0 and InventoryType<>0 and InventoryType<>18 and InventoryType<>24 and InventoryType<>27 and InventoryType<>13 and InventoryType<>14 and InventoryType<>15 and InventoryType<>17 and InventoryType<>21 and InventoryType<>22;
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '110', '5.8');
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '111', '5.8');
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '112', '5.8');
@@ -1320,14 +1474,25 @@ INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALU
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '139', '1.0');
 
 -- lvl4
-INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '191', '0.8');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '191', '0.3');
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '192', '0.3');
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '197', '0.3');
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '198', '0.3');
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '199', '0.3');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '200', '0.3');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '201', '0.3');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '203', '0.3');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '204', '0.3');
+
+-- lvl4 supporting
+-- Summon Priest
+INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES ('46020', '0', '0', '0', '0', '0', '17329', '0', '0', '0', '牧师', '', '', '0', '1', '80', '0', '1718', '0', '1', '1.14286', '0.7', '0', '0', '1400', '2000', '1', '1', '1', '0', '2048', '0', '0', '7', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '1', '1', '0.7', '1', '1', '1', '1', '0', '0', '1', '0', '0', '0', 'AssistanceAI', '12340');
+INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('46020', '0', '85902', '12340');
+INSERT INTO `world`.`creature_equip_template` (`CreatureID`, `ID`, `ItemID1`, `ItemID2`, `ItemID3`, `VerifiedBuild`) VALUES ('46020', '1', '5303', '0', '0', '18019');
+
 
 -- 武器
-update world.item_template set RandomSuffix=9002 where Quality>=3 and InventoryType>0 and RandomProperty=0 and InventoryType<>0 and InventoryType<>18 and InventoryType<>24 and InventoryType<>27 and (InventoryType=13 or InventoryType=14 or InventoryType=15 or InventoryType=17 or InventoryType=21 or InventoryType=22);
+update world.item_template set RandomSuffix=9002 where Quality>=3 and InventoryType>0 and RandomProperty=0 and RandomSuffix=0 and InventoryType<>0 and InventoryType<>18 and InventoryType<>24 and InventoryType<>27 and (InventoryType=13 or InventoryType=14 or InventoryType=15 or InventoryType=17 or InventoryType=21 or InventoryType=22);
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '110', '5.8');
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '111', '5.8');
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '112', '5.8');
@@ -1358,7 +1523,10 @@ INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALU
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '137', '1.0');
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '138', '1.0');
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '139', '1.0');
+
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '193', '0.5');
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '194', '0.5');
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '195', '0.5');
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '196', '0.5');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '203', '0.5');
+INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9002', '204', '0.5');

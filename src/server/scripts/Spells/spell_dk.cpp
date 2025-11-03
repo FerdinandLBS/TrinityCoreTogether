@@ -1689,7 +1689,7 @@ class spell_dk_raise_dead : public SpellScript
         // but the client has locked it by itself so we need some link between this spell and the real spell summoning.
         // Luckily such link already exists - spell category
         // This starts infinite category cooldown which can later be used by SendCooldownEvent to send packet for this spell
-        GetCaster()->GetSpellHistory()->StartCooldown(GetSpellInfo(), 0, nullptr, true);
+        // GetCaster()->GetSpellHistory()->StartCooldown(GetSpellInfo(), 0, nullptr, true);
     }
 
     void Register() override

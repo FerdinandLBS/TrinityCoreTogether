@@ -434,7 +434,7 @@ struct npc_hadronox_crusherPackAI : public ScriptedAI
             std::list<Creature*> others;
             me->GetCreatureListWithEntryInGrid(others, 0, 40.0f);
             for (Creature* other : others)
-                if (other->AI()->GetData(DATA_CRUSHER_PACK_ID) == _myPack)
+                if (!other->IsAssistUnit() && other->AI()->GetData(DATA_CRUSHER_PACK_ID) == _myPack)
                 {
                     other->SetReactState(REACT_AGGRESSIVE);
                     other->AI()->AttackStart(who);

@@ -775,16 +775,6 @@ void Creature::Update(uint32 diff)
             if (IsEngaged())
                 Unit::AIUpdateTick(diff);
 
-            //npcbot: update dead bots
-            if (bot_AI)
-            {
-                bot_AI->UpdateDeadAI(diff);
-                break;
-            }
-            else if (bot_pet_AI)
-                break;
-            //end npcbot
-
             if (m_groupLootTimer && lootingGroupLowGUID)
             {
                 if (m_groupLootTimer <= diff)
@@ -877,11 +867,6 @@ void Creature::Update(uint32 diff)
                 }
             }
 
-            if (bot_AI)
-            {
-                //TC_LOG_ERROR("entities.unit", "creature update for %u", m_spawnId);
-            }
-
             Unit::AIUpdateTick(diff);
 
             //npcbot: skip regeneration
@@ -907,7 +892,7 @@ void Creature::Update(uint32 diff)
                 if (!IsInEvadeMode())
                 {
                     // regenerate health if not in combat or if polymorphed)
-                    if (!IsEngaged() || IsPolymorphed())
+                    if (!IsEngaged() || IsPolymorphed() || IsAssistUnit())
                         RegenerateHealth();
                     else if (CanNotReachTarget())
                     {
@@ -983,6 +968,8 @@ void Creature::Regenerate(Powers power)
                     float Spirit = GetStat(STAT_SPIRIT);
 
                     addvalue = uint32((Spirit / 5.0f + 17.0f) * ManaIncreaseRate);
+                    if (IsAssistUnit())
+                        addvalue += uint32(Spirit);
                 }
             }
             else

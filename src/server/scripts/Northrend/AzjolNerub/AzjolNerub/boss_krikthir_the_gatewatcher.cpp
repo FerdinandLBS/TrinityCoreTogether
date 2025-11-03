@@ -327,7 +327,7 @@ struct npc_gatewatcher_petAI : public ScriptedAI
             std::list<Creature*> others;
             me->GetCreatureListWithEntryInGrid(others, 0, 40.0f);
             for (Creature* other : others)
-                if (other->AI()->GetData(DATA_PET_GROUP) == _petGroup)
+                if (!other->IsAssistUnit() && other->AI()->GetData(DATA_PET_GROUP) == _petGroup)
                 {
                     other->SetReactState(REACT_AGGRESSIVE);
                     other->AI()->AttackStart(who);

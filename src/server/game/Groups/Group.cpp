@@ -570,27 +570,6 @@ bool Group::AddMember(Player* player)
 
     SubGroupCounterIncrease(subGroup);
 
-    //npcbot - check if trying to add bot
-    //TC_LOG_ERROR("entities.player", "Group::AddMember(): new member %s", player->GetName().c_str());
-    if (!player->GetGUID().IsPlayer())
-    {
-        // insert into the table if we're not a battleground group
-        if (!isBGGroup() && !isBFGroup())
-        {
-            CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_NPCBOT_GROUP_MEMBER);
-
-            stmt->setUInt32(0, m_dbStoreId);
-            stmt->setUInt32(1, player->GetEntry());
-            stmt->setUInt8(2, member.flags);
-            stmt->setUInt8(3, member.group);
-            stmt->setUInt8(4, member.roles);
-
-            CharacterDatabase.Execute(stmt);
-        }
-    }
-    else
-    {
-    //end npcbot
     player->SetGroupInvite(nullptr);
     if (player->GetGroup())
     {
@@ -624,17 +603,10 @@ bool Group::AddMember(Player* player)
 
         CharacterDatabase.Execute(stmt);
     }
-    //npcbot
-    }
-    //end npcbot
 
     SendUpdate();
     sScriptMgr->OnGroupAddMember(this, player->GetGUID());
 
-    //npcbot - check 2
-    if (player->GetGUID().IsPlayer())
-    {
-    //end npcbot
     if (!IsLeader(player->GetGUID()) && !isBGGroup() && !isBFGroup())
     {
         // reset the new member's instances, unless he is currently in one of them
@@ -710,9 +682,6 @@ bool Group::AddMember(Player* player)
 
     if (m_maxEnchantingLevel < player->GetSkillValue(SKILL_ENCHANTING))
         m_maxEnchantingLevel = player->GetSkillValue(SKILL_ENCHANTING);
-    //npcbot
-    }
-    //end npcbot
 
     //npcbot: if player has been added to bot BG raid switch leader to it
     if (!m_leaderGuid.IsPlayer())

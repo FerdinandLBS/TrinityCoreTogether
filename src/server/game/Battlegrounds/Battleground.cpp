@@ -1017,22 +1017,6 @@ void Battleground::RemovePlayerAtLeave(ObjectGuid guid, bool Transport, bool Sen
         // remove from raid group if player is member
         if (Group* group = GetBgRaid(team))
         {
-            //npcbot
-            if (player && player->HaveBot())
-            {
-                BotMap const* map = player->GetBotMgr()->GetBotMap();
-                for (BotMap::const_iterator itr = map->begin(); itr != map->end(); ++itr)
-                {
-                    Creature const* bot = itr->second;
-                    if (!bot || !group->IsMember(bot->GetGUID()))
-                        continue;
-
-                    group->RemoveMember(bot->GetGUID());
-                    UpdatePlayersCountByTeam(team, true);
-                    DecreaseInvitedCount(team);
-                }
-            }
-            //end npcbot
             if (!group->RemoveMember(guid))                // group was disbanded
                 SetBgRaid(team, nullptr);
         }

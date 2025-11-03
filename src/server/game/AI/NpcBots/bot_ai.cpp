@@ -14123,6 +14123,11 @@ void bot_ai::DefaultInit()
         me->SetBotAI(this);
     }
 
+    // Tauren talent
+    if (me->GetRace() == RACE_TAUREN) {
+        me->CastSpell(me, 81372, true);
+    }
+
     me->SetPvP(master->IsPvP() || IsWanderer());
     if (sWorld->IsFFAPvPRealm())
         me->SetByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_FFA_PVP);
@@ -15176,10 +15181,19 @@ void bot_ai::_AddItemLink(Player const* forPlayer, Item const* item, std::ostrin
     //name
     _LocalizeItem(forPlayer, name, suffix, item);
 
-    str << "|h[" << name;
-    if (suffix.length() > 0)
-        str << ' ' << suffix;
-    str <<"]|h|r";
+    str << "|h[";
+    // For Chinese clients, suffix should be infront of name without space
+    if (sWorld->GetDefaultDbcLocale() == LOCALE_zhCN) {
+        if (suffix.length() > 0)
+            str << suffix;
+        str << name;
+    }
+    else {
+        str << name;
+        if (suffix.length() > 0)
+            str << ' ' << suffix;
+    }
+    str << "]|h|r";
 
     //quantity
     if (item->GetCount() > 1)
@@ -15223,7 +15237,9 @@ void bot_ai::_AddSpellLink(Player const* forPlayer, SpellInfo const* spellInfo, 
     else
         str << "ffffffff"; //default white
 
-    str << "|Hspell:" << spellInfo->Id << "|h[" << spellInfo->SpellName[loc] << "]|h|r";
+    std::stringstream spellName;
+    spellName << spellInfo->SpellName[sWorld->GetDefaultDbcLocale()];
+    str << "|Hspell:" << spellInfo->Id << "|h[" << spellName.str() << "]|h|r";
 }
 //Unused
 void bot_ai::_AddProfessionLink(Player const* forPlayer, SpellInfo const* spellInfo, std::ostringstream &str, uint32 skillId) const

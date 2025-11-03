@@ -1,4 +1,4 @@
-﻿#include "Define.h"
+#include "Define.h"
 #include "ScriptMgr.h"
 #include "SharedDefines.h"
 #include "Item.h"
@@ -18,6 +18,7 @@ public:
 
     bool OnUse(Player* player, Item* item, SpellCastTargets const& targets) override
     {
+        (void)targets;
         player->PlayerTalkClass->ClearMenus();
         this->OnUseGossipMenuSend(player, item);
         return false;
@@ -26,15 +27,15 @@ public:
     void OnUseGossipMenuSend(Player* player, Item* item) {
         if (player->IsInFlight())
         {
-            player->GetSession()->SendAreaTriggerMessage("不能在飞行时使用"); return;
+            player->GetSession()->SendAreaTriggerMessage("????????"); return;
         }
         else if (player->IsMounted())
         {
-            player->GetSession()->SendAreaTriggerMessage("正在乘骑状态"); return;
+            player->GetSession()->SendAreaTriggerMessage("??????"); return;
         }
         else if (player->IsInCombat())
         {
-            player->GetSession()->SendAreaTriggerMessage("不能在战斗中使用"); return;
+            player->GetSession()->SendAreaTriggerMessage("????????"); return;
         }
 
         BuildMainMenu(player, item, 0);

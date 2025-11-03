@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -1449,17 +1449,10 @@ void Guardian::UpdateMaxHealth()
     }
 
     float value = GetFlatModifierValue(unitMod, BASE_VALUE) + GetCreateHealth();
-    if (GetEntry() >= 45000) {
-        value = GetCreateHealth();
-        value *= m_creatureInfo->ModHealth;
-        value += GetFlatModifierValue(unitMod, TOTAL_VALUE);
-        value *= GetPctModifierValue(unitMod, TOTAL_PCT);
-    }
-    else {
-        value *= GetPctModifierValue(unitMod, BASE_PCT);
-        value += GetFlatModifierValue(unitMod, TOTAL_VALUE) + stamina * multiplicator;
-        value *= GetPctModifierValue(unitMod, TOTAL_PCT);
-    }
+
+    value *= GetPctModifierValue(unitMod, BASE_PCT);
+    value += GetFlatModifierValue(unitMod, TOTAL_VALUE) + stamina * multiplicator;
+    value *= GetPctModifierValue(unitMod, TOTAL_PCT);
 
     SetMaxHealth((uint32)value);
 }
@@ -1480,6 +1473,8 @@ void Guardian::UpdateMaxPower(Powers power)
         case ENTRY_FELGUARD:    multiplicator = 11.5f;  break;
         default:                multiplicator = 15.0f;  break;
     }
+    if (IsAssistUnit())
+        multiplicator = 10.f;
 
     float value  = GetFlatModifierValue(unitMod, BASE_VALUE) + GetCreatePowerValue(power);
     value *= GetPctModifierValue(unitMod, BASE_PCT);

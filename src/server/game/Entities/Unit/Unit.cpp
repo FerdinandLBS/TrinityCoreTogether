@@ -920,7 +920,7 @@ bool Unit::HasBreakableByDamageCrowdControlAura(Unit* excludeCasterChannel) cons
         if (!victim->ToCreature()->hasLootRecipient())
             victim->ToCreature()->SetLootRecipient(attacker);
 
-        if (!attacker || attacker->IsControlledByPlayer() || (attacker->ToTempSummon() && attacker->ToTempSummon()->GetSummonerUnit() && attacker->ToTempSummon()->GetSummonerUnit()->GetTypeId() == TYPEID_PLAYER))
+        if (!attacker || attacker->IsControlledByPlayer() || attacker->GetEntry() >= 45000 || (attacker->ToTempSummon() && attacker->ToTempSummon()->GetSummonerUnit() && attacker->ToTempSummon()->GetSummonerUnit()->GetTypeId() == TYPEID_PLAYER))
             victim->ToCreature()->LowerPlayerDamageReq(health < damage ?  health : damage);
     }
 
@@ -10963,6 +10963,13 @@ void Unit::AddComboPoints(Unit* target, int8 count)
 {
     if (!count)
         return;
+
+    if (GetEntry() == 45004) {
+        Player* p = GetCharmerOrOwnerPlayerOrPlayerItself();
+        if (p) {
+            p->AddComboPoints(target, count);
+        }
+    }
 
     if (target && target != m_comboTarget)
     {

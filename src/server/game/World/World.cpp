@@ -24,6 +24,7 @@
 #include "AchievementMgr.h"
 #include "AddonMgr.h"
 #include "ArenaTeamMgr.h"
+#include "AssistanceAI.h"
 #include "AuctionHouseBot.h"
 #include "AuctionHouseMgr.h"
 #include "BattlefieldMgr.h"
@@ -1553,6 +1554,40 @@ void World::LoadConfigSettings(bool reload)
         sScriptMgr->OnConfigLoad(reload);
 }
 
+using std::pair;
+static void InitialAssistAISystem(void) {
+
+    QueryResult result = WorldDatabase.PQuery("select * from assists_addon");
+    do
+    {
+        std::vector<std::string> ag;
+        std::vector<float> stats_inherited;
+        AssistsAddon addon;
+        unsigned entry = (*result)[0].GetUInt32();
+        int i;
+
+        for (i = 0; i < 5; i++) {
+            addon.setStatInherited(Stats(i), (*result)[i + 1].GetFloat());
+        }
+
+        for (i = 6; i < 9; i++) {
+            addon.setText(i - 6, (*result)[i].GetString());
+        }
+
+        addon.setClass((*result)[i++].GetInt32());
+        addon.setAttackType((*result)[i++].GetInt32());
+        addon.setAwakeTime((*result)[i++].GetFloat());
+        addon.setEffSpell((*result)[i++].GetInt32());
+        addon.setFlag((*result)[i++].GetInt32());
+        addon.setFollowInfo(
+            (*result)[i++].GetFloat(),
+            (*result)[i++].GetFloat()
+        );
+
+        AssistanceAI::assist_addons.insert(std::pair<unsigned, AssistsAddon>(entry, addon));
+    } while (result->NextRow());
+}
+
 /// Initialize the World
 void World::SetInitialWorldSettings()
 {
@@ -2108,6 +2143,9 @@ void World::SetInitialWorldSettings()
 
     TC_LOG_INFO("server.loading", "Initialize commands...");
     Trinity::ChatCommands::LoadCommandMap();
+
+    TC_LOG_INFO("server.loading", "Initialize Assists system...");
+    InitialAssistAISystem();
 
     ///- Initialize game time and timers
     TC_LOG_INFO("server.loading", "Initialize game time and timers");

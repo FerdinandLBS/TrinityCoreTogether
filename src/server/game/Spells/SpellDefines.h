@@ -123,6 +123,7 @@ enum SpellModOp : uint8
     SPELLMOD_RESIST_DISPEL_CHANCE       = 28,
     SPELLMOD_CRIT_DAMAGE_BONUS_2        = 29, //one not used spell
     SPELLMOD_SPELL_COST_REFUND_ON_FAIL  = 30,
+
     MAX_SPELLMOD
 };
 

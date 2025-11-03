@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2008-2019 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
@@ -38,30 +38,27 @@
 #include "TemporarySummon.h"
 #include "Vehicle.h"
 #include <TCTogetherHandler.h>
-//#include "bot_ai.h"
+#include "bot_ai.h"
 
+#define AAI_CASTER_GCD 1500
+#define AAI_MELEE_GCD 1000
 
-#pragma execution_character_set("utf-8")
+std::map<unsigned, AssistsAddon> AssistanceAI::assist_addons;
 
-const char* getCustomGreeting(int entry) {
-    switch (entry) {
-    case 45000:
-        return "??????????";
-    case 45001:
-        return "??,???????!";
-    case 45002:
-        return "你好?,????";
-    case 45004:
-        return "为主人效命";
+static std::string getCustomGreeting(int entry) {
+    std::map<unsigned, AssistsAddon>::iterator it = AssistanceAI::assist_addons.find(entry);
+    if (it == AssistanceAI::assist_addons.end())
+        return "";
+    else {
+        unsigned i = rand32() % 3;
+        return it->second.getText(i);
     }
-    return nullptr;
 }
 
 uint32 GetPorperSpellIdForLevel(uint32 basespell, uint8 lvl)
 {
     SpellInfo const* info = sSpellMgr->GetSpellInfo(basespell);
-    if (!info)
-    {
+    if (!info) {
         return 0; //invalid spell id
     }
 
@@ -74,6 +71,65 @@ uint32 GetPorperSpellIdForLevel(uint32 basespell, uint8 lvl)
     }
     return spellId;
 }
+
+
+class NearyByGroupAliveCheck
+{
+public:
+    explicit NearyByGroupAliveCheck(Unit const* unit, float maxdist) : _me(unit), _range(maxdist) { }
+    bool operator()(WorldObject const* u) const
+    {
+        Unit const* unit = u->ToUnit();
+        if (!unit || !unit->IsAlive())
+            return false;
+
+        if (!_me->IsFriendlyTo(unit))
+            return false;
+
+        if (unit->IsHostileTo(_me))
+            return false;
+        if (unit->IsNeutralToAll())
+            return false;
+        if (!unit->InSamePhase(_me))
+            return false;
+        if (!unit->IsWithinDistInMap(_me, _range))
+            return false;
+
+        return true;
+    }
+private:
+    Unit const* _me;
+    float _range;
+    NearyByGroupAliveCheck(NearyByGroupAliveCheck const&);
+
+};
+
+//AoE caster dynobject
+class AoePointCheck
+{
+public:
+    explicit AoePointCheck(Unit const* unit, Position l, float maxdist) : _me(unit), _range(maxdist), _l(l) { }
+    bool operator()(Unit const* u) const
+    {
+        if (!u || u == _me)
+            return false;
+        if (!u->InSamePhase(_me))
+            return false;
+        if (!u->IsHostileTo(_me) && !u->IsInCombatWith(_me))
+            return false;
+        if (!u->IsWithinDistInMap(_me, _range))
+            return false;
+        if (!u->IsInDist(_l, _range))
+            return false;
+
+        return true;
+    }
+private:
+    Unit const* _me;
+    float _range;
+    Position _l;
+    AoePointCheck(AoePointCheck const&);
+};
 
 Unit* SelectMostHpPctFriedly(Unit* who, float range, bool isCombat) {
     Unit* unit = nullptr;
@@ -120,7 +176,7 @@ int32 AssistanceAI::Permissible(Creature const* creature)
     // have some hostile factions, it will be selected by IsHostileTo check at MoveInLineOfSight
     if (!creature->IsCivilian() && !creature->IsNeutralToAll())
         return PERMIT_BASE_REACTIVE;
-
+    
     return PERMIT_BASE_NO;
 }
 
@@ -151,7 +207,7 @@ void BuildDwarfRaceTalentGossip(Player* player, Creature* creature) {
     PlayerMenu* menu = player->PlayerTalkClass;
     menu->ClearMenus();
 
-    AddGossipItemFor(player, GOSSIP_ICON_TALK, "雇佣", MW_GOSSIP_DWARF_TALENT_MAIN, MW_GOSSIP_ACTION_DO + 1);
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, "??", MW_GOSSIP_DWARF_TALENT_MAIN, MW_GOSSIP_ACTION_DO + 1);
 
     SendGossipMenuFor(player, GOSSIP_ICON_TAXI, creature->GetGUID());
 }
@@ -174,7 +230,7 @@ bool AssistanceAI::OnGossipHello(Player* player) {
 }
 
 // Called when a player selects a gossip item in the creature's gossip menu.
-bool AssistanceAI::OnGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) {
+bool AssistanceAI::OnGossipSelect(Player* player, uint32, uint32 gossipListId) {
     uint32 sender = player->PlayerTalkClass->GetGossipOptionSender(gossipListId);
     uint32 action = player->PlayerTalkClass->GetGossipOptionAction(gossipListId);
     switch (sender) {
@@ -203,7 +259,7 @@ bool AssistanceAI::canAttackTarget(Unit const* target)
     if (!target)
         return false;
 
-    Unit* master = me->GetOwner();
+    Unit* master = _realowner;
     uint8 followdist = 50;
     float foldist = 36;
 
@@ -268,9 +324,11 @@ Unit* AssistanceAI::getAttackerForHelper(Unit* unit)                 // If someo
 
 Unit* AssistanceAI::SelectNextTarget(bool allowAutoSelect)
 {
+    (void)allowAutoSelect;
+
     // Check pet attackers first so we don't drag a bunch of targets to the owner
     if (Unit* myAttacker = getAttackerForHelper(me))
-        if (!myAttacker->HasBreakableByDamageCrowdControlAura() && myAttacker != me->GetOwner())
+        if (!myAttacker->HasBreakableByDamageCrowdControlAura() && myAttacker != _realowner)
             return myAttacker;
 
     // Not sure why we wouldn't have an owner but just in case...
@@ -284,41 +342,22 @@ Unit* AssistanceAI::SelectNextTarget(bool allowAutoSelect)
     return nullptr;
 }
 
-bool AssistanceAI::castSpell(WorldObject* target, int32 index) {
-    if (index >= 0)
-        _lastSpellResult = me->CastSpell(target, me->m_spells[index]);
-    else
-        _lastSpellResult = me->CastSpell(target, oneTimeSpells[index + MAX_CREATURE_SPELL]);
-
-    if (_lastSpellResult == SpellCastResult::SPELL_CAST_OK) {
-        if (index >= 0)
-            spellsTimer[index][SPELL_TIMER_CURRENT] = 0;
-        else
-            oneTimeSpells[index + MAX_CREATURE_SPELL] = 0;
-        return true;
-    }
-    return false;
-}
-
-bool AssistanceAI::castSpell(const Position& dest, int32 index) {
-    if (index >= 0)
-        _lastSpellResult = me->CastSpell(dest, me->m_spells[index]);
-    else
-        _lastSpellResult = me->CastSpell(dest, oneTimeSpells[index + MAX_CREATURE_SPELL]);
-
-    if (_lastSpellResult == SpellCastResult::SPELL_CAST_OK) {
-        if (index >= 0)
-            spellsTimer[index][SPELL_TIMER_CURRENT] = 0;
-        else
-            oneTimeSpells[index + MAX_CREATURE_SPELL] = 0;
+bool AssistanceAI::spellCasted(SpellCastResult result) {
+    if (result == SpellCastResult::SPELL_CAST_OK) {
+        // Set GCD
+        _gcd = (_type == AssistanceAI::ATTACK_TYPE_CASTER ? AAI_CASTER_GCD : AAI_MELEE_GCD);
         return true;
     }
     return false;
 }
 
 bool AssistanceAI::isSpellReady(int32 index) {
+    if (_gcd > 0)
+        return false;
+
     if (index < 0)
         return true;
+
     SpellHistory* spellHistory = me->GetSpellHistory();
     if (spellHistory) {
         const SpellInfo* si = sSpellMgr->GetSpellInfo(me->m_spells[index]);
@@ -331,11 +370,8 @@ float AssistanceAI::GetManaPct() {
     return (float)me->GetPower(Powers::POWER_MANA) / (float)me->GetMaxPower(Powers::POWER_MANA);
 }
 
-
 Unit* AssistanceAI::GetVictim() {
     Unit* victim = nullptr;
-    Unit* owner = me->GetOwner();
-    bool reset = false;
 
     if (!me->IsAlive())
     {
@@ -343,28 +379,27 @@ Unit* AssistanceAI::GetVictim() {
         me->SetTarget(ObjectGuid::Empty);
         return nullptr;
     }
+
     isTargetChanged = false;
     victim = me->GetVictim();
     if (nullptr == victim) {
         victim = SelectNextTarget(false);
 
         if (victim && canAttackTarget(victim)) {
-            reset = true;
+            isTargetChanged = true;
         }
         else {
             victim = nullptr;
         }
     }
 
-    if (owner) {
-        if (owner->IsEngaged()) {
-            Unit* ownerTarget = ObjectAccessor::GetUnit(*owner, owner->GetTarget());
-            if (ownerTarget && canAttackTarget(ownerTarget)) {
-                // If owner selected one enemy
-                if (victim != ownerTarget) {
-                    victim = ownerTarget;
-                    reset = true;
-                }
+    if (_realowner->IsInCombat()) {
+        Unit* ownerTarget = ObjectAccessor::GetUnit(*_realowner, _realowner->GetTarget());
+        if (ownerTarget && canAttackTarget(ownerTarget)) {
+            // If owner selected one enemy
+            if (victim != ownerTarget) {
+                victim = ownerTarget;
+                isTargetChanged = true;
             }
         }
     }
@@ -372,211 +407,508 @@ Unit* AssistanceAI::GetVictim() {
     if (!victim) {
         me->SetTarget(ObjectGuid::Empty);
     }
-    else if (reset) {
-        isTargetChanged = true;
-    }
 
     return victim;
 }
 
-bool AssistanceAI::AssistantsSpell(uint32 diff, Unit* victim) {
-    uint32 id;
-    Unit* owner = me->GetOwner();
 
-    if (me->GetEntry() < 45000) {
-            return false;
-    }
+bool AssistanceAI::checkOneTimeSpells() {
+    return false;
 
-    bool casted = false;
+}
 
-    if (me->HasUnitState(UNIT_STATE_CASTING) || me->GetCurrentSpell(CURRENT_CHANNELED_SPELL))
-        return true;
+bool AssistanceAI::checkNoneCombatSpells() {
+    std::vector<int32> list = _spells.find(AAI_SPELL_NONE_COMBAT)->second;
+    std::vector<int32> remove_list;
+    Unit* target = nullptr;
 
-    int32 i = -MAX_CREATURE_SPELL;
-redo:
-    for (; i < MAX_CREATURE_SPELL && casted == false; i++) {
-        const SpellInfo* si = nullptr;
+    if (list.empty() || me->HasUnitState(UNIT_STATE_CASTING) || _gcd > 0)
+        return false;
 
-        if (i < 0) {
-            if (oneTimeSpells[i + MAX_CREATURE_SPELL] > 0)
-                id = oneTimeSpells[i + MAX_CREATURE_SPELL];
-            else
-                continue;
-        }
-        else
-            id = me->m_spells[i];
-
-        si = sSpellMgr->GetSpellInfo(id);
+    /* Score every spell */
+    for (std::vector<int32>::reverse_iterator it = list.rbegin(); it != list.rend(); it++) {
+        const SpellInfo* si = sSpellMgr->GetSpellInfo(*it);
         _lastSpellResult = SpellCastResult::SPELL_CAST_OK;
-        if (si == nullptr)
-            return false;
 
-        if (si->IsPassive() || !isSpellReady(i)) {
-            continue;
-        }
-
-        // Take care of specail AI
-        switch (id) {
-        case 56222:
-        case 355: // Taunt
-            if (victim && victim->GetTarget() == me->GetGUID() && _class != ASSISTANCE_CLASS::DPS)
-                continue;
-            if (owner && owner->GetHealthPct() > 55.f && _class != ASSISTANCE_CLASS::DPS) {
-                continue;
-            }
-            //me->CastSpell(me, 71, true);
-            break;
-        case 47541: // death coil
-            if (me->GetPower(Powers::POWER_RUNIC_POWER) < 40)
-                continue;
-            
-            if (true == castSpell(victim, i))
-                goto endloop;
-
-            continue;
-        case 78:
-            if (me->GetPower(Powers::POWER_RAGE) < 400) {
-                continue;
-            }
-            break;
-        case 85923: // Silence
-            if (!victim || !victim->HasUnitState(UNIT_STATE_CASTING)) {
-                continue;
-            }
-            break;
-        case 85953: // Dark Ceremony
-            if (GetManaPct() >= 0.6f) {
-                continue;
-            }
-            {
-                Unit* target = SelectMostHpPctFriedly(me, 40, true);
-                if (target == nullptr)
-                    continue;
-
-                casted = castSpell(target, i);
-            }
-            goto endloop;
-        case 85891: // Spirit of Revenge
-        case 87278: // Wild Imp: Master Enhance
-            casted = castSpell(me->GetOwner(), i);
-            goto endloop;
-        default:
-            ;
-        }
-
-        // heal and buff and no target spell.Effect
-        if (si->IsSelfCast() || si->GetEffect(EFFECT_0).Effect == SPELL_EFFECT_SUMMON) {
-            if (si->GetEffect(EFFECT_0).IsEffect(SpellEffects::SPELL_EFFECT_APPLY_AURA) ||
-                si->GetEffect(EFFECT_0).IsEffect(SPELL_EFFECT_APPLY_AREA_AURA_RAID)) {
-                if (me->HasAura(id)) {
-                    continue;
+        for (auto eff : si->GetEffects()) {
+            switch (eff.Effect) {
+            case SPELL_EFFECT_SUMMON:
+                _lastSpellResult = me->CastSpell(me, si->Id);
+                goto exists;
+            case SPELL_EFFECT_APPLY_AURA:
+            case SPELL_EFFECT_APPLY_AREA_AURA_RAID:
+            case SPELL_EFFECT_APPLY_AREA_AURA_PARTY:
+                
+                if (si->IsSelfCast() && si->GetDuration() < 0) {
+                    me->CastSpell(me, si->Id, true);
+                    remove_list.push_back(si->Id);
+                    goto next_loop;
                 }
-            }
-
-            // If we are tank. A self cast spell may be a final cast. We should keep it.
-            if (_class == ASSISTANCE_CLASS::TANK && !si->GetEffect(EFFECT_0).IsEffect(SpellEffects::SPELL_EFFECT_SUMMON)) {
-                if (!(si->GetRecoveryTime() > 30000 && me->GetHealthPct() <= 30)) {
-                    continue;
+                else {
+                    Trinity::UnitAuraCheck check(false, si->Id, me->GetGUID());
+                    Trinity::UnitSearcher<Trinity::UnitAuraCheck> searcher(me, target, check);
+                    Cell::VisitAllObjects(me, searcher, 40.f);
+                    if (target != nullptr) {
+                        _lastSpellResult = me->CastSpell(me, si->Id);
+                        goto exists;
+                    }
                 }
-            }
-
-            if (si->GetEffect(EFFECT_0).Effect == SPELL_EFFECT_TELEPORT_UNITS) {
-                casted = castSpell(victim, i);
-            }
-            else {
-                casted = castSpell(me, i);
-            }
-            break;
-        }
-
-        // Range Attack
-        if ((si->RangeEntry->ID == 1 && si->GetEffect(EFFECT_0).RadiusEntry) ||
-            si->GetEffect(EFFECT_0).TargetA.GetTarget() == TARGET_UNIT_CONE_ENEMY_24) {
-            if (victim == nullptr || si->GetEffect(EFFECT_0).RadiusEntry->RadiusMax / 2 <= me->GetDistance(victim))
-                continue;
-
-            casted = castSpell(me, i);
-            break;
-        }
-
-        if (si->GetEffect(EFFECT_0).TargetA.GetTarget() == TARGET_UNIT_TARGET_ENEMY ||
-            si->GetEffect(EFFECT_0).TargetA.GetTarget() == TARGET_DEST_TARGET_ENEMY) {
-            if (victim == nullptr)
-                continue;
-
-
-            // If we are casting one debuff then check it
-            if (si->GetEffect(EFFECT_0).IsEffect(SPELL_EFFECT_APPLY_AURA) && victim->HasAura(id) && !si->GetEffect(EFFECT_1).IsEffect(SPELL_EFFECT_SCHOOL_DAMAGE))
-                continue;
-
-            casted = castSpell(victim, i);
-            break;
-        }
-
-        if ((si->GetEffect(EFFECT_0).TargetA.GetTarget() == TARGET_UNIT_DEST_AREA_ENEMY ||
-            si->GetEffect(EFFECT_1).TargetA.GetTarget() == TARGET_UNIT_DEST_AREA_ENEMY ||
-            si->GetEffect(EFFECT_0).TargetA.GetTarget() == TARGET_DEST_DYNOBJ_ENEMY)
-            && victim) {
-            casted = castSpell(victim->GetPosition(), i);
-            break;
-        }
-
-        /* We are healers */
-        if (si->GetEffect(EFFECT_0).TargetA.GetTarget() == TARGET_UNIT_TARGET_ALLY ||
-            si->GetEffect(EFFECT_1).TargetB.GetTarget() == TARGET_UNIT_DEST_AREA_ALLY ||
-            si->GetEffect(EFFECT_0).TargetA.GetTarget() == TARGET_UNIT_TARGET_CHAINHEAL_ALLY) {
-            //victim->GetThreatManager()
-
-            Unit* owner = me;
-            if (me->GetOwner()->ToPlayer() == nullptr)
-                owner = me->GetOwner();
-            Unit* t = SelectLeastHpPctFriendly(owner, 50.0f, true);
-            if (t && t->GetHealthPct() < 95) {
-                if (si->GetEffect(EFFECT_0).Effect == SPELL_EFFECT_APPLY_AURA && t->HasAura(si->Id))
-                    continue;
-                casted = castSpell(t, i);
                 break;
             }
-            else {
-                if (me->GetDistance(me->GetOwner()->GetPosition()) > 15.0f)
-                    me->GetMotionMaster()->MoveCloserAndStop(1, me->GetOwner(), 15.0f);
-            }
         }
+    next_loop:
+        continue;
     }
-endloop:
-    if (casted) {
-        if (id == 81171 || id == 81174) {
-            me->SetPower(Powers::POWER_RUNIC_POWER, me->GetPower(Powers::POWER_RUNIC_POWER) + 10);
-        }
-        return true;
+exists:
+    if (remove_list.size() > 0) {
+        list.erase(std::remove_if(list.begin(), list.end(), [remove_list](int x) {
+            for (auto e : remove_list) {
+                if (e == x)
+                    return true;
+            }
+            return false;
+        }), list.end());
     }
 
     switch (_lastSpellResult) {
     case SpellCastResult::SPELL_FAILED_LINE_OF_SIGHT:
     case SpellCastResult::SPELL_FAILED_OUT_OF_RANGE:
-        if (!me->HasUnitState(UNIT_STATE_CHASE) && isMovable && _type == ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER) {
+        if (!me->HasUnitState(UNIT_STATE_CHASE) && isMovable && target && isCaster()) {
+            me->GetMotionMaster()->Clear();
+            me->GetMotionMaster()->MoveChase(target, 2.0f);
+        }
+        break;
+    default:
+        ;
+    }
+    return spellCasted(_lastSpellResult);
+}
+
+bool AssistanceAI::checkHealingSpells() {
+    std::vector<int32> list = _spells.find(AAI_SPELL_HEALING)->second;
+    int32 current_score = 0;
+    SpellInfo const* sel_sp = nullptr;
+    Unit* most_badly_hurt;
+    float highest_hp_lost = 0;
+    float everage_hp_lost = 0;
+
+    if (list.empty() || me->HasUnitState(UNIT_STATE_CASTING) || _gcd > 0)
+        return false;
+
+    std::list<Unit*> group_list;
+    NearyByGroupAliveCheck check(me, 40.f);
+    Trinity::UnitListSearcher<NearyByGroupAliveCheck> searcher(me, group_list, check);
+    Cell::VisitAllObjects(me, searcher, 40.f);
+
+    // No one to heal
+    if (group_list.size() == 0)
+        return false;
+
+    for (auto unit : group_list) {
+        float hp_lost = 100.f - unit->GetHealthPct();
+        if (hp_lost >= highest_hp_lost) {
+            most_badly_hurt = unit;
+            highest_hp_lost = hp_lost;
+        }
+        everage_hp_lost += hp_lost;
+    }
+    everage_hp_lost /= group_list.size();
+
+    // No one is injured.
+    if (everage_hp_lost < 3 && highest_hp_lost <= 5)
+        return false;
+
+    /* Score every spell */
+    for (auto spellId : list) {
+        const SpellInfo* si = sSpellMgr->GetSpellInfo(spellId);
+        int32 score = 0;
+        _lastSpellResult = SpellCastResult::SPELL_CAST_OK;
+        int32 power_cost = si->CalcPowerCost(me, SpellSchoolMask::SPELL_SCHOOL_MASK_ALL);
+        int32 heal_mount = 0;
+
+        // One spell that we don't have enough power should never be considered.
+        if (me->GetPower(si->PowerType) < (uint32)power_cost)
+            continue;
+
+        // One spell that is not recovered should never be considered.
+        if (me->GetSpellHistory()->HasCooldown(si))
+            continue;
+
+        // Try to save ourself firstly
+        if (si->IsSelfCast() && me == most_badly_hurt) {
+            score = 1;
+            sel_sp = si;
+            break;
+        }
+
+        // We must do something
+        if (highest_hp_lost > 25.f)
+            score += 5;
+
+        score -= si->CalcCastTime() / 2000;
+        score -= power_cost * 5 / me->GetMaxPower(si->PowerType);
+        for (auto eff : si->GetEffects()) {
+            // AOE of heal
+            if (eff.HasRadius() || eff.TargetA.GetTarget() == TARGET_UNIT_TARGET_CHAINHEAL_ALLY) {
+                if (highest_hp_lost > 30.f) {
+                    if (everage_hp_lost > 10.f)
+                        score += 10;
+                    else
+                        score += 4;
+                }
+                else {
+                    if (everage_hp_lost > 10)
+                        score += 5;
+                    else
+                        score += 1;
+                }
+
+                // Balance the radius score
+                if (si->RangeEntry->ID == 1) {
+                    score += (-4 + (int32)(eff.CalcRadius() / 5.f));
+                }
+            }
+
+            if (eff.Effect == SPELL_EFFECT_HEAL || eff.Effect == SPELL_EFFECT_HEAL_MAX_HEALTH) {
+                heal_mount += eff.CalcValue(me);
+            }
+
+            if (eff.IsAura() && eff.ApplyAuraName == AuraType::SPELL_AURA_PERIODIC_HEAL || eff.ApplyAuraName == AuraType::SPELL_AURA_SCHOOL_ABSORB) {
+                heal_mount += eff.CalcValue(me);
+                if (most_badly_hurt->HasAura(si->Id, me->GetGUID()))
+                    score -= 5;
+                else
+                    score += 5 - (int32)(highest_hp_lost/20);
+            }
+        }
+        int32 heal_score = heal_mount * 15 / me->GetMaxHealth();
+        if (heal_score == 0 && heal_mount > 0) heal_score = 1;
+        score += heal_score;
+
+        if (score > current_score) {
+            sel_sp = si;
+            current_score = score;
+        }
+    }
+
+    /* Nothing to do */
+    if (current_score <= 0)
+        return false;
+
+    _lastSpellResult = me->CastSpell(most_badly_hurt, sel_sp->Id);
+    switch (_lastSpellResult) {
+    case SpellCastResult::SPELL_FAILED_LINE_OF_SIGHT:
+    case SpellCastResult::SPELL_FAILED_OUT_OF_RANGE:
+        if (!me->HasUnitState(UNIT_STATE_CHASE) && isMovable && isCaster()) {
+            me->GetMotionMaster()->Clear();
+            me->GetMotionMaster()->MoveChase(most_badly_hurt, 2.0f);
+        }
+        break;
+    default:
+        ;
+    }
+    return spellCasted(_lastSpellResult);
+}
+
+bool AssistanceAI::checkDamagingSpells() {
+    std::vector<int32> list = _spells.find(AAI_SPELL_DAMAGING)->second;
+    Unit* victim = GetVictim();
+    int32 current_score = 0;
+    SpellInfo const* sel_sp = nullptr;
+    bool isSummon = false;
+
+    if (victim == nullptr)
+        return false;
+
+    if (list.size() == 0 || me->HasUnitState(UNIT_STATE_CASTING) || _gcd > 0)
+        return false;
+
+    // We are healer and should focus on heal
+    if (_class == HEALER && me->GetPowerPct(me->GetPowerType()) < 50.f)
+        return false;
+
+    std::list<Unit*> aoe_list;
+    AoePointCheck check(me, victim->GetPosition(), 15.f);
+    Trinity::UnitListSearcher<AoePointCheck> searcher(me, aoe_list, check);
+    Cell::VisitAllObjects(victim, searcher, 15.f);
+
+    //me->SetFacingToObject(victim);
+
+    /* Score every spell */
+    for (auto spellId : list) {
+        const SpellInfo* si = sSpellMgr->GetSpellInfo(spellId);
+        int32 score = 5;
+        bool is_summon = false;
+        bool aura_checked = false;
+        bool aoe_checked = false;
+        bool dmg_checked = false;
+        _lastSpellResult = SpellCastResult::SPELL_CAST_OK;
+
+        // One spell that we don't have enough power should never be considered.
+        if (me->GetPower(si->PowerType) < (uint32)si->CalcPowerCost(me, SpellSchoolMask::SPELL_SCHOOL_MASK_ALL))
+            continue;
+
+        // One spell that is not recovered should never be considered.
+        if (me->GetSpellHistory()->HasCooldown(si))
+            continue;
+
+        score += si->GetRecoveryTime() / 1000;
+        score -= si->CalcCastTime() / 1000;
+        score -= (si->IsChanneled()?2 :0);
+        
+        for (auto eff : si->GetEffects()) {
+            if (eff.HasRadius() && eff.Effect != SPELL_EFFECT_SUMMON) {
+                if (aoe_list.size() > 1) {
+                    score += aoe_list.size() * aoe_list.size();
+
+                    // A self cast AOE
+                    if (si->RangeEntry->ID == 1) {
+                        score -= 3;
+                    }
+                }
+                else {
+                    score -= 15;
+                }
+                aoe_checked = true;
+            } else if (eff.IsAura()) {
+                if (victim->HasAura(si->Id, me->GetGUID()))
+                    score -= 10;
+                else
+                    score += 8;
+                aura_checked = true;
+            }
+            else if (eff.Effect == SPELL_EFFECT_SCHOOL_DAMAGE || eff.Effect == SPELL_EFFECT_WEAPON_DAMAGE) {
+                score += (eff.CalcValue(me)*10 / _realowner->GetMaxHealth());
+                dmg_checked = true;
+            }
+
+            if (eff.Effect == SPELL_EFFECT_SUMMON) {
+                is_summon = true;
+            }
+
+            if (eff.Effect == SPELL_EFFECT_POWER_BURN)
+                score += 1;
+            else if (eff.Effect == SPELL_EFFECT_WEAPON_PERCENT_DAMAGE)
+                score += 3;
+            else
+                score += 2;
+
+            if (aoe_checked || aura_checked || dmg_checked)
+                break;
+        }
+
+        if (score > current_score) {
+            sel_sp = si;
+            current_score = score;
+            isSummon = is_summon;
+        }
+    }
+
+    /* Nothing to do */
+    if (current_score <= 0)
+        return false;
+
+    CastSpellExtraArgs args;
+
+    if (isSummon) {
+        args.SetOriginalCaster(_realowner->GetGUID());
+    }
+
+    if (sel_sp->IsSelfCast()) {
+        _lastSpellResult = me->CastSpell(me, sel_sp->Id, args);
+    }
+    else if (sel_sp->Targets == 64) {
+        if (aoe_list.size() == 0)
+            _lastSpellResult = me->CastSpell(victim->GetPosition(), sel_sp->Id);
+        else
+            _lastSpellResult = me->CastSpell(aoe_list.front(), sel_sp->Id);
+    }
+    else
+        _lastSpellResult = me->CastSpell(victim, sel_sp->Id, args);
+
+    switch (_lastSpellResult) {
+    case SpellCastResult::SPELL_FAILED_LINE_OF_SIGHT:
+    case SpellCastResult::SPELL_FAILED_OUT_OF_RANGE:
+        if (!me->HasUnitState(UNIT_STATE_CHASE) && isMovable && isCaster()) {
             me->GetMotionMaster()->Clear();
             me->GetMotionMaster()->MoveChase(victim, 2.0f);
         }
         break;
-    case SpellCastResult::SPELL_FAILED_NOT_READY: // Additional spell could have this result
-    case SpellCastResult::SPELL_FAILED_NO_POWER:
-        _lastSpellResult = SpellCastResult::SPELL_CAST_OK;
-        i++;
-        goto redo;
-        break;
     default:
         ;
+    }
+    return spellCasted(_lastSpellResult);
+}
+
+bool AssistanceAI::checkProtectingSpells() {
+    std::vector<int32> list = _spells.find(AAI_SPELL_PROTECTING)->second;
+
+    if (list.size() == 0)
+        return false;
+
+    for (auto spellId : list) {
+        const SpellInfo* si = sSpellMgr->GetSpellInfo(spellId);
+
+        if (me->GetSpellHistory()->HasCooldown(spellId))
+            continue;
+
+        for (auto eff : si->GetEffects()) {
+            switch (eff.Effect) {
+            case SPELL_EFFECT_APPLY_AURA:
+                
+                if (eff.ApplyAuraName == SPELL_AURA_MANA_SHIELD)
+                    if (!me->HasAura(spellId)) {
+                        me->CastStop();
+                        me->CastSpell(me, spellId);
+                        return true;
+                    }
+                break;
+            case SPELL_EFFECT_LEAP:
+                me->CastStop();
+                me->CastSpell(me, spellId);
+                break;
+            default:
+                ;
+            }
+        }
     }
 
     return false;
 }
 
+bool AssistanceAI::checkGenPowerSpells() {
+    std::vector<int32> list = _spells.find(AAI_SPELL_GEN_POWER)->second;
+    Unit* victim = GetVictim();
+    SpellInfo const* sel_sp = nullptr;
+
+    if (list.size() == 0 || me->HasUnitState(UNIT_STATE_CASTING) || _gcd > 0)
+        return false;
+
+    /* Score every spell */
+    for (auto spellId : list) {
+        const SpellInfo* si = sSpellMgr->GetSpellInfo(spellId);
+        _lastSpellResult = SpellCastResult::SPELL_CAST_OK;
+
+        // One spell that we don't have enough power should never be considered.
+        if (me->GetPower(si->PowerType) < (uint32)si->CalcPowerCost(me, SpellSchoolMask::SPELL_SCHOOL_MASK_ALL))
+            continue;
+
+
+
+        // One spell that is not recovered should never be considered.
+        if (me->GetSpellHistory()->HasCooldown(si))
+            continue;
+
+        if (victim->GetTarget() == me->GetOwner()->GetGUID() || victim->GetTarget() == me->GetGUID() || victim->GetTarget() == _realowner->GetGUID()) {
+            sel_sp = si;
+            break;
+        }
+        else if (rand() % 100 < 15) {
+            sel_sp = si;
+            break;
+        }
+    }
+    if (sel_sp == nullptr) {
+        return false;
+    }
+
+    CastSpellExtraArgs args;
+
+    if (sel_sp->IsSelfCast()) {
+        _lastSpellResult = me->CastSpell(me, sel_sp->Id, args);
+    }
+    else if (sel_sp->Targets == 64) {
+        _lastSpellResult = me->CastSpell(victim->GetPosition(), sel_sp->Id);
+    }
+    else
+        _lastSpellResult = me->CastSpell(victim, sel_sp->Id, args);
+
+    switch (_lastSpellResult) {
+    case SpellCastResult::SPELL_FAILED_LINE_OF_SIGHT:
+    case SpellCastResult::SPELL_FAILED_OUT_OF_RANGE:
+        if (!me->HasUnitState(UNIT_STATE_CHASE) && isMovable && isCaster()) {
+            me->GetMotionMaster()->Clear();
+            me->GetMotionMaster()->MoveChase(victim, 2.0f);
+        }
+        break;
+    default:
+        ;
+    }
+    return spellCasted(_lastSpellResult);
+}
+
+bool AssistanceAI::checkControlSpells() {
+    std::vector<int32> list = _spells.find(AAI_SPELL_CONTROL)->second;
+    Unit* victim = GetVictim();
+    SpellInfo const* sel_sp = nullptr;
+
+    if (victim == nullptr)
+        return false;
+
+    if (list.size() == 0 || me->HasUnitState(UNIT_STATE_CASTING) || _gcd > 0)
+        return false;
+
+    // We are healer and should focus on heal
+    if (_class == HEALER && me->GetPowerPct(me->GetPowerType()) < 50.f)
+        return false;
+
+    /* Score every spell */
+    for (auto spellId : list) {
+        const SpellInfo* si = sSpellMgr->GetSpellInfo(spellId);
+        _lastSpellResult = SpellCastResult::SPELL_CAST_OK;
+
+        // One spell that we don't have enough power should never be considered.
+        if (me->GetPower(si->PowerType) < (uint32)si->CalcPowerCost(me, SpellSchoolMask::SPELL_SCHOOL_MASK_ALL))
+            continue;
+
+        // One spell that is not recovered should never be considered.
+        if (me->GetSpellHistory()->HasCooldown(si))
+            continue;
+
+        if (victim->GetTarget() == me->GetOwner()->GetGUID() || victim->GetTarget() == me->GetGUID() || victim->GetTarget() == _realowner->GetGUID()) {
+            sel_sp = si;
+            break;
+        }
+        else if (rand()%100 < 15) {
+            sel_sp = si;
+            break;
+        }
+    }
+    if (sel_sp == nullptr) {
+        return false;
+    }
+
+    CastSpellExtraArgs args;
+
+    if (sel_sp->IsSelfCast()) {
+        _lastSpellResult = me->CastSpell(me, sel_sp->Id, args);
+    }
+    else if (sel_sp->Targets == 64) {
+        _lastSpellResult = me->CastSpell(victim->GetPosition(), sel_sp->Id);
+    }
+    else
+        _lastSpellResult = me->CastSpell(victim, sel_sp->Id, args);
+
+    switch (_lastSpellResult) {
+    case SpellCastResult::SPELL_FAILED_LINE_OF_SIGHT:
+    case SpellCastResult::SPELL_FAILED_OUT_OF_RANGE:
+        if (!me->HasUnitState(UNIT_STATE_CHASE) && isMovable && isCaster()) {
+            me->GetMotionMaster()->Clear();
+            me->GetMotionMaster()->MoveChase(victim, 2.0f);
+        }
+        break;
+    default:
+        ;
+    }
+    return spellCasted(_lastSpellResult);
+}
+
 void UpdateHumanRaceTalentBuffXP(Creature* me, int changeCount) {
     Aura* aura = me->GetAura(81192);
+    AssistanceAI* ai = (AssistanceAI*)me->GetAI();
     int count = aura ? aura->GetStackAmount() : 0;
 
-    if (count >= 100) return;
+    if (count >= 100 || ai == nullptr) return;
 
     count += changeCount;
     if (count >= 100) {
@@ -595,20 +927,21 @@ void UpdateHumanRaceTalentBuffXP(Creature* me, int changeCount) {
                 me->SetDisplayId(gender == GENDER_FEMALE ? 31953 : 28560);
                 me->SetVirtualItem(0, 29362);
                 me->SetVirtualItem(1, 34676);
-                me->m_spells[2] = 81197;
-                me->m_spells[3] = 81198;
-                me->m_spells[4] = gender == GENDER_FEMALE ? 81195 : 81196;
+                ai->AttemptAddProperSpellForLevel(81197);
+                ai->AttemptAddProperSpellForLevel(81198);
+                ai->AttemptAddProperSpellForLevel(gender == GENDER_FEMALE ? 81195 : 81196);
 
                 UnitAddHealthPct(me, 260);
                 break;
             case 1:
                 me->SetDisplayId(gender == GENDER_FEMALE ? 26397 : 28149);
-                me->m_spells[0] = gender == GENDER_FEMALE ? 81201 : 81203;
+
+                ai->AttemptAddProperSpellForLevel(gender == GENDER_FEMALE ? 81201 : 81203);
                 me->SetVirtualItem(0, 28188);
                 break;
             case 2:
                 me->SetDisplayId(gender == GENDER_FEMALE ? 1495 : 5072);
-                me->m_spells[2] = gender == GENDER_FEMALE ? 81207 : 81206;
+                ai->AttemptAddProperSpellForLevel(gender == GENDER_FEMALE ? 81207 : 81206);
                 me->SetVirtualItem(0, 22394);
                 break;
             }
@@ -646,6 +979,10 @@ void AssistanceAI::DamageDealt(Unit* /*victim*/, uint32& /*damage*/, DamageEffec
 // Called at any Damage from any attacker (before damage apply)
 // Note: it for recalculation damage or special reaction at damage
 void AssistanceAI::DamageTaken(Unit* attacker, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo = nullptr*/) {
+    (void)attacker;
+
+    checkProtectingSpells();
+
     switch (me->GetEntry()) {
     case 45006:
         UpdateHumanRaceTalentBuffXP(me, damage*200/me->GetMaxHealth() + 1);
@@ -661,49 +998,16 @@ void AssistanceAI::HealDone(Unit* /*done_to*/, uint32& /*addhealth*/) {
     }
 }
 
-float AssistanceAI::getSpecialFollowAngle() {
-    uint32 index = 0;
-    /*for (uint32 i = 0; i < MAX_CREATURE_SPELL; i++) {
-        switch (me->m_spells[i]) {
-        case 85990: // sword
-            return 0.0f;
-        case 86001: // tank
-            return static_cast<float>(-M_PI / 4);
-        case 85980: // healer
-            return static_cast<float>(M_PI / 4);
-        case 85970: // mage
-            return static_cast<float>(3 * M_PI / 4);
-        case 85895: // assistance
-            return static_cast<float>(3 * M_PI / 2);
-        }
-    }*/
-    return static_cast<float>((rand() % 32) * M_PI / 16);
-}
-
-bool AssistanceAI::hasSpell(uint32 id, uint32& index) {
-    for (uint32 i = 0; i < MAX_CREATURE_SPELL; i++) {
-        if (id == me->m_spells[i]) {
-            index = i;
-            return true;
-        }
-    }
-    return false;
-}
-
 void AssistanceAI::ReadyToDie() {
     switch (me->GetEntry()) {
     case 46002:
-        me->CastSpell(me->GetOwner(), 87278);
+        me->CastSpell(_realowner, 87278);
         break;
     }
 }
 
-void AssistanceAI::resetLifeTimer() {
-    switch (me->GetEntry()) {
-    case 46002:
-        _lifeTimer = 20000;
-        break;
-    }
+void AssistanceAI::resetLifeTimer(void) {
+
 }
 
 void AssistanceAI::Reborn(uint32 pct) {
@@ -719,14 +1023,21 @@ void AssistanceAI::Reborn(uint32 pct) {
     if (me->GetEntry() >= 45000 && me->GetEntry() <= 46000) {
         me->CastSpell(me, 86008);
     }
-
-    AssistantsSpell(0, 0);
 }
 
 void AssistanceAI::JustDied(Unit* killer) {
+    Aura* aura = nullptr;
+    (void)killer;
     switch (me->GetEntry()) {
     case 45006:
+        aura = me->GetOwner()->GetAura(81400, me->GetGUID());
+        if (aura) {
+            me->GetOwner()->RemoveOwnedAura(aura);
+        }
         me->DespawnOrUnsummon(60s);
+        break;
+    case 45004:
+        me->DespawnOrUnsummon(20s);
         break;
     case 46000:
     case 46030:
@@ -735,39 +1046,151 @@ void AssistanceAI::JustDied(Unit* killer) {
     }
 }
 
+void AssistanceAI::SpellInfoAnalyzeAndInsert(const SpellInfo* si) {
+    bool is_damaging = false;
+    bool is_healing = false;
+    bool is_protecting = false;
+    bool is_nonecombat = false;
+    bool is_control = false;
+    bool is_powergen = false;
+
+    if (!si)
+        return;
+
+    std::vector<int32> damaging = _spells.find(AAI_SPELL_DAMAGING)->second;
+
+    for (auto eff : si->_effects) {
+        switch (eff.Effect) {
+        case SPELL_EFFECT_SCHOOL_DAMAGE:
+        case SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL:
+        case SPELL_EFFECT_WEAPON_PERCENT_DAMAGE:
+        case SPELL_EFFECT_POWER_BURN:
+        case SPELL_EFFECT_WEAPON_DAMAGE:
+        case SPELL_EFFECT_NORMALIZED_WEAPON_DMG:
+        case SPELL_EFFECT_ADD_COMBO_POINTS:
+            is_damaging = true;
+            break;
+        case SPELL_EFFECT_ATTACK_ME:
+            is_control = true;
+            break;
+        case SPELL_EFFECT_PORTAL_TELEPORT:
+        case SPELL_EFFECT_TELEPORT_UNITS:
+        case SPELL_EFFECT_JUMP:
+        case SPELL_EFFECT_JUMP_DEST:
+        case SPELL_EFFECT_LEAP:
+        case SPELL_EFFECT_TELEPORT_UNITS_FACE_CASTER:
+        case SPELL_EFFECT_THREAT:
+        case SPELL_AURA_MANA_SHIELD:
+            is_protecting = true;
+            break;
+        case SPELL_EFFECT_APPLY_AURA:
+        case SPELL_EFFECT_APPLY_AREA_AURA_RAID:
+        case SPELL_EFFECT_APPLY_AREA_AURA_PARTY:
+        case SPELL_EFFECT_PERSISTENT_AREA_AURA:
+            switch (eff.ApplyAuraName) {
+            case SPELL_AURA_PERIODIC_HEAL:
+            case SPELL_AURA_DAMAGE_SHIELD:
+                is_healing = true;
+                break;
+            case SPELL_AURA_SCHOOL_ABSORB:
+                if (si->IsSelfCast() && eff.TargetA.GetTarget() != TARGET_UNIT_TARGET_ALLY)
+                    is_protecting = true;
+                else
+                    is_healing = true;
+                break;
+            case SPELL_AURA_MOD_CONFUSE:
+            case SPELL_AURA_MOD_FEAR:
+            case SPELL_AURA_MOD_STUN:
+            case SPELL_AURA_MOD_ROOT:
+            case SPELL_AURA_MOD_SILENCE:
+                is_control = true;
+                break;
+            case SPELL_AURA_PERIODIC_ENERGIZE:
+            case SPELL_AURA_PERIODIC_MANA_LEECH:
+            case SPELL_AURA_MOD_POWER_REGEN_PERCENT:
+                is_powergen = true;
+                break;
+            case SPELL_AURA_PERIODIC_DAMAGE:
+            case SPELL_AURA_PROC_TRIGGER_DAMAGE:
+            case SPELL_AURA_PERIODIC_DAMAGE_PERCENT:
+                is_damaging = true;
+                break;
+            case SPELL_AURA_PERIODIC_TRIGGER_SPELL: {
+                const SpellInfo* trigger_spell = sSpellMgr->GetSpellInfo(eff.TriggerSpell);
+                if (trigger_spell) {
+                    for (auto tse : trigger_spell->GetEffects()) {
+                        if (tse.Effect == SPELL_EFFECT_SCHOOL_DAMAGE) {
+                            is_damaging = true;
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+            default:
+                is_nonecombat = true;
+            }
+            break;
+        case SPELL_EFFECT_POWER_DRAIN:
+        case SPELL_EFFECT_ENERGIZE:
+            is_powergen = true;
+            break;
+        case SPELL_EFFECT_HEAL:
+        case SPELL_EFFECT_HEALTH_LEECH:
+        case SPELL_EFFECT_HEAL_MAX_HEALTH:
+            is_healing = true;
+            break;
+        case SPELL_EFFECT_ADD_EXTRA_ATTACKS:
+        case SPELL_EFFECT_LEARN_SPELL:
+        case SPELL_EFFECT_STEALTH:
+        case SPELL_EFFECT_APPLY_AREA_AURA_FRIEND:
+            is_nonecombat = true;
+            break;
+        case SPELL_EFFECT_SUMMON:
+            if (si->GetDuration() < 0 || si->GetDuration() > 120000)
+                is_nonecombat = true;
+            else
+                is_damaging = true;
+            break;
+        default:
+            ;
+        }
+    }
+
+    if (is_healing)
+        InsertSpell(AAI_SPELL_HEALING, si->Id);
+    else if (is_damaging)
+        InsertSpell(AAI_SPELL_DAMAGING, si->Id);
+    else if (is_powergen)
+        InsertSpell(AAI_SPELL_GEN_POWER, si->Id);
+    else if (is_control)
+        InsertSpell(AAI_SPELL_CONTROL, si->Id);
+    else if (is_protecting)
+        InsertSpell(AAI_SPELL_PROTECTING, si->Id);
+    else if (is_nonecombat)
+        InsertSpell(AAI_SPELL_NONE_COMBAT, si->Id);
+}
+
 void AssistanceAI::updateTimer(uint32 diff)
 {
-    uint32 entry = me->GetEntry();
-    if (entry < 40000)
+    if (!me->IsAssistUnit() || !_realowner || _realowner->IsGameObject())
         return;
 
-    if (!me->GetOwner() || me->GetOwnerGUID().IsGameObject())
-        return;
-
-
-    if (me->GetOwner() && me->GetOwner()->ToPlayer() && me->GetDistance(me->GetOwner()) > 50.0f) {
+    if (me->GetOwner() && me->GetDistance(me->GetOwner()) > 50.0f) {
         me->NearTeleportTo(me->GetOwner()->GetPosition(), true);
         return;
     }
 
     // Update my level to owner's level
-    if (me->GetLevel() < me->GetOwner()->GetLevel()) {
-        me->SetLevel(me->GetOwner()->GetLevel());
+    if (me->GetLevel() < _realowner->GetLevel()) {
+        me->SetLevel(_realowner->GetLevel());
         ((Guardian*)me)->InitStatsForLevel(me->GetLevel());
         OnLevelUp();
         return;
     }
 
-    if (timerReady) {
-        for (uint32 i = 0; i < MAX_CREATURE_SPELL; i++) {
-            if (me->m_spells[i]) {
-                if (spellsTimer[i][SPELL_TIMER_CURRENT] < spellsTimer[i][SPELL_TIMER_ORIGIN])
-                    spellsTimer[i][SPELL_TIMER_CURRENT] += diff;
-            }
-            else {
-                break;
-            }
-        }
+    if (isInitailized) {
+        _gcd = (_gcd > diff ? _gcd - diff : 0);
         if (_lifeTimer > 0) {
             _lifeTimer -= diff;
             if (_lifeTimer <= 0) {
@@ -776,7 +1199,10 @@ void AssistanceAI::updateTimer(uint32 diff)
         }
     }
     else {
-        resetLifeTimer();
+        /* This is the first time of this call. Just do something initialization. */
+        //resetLifeTimer();
+
+        /* Iterate all spells and categorize them into different sets. */
         for (uint32 i = 0; i < MAX_CREATURE_SPELL; i++) {
             if (me->m_spells[i]) {
                 const SpellInfo* si = sSpellMgr->GetSpellInfo(me->m_spells[i]);
@@ -784,67 +1210,16 @@ void AssistanceAI::updateTimer(uint32 diff)
                 if (si == nullptr)
                     continue;
 
-                auraApplied[i] = false;
-
-                if ((si->GetEffect(EFFECT_0).Effect == SPELL_EFFECT_APPLY_AURA || si->GetEffect(EFFECT_0).Effect == SPELL_EFFECT_APPLY_AREA_AURA_RAID || si->GetEffect(EFFECT_0).Effect == SPELL_EFFECT_APPLY_AREA_AURA_OWNER)
-                    && auraApplied[i] == false) {
-                    if (si->GetRecoveryTime() == 0 &&
-                        si->Id != 87278 &&
-                        si->Id != 85891) {
-                        if (si->GetEffect(EFFECT_0).TargetA.GetTarget() == TARGET_UNIT_MASTER)
-                            castSpell(me->GetOwner(), i);
-                        else
-                            castSpell(me, i);
-                        auraApplied[i] = true;
-                    }
-                }
-                spellsTimer[i][SPELL_TIMER_CURRENT] = si->GetRecoveryTime() - si->StartRecoveryTime;
-                spellsTimer[i][SPELL_TIMER_ORIGIN] = si->GetRecoveryTime();
+                SpellInfoAnalyzeAndInsert(si);
             }
         }
-        timerReady = true;
+        isInitailized = true;
     }
-}
-
-void AssistanceAI::UseInstanceHealing() {
-    for (uint32 i = 0; i < MAX_CREATURE_SPELL; i++) {
-        const SpellInfo* si = sSpellMgr->GetSpellInfo(me->m_spells[i]);
-
-        if (si == nullptr || !isSpellReady(i) || si->IsPassive())
-            continue;
-
-        if (si->GetEffect(EFFECT_0).Effect != SPELL_EFFECT_HEAL || si->CastTimeEntry->Base > 0)
-            continue;
-
-        if (si->RangeEntry->ID == 1 && me->GetHealthPct() < 100.0f) {
-            castSpell(me, i);
-            return;
-        }
-        Unit* owner = me;
-        if (me->GetOwner()->ToPlayer() == nullptr)
-            owner = me->GetOwner();
-        Unit* t = SelectLeastHpPctFriendly(owner, 30.0f, false);
-        if (t == nullptr)
-            continue;
-
-        if (si->GetEffect(EFFECT_0).Effect == SPELL_EFFECT_APPLY_AURA && t->HasAura(si->Id)) {
-            continue;
-        }
-
-        castSpell(t, i);
-        return;
-    }
-}
-
-Creature* AssistanceAI::GetMe() {
-    return me;
 }
 
 // Unit is idle. Only heal spells can cast
 void AssistanceAI::ResetPosition(bool force)
 {
-    UseInstanceHealing();
-
     if (AIFlag == AI_ACTION_FLAG::AI_ACTION_HOLD_POSITION)
         return;
 
@@ -853,37 +1228,25 @@ void AssistanceAI::ResetPosition(bool force)
         return;
     }
 
-    if (force || !(me->GetVictim() && me->EnsureVictim()->IsAlive())) {
-        //MovementGenerator* mg = me->GetMotionMaster()->;
-        if (!(me->IsCharmed() || me->IsSummon() || me->IsGuardian())) {
-            return;
-        }
-
-        if (!force) {
-            me->AttackStop();
-            me->SetTarget(ObjectGuid::Empty);
-            if (me->HasUnitState(UNIT_STATE_FOLLOW) && isInCombat == false) {
-                return;
-            }
-        }
-
-        me->StopMoving();
-        me->GetMotionMaster()->Clear();
-        me->GetMotionMaster()->MoveFollow(me->GetCharmerOrOwner(), _followDistance, _followAngle);
-        if (!force) {
-            isInCombat = false;
-        }
+    // Already reseting position
+    if (me->HasUnitState(UNIT_STATE_FOLLOW)) {
+        return;
     }
+
+    if (!(me->IsCharmed() || me->IsSummon() || me->IsGuardian())) {
+        return;
+    }
+
+    me->AttackStop();
+    me->SetTarget(ObjectGuid::Empty);
+
+    me->StopMoving();
+    me->GetMotionMaster()->Clear();
+    me->GetMotionMaster()->MoveFollow(me->GetCharmerOrOwner(), _followDistance, _followAngle);
 }
 
 bool AssistanceAI::AddOneTimeSpell(int32 spellId) {
-    for (int i = 0; i < MAX_CREATURE_SPELL; i++) {
-        if (oneTimeSpells[i] == 0) {
-            oneTimeSpells[i] = spellId;
-            return true;
-        }
-    }
-
+    (void)spellId;
     return false;
 }
 
@@ -918,22 +1281,60 @@ bool checkGnomeWarlockTelantPets(Creature* currentPet, Creature* summoned) {
         (entry == 46003 && (currentPet->GetEntry() == 417 || currentPet->GetEntry() == 70504));
 }
 
+void AssistanceAI::InsertSpell(int type, int spellid) {
+    SpellInfo const* info = sSpellMgr->GetSpellInfo(spellid);
+    if (!info) return;
+
+    for (std::vector<int32>::iterator it = _spells.find(type)->second.begin(); it != _spells.find(type)->second.end(); it++) {
+        SpellInfo const* saved_info = sSpellMgr->GetSpellInfo(*it);
+        if (!saved_info) continue;
+
+        if (saved_info->IsRankOf(info)) {
+            if (info->IsHighRankOf(saved_info)) {
+                _spells.find(type)->second.erase(it);
+                _spells.find(type)->second.push_back(info->Id);
+            }
+            return;
+        }
+    }
+    _spells.find(type)->second.push_back(info->Id);
+}
+
+bool AssistanceAI::AttemptAddProperSpellForLevel(uint32 basespell) {
+    uint8 lvl = me->GetLevel();
+    SpellInfo const* final_info = nullptr;
+    SpellInfo const* info = sSpellMgr->GetSpellInfo(basespell);
+    if (!info) {
+        return false; //invalid spell id
+    }
+    final_info = info;
+
+    uint32 spellId = 0;
+    while (info != nullptr && lvl >= info->BaseLevel)
+    {
+        spellId = info->Id; //can use this spell
+        info = info->GetNextRankSpell(); //check next rank
+    }
+    if (info != final_info && info != nullptr) {
+        final_info = info;
+    }
+
+    SpellInfoAnalyzeAndInsert(final_info);
+
+    return true;
+}
+
 void AssistanceAI::AddSpellWithLevelLimit(int32 spellid, int32 level) {
     if (me->GetLevel() < level)
         return;
 
-    for (int i = 0; i < 8; i++) {
-        if (me->m_spells[i] == 0) {
-            me->m_spells[i] = spellid;
-            break;
-        }
-    }
+    SpellInfo const* info = sSpellMgr->GetSpellInfo(spellid);
+    SpellInfoAnalyzeAndInsert(info);
 }
 
 void AssistanceAI::OnLevelUp() {
     switch (me->GetEntry()) {
     case 45004:
-        for (int i = 0; i < 8; i++) me->m_spells[i] = 0;
         handleUndeadRaceTalent();
         break;
     }
@@ -942,28 +1343,28 @@ void AssistanceAI::OnLevelUp() {
 void AssistanceAI::handleOrcRaceTalent() {
     switch (rand() % 3) {
     case 0:
-        me->m_spells[0] = 81182;
+        AttemptAddProperSpellForLevel(81182);
         AddOneTimeSpell(56222);
         _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
         AIFlag = AI_ACTION_HIDE;
         break;
     case 1:
-        me->m_spells[0] = 85984;
+        AttemptAddProperSpellForLevel(85984);
         _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
         break;
     case 2:
     default:
-        AddOneTimeSpell(31643);
+        AttemptAddProperSpellForLevel(31643);
+        //AddOneTimeSpell(31643);
         break;
     }
 }
 
 void AssistanceAI::handleUndeadRaceTalent() {
+    int i = 0;
+    Player* owner = _realowner->ToPlayer();
 
-    Player* owner = me->GetOwner() ? me->GetOwner()->ToPlayer() : nullptr;
-    if (!owner)
-        return;
-
+    /* Update visual item of skull */
     Item* mainWeap = owner->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND);
     Item* offWeap = owner->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND);
 
@@ -977,6 +1378,13 @@ void AssistanceAI::handleUndeadRaceTalent() {
     if (offWeap)
         me->SetVirtualItem(1, offWeap->GetTemplate()->ItemId);
 
+    /* Apply all talents that player is using */
+    for (auto spell : owner->GetSpellMap()) {
+        const SpellInfo* si = sSpellMgr->GetSpellInfo(spell.first);
+        if (spell.second.active == true && si && si->IsPassive()) {
+            me->CastSpell(me, spell.first, true);
+        }
+    }
 
     switch (owner->GetClass()) {
     case CLASS_WARRIOR:
@@ -1017,17 +1425,39 @@ void AssistanceAI::handleUndeadRaceTalent() {
         _class = ASSISTANCE_CLASS::DPS;
         _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_MELEE;
         me->SetPowerType(Powers::POWER_ENERGY);
-        //me->SetVirtualItem(0, 3268);
-        //me->SetVirtualItem(1, 3268);
-        me->m_spells[0] = GetPorperSpellIdForLevel(1752, me->GetLevel());
-        me->m_spells[1] = GetPorperSpellIdForLevel(6774, me->GetLevel());
-        me->m_spells[2] = GetPorperSpellIdForLevel(2669, me->GetLevel());
+
+        AttemptAddProperSpellForLevel(1784);
+        AttemptAddProperSpellForLevel(1752);
+        AttemptAddProperSpellForLevel(6774);
+        AttemptAddProperSpellForLevel(13705);
+        AttemptAddProperSpellForLevel(48594);
+        me->CastSpell(me, 21975, true); // Energy limit
+
+        me->SetCanDualWield(true);
         break;
     case CLASS_PRIEST:
         _class = ASSISTANCE_CLASS::HEALER;
         _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        //me->SetVirtualItem(0, 3415);
         me->SetPowerType(Powers::POWER_MANA);
+        //me->SetVirtualItem(0, 3415);
+        if (owner->HasSpell(15470)) {
+            _class = ASSISTANCE_CLASS::DPS;
+            
+            AttemptAddProperSpellForLevel(589); // 
+            AttemptAddProperSpellForLevel(32379); // 
+            AttemptAddProperSpellForLevel(15286); // 
+            AttemptAddProperSpellForLevel(15470); // 
+        }
+        else {
+            AttemptAddProperSpellForLevel(139); // Recover
+            if (owner->HasSpell(34861))
+                i = AttemptAddProperSpellForLevel(34861); // Ring of heal
+            else
+                i = AttemptAddProperSpellForLevel(17); // Shield
+            i = AttemptAddProperSpellForLevel(2054); // Heal
+            i = AttemptAddProperSpellForLevel(596); // Pray
+        }
+        i = AttemptAddProperSpellForLevel(585); // 
         break;
     case CLASS_DEATH_KNIGHT:
         _class = ASSISTANCE_CLASS::DPS;
@@ -1046,234 +1476,227 @@ void AssistanceAI::handleUndeadRaceTalent() {
         _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
         //me->SetVirtualItem(0, 20724);
         me->SetPowerType(Powers::POWER_MANA);
-        me->m_spells[0] = GetPorperSpellIdForLevel(120, me->GetLevel());
-        me->m_spells[1] = GetPorperSpellIdForLevel(133, me->GetLevel());
-        me->m_spells[2] = GetPorperSpellIdForLevel(10193, me->GetLevel());
+
+        if (owner->HasAura(16766)) {
+            AttemptAddProperSpellForLevel(116); // // frost bolt
+        }
+        else if (owner->HasAura(16770)) {
+            AttemptAddProperSpellForLevel(5143); // // Arc Missile
+        } else
+            AttemptAddProperSpellForLevel(133); // // fire bolt
+
+        if (owner->HasSpell(12472)) {
+            AttemptAddProperSpellForLevel(10); // // blizzard
+        }
+
+        if (owner->HasSpell(11366)) {
+            AttemptAddProperSpellForLevel(2136);  // Fire blast
+        }
+
+        if (owner->HasSpell(54656)) {
+            AttemptAddProperSpellForLevel(1449);  // Arc
+            AttemptAddProperSpellForLevel(1953);  // Flash
+        }
+
+        if (owner->HasSpell(11426))
+            AttemptAddProperSpellForLevel(11426);  // ice shield
+        else
+            AttemptAddProperSpellForLevel(10193);  // mana shield
         break;
     case CLASS_WARLOCK:
         _class = ASSISTANCE_CLASS::DPS;
         _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        //me->SetVirtualItem(0, 2549);
         me->SetPowerType(Powers::POWER_MANA);
-        me->m_spells[0] = GetPorperSpellIdForLevel(172, me->GetLevel());
-        me->m_spells[1] = GetPorperSpellIdForLevel(348, me->GetLevel());
-        me->m_spells[2] = GetPorperSpellIdForLevel(5720, me->GetLevel());
+        if (owner->HasSpell(19028)) { // Check soul bonding
+            // Demon Spec
+            me->m_spells[i++] = 81104;
+            me->m_spells[i++] = GetPorperSpellIdForLevel(5740, me->GetLevel()); // Rain of fire
+        } else if (owner->HasSpell(18288)) { // Check improve curse
+            // Pain Spec
+            me->m_spells[i++] = 81102;
+            me->m_spells[i++] = GetPorperSpellIdForLevel(172, me->GetLevel()); // Corruption
+        } else { // Default destruction
+            // Destrcution Spec
+            me->m_spells[i++] = 81100;
+            me->m_spells[i++] = GetPorperSpellIdForLevel(30283, me->GetLevel()); // Rage fo shadow
+        }
+        
+        
+        me->m_spells[i++] = GetPorperSpellIdForLevel(1490, me->GetLevel()); // Curse of element
+        me->m_spells[i++] = GetPorperSpellIdForLevel(686, me->GetLevel()); // Shadowbolt
         break;
     }
 
-    owner->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_POWER_TYPE);
+}
+
+static void handleUnitEnhancement(Unit* me, Unit* owner) {
+    Aura* aura;
+    static float dmgBonus = 1.0f;
+    static float spBonus = 1.0f;
+    if (!owner || !me)
+        return;
+
+    switch (me->GetEntry()) {
+    case 46003: // Hellhound
+    case 46004: // Succubus
+    case 46005: // Felguard
+    case 46006: // Doomguard
+    case 46015: // Eye of Eternity
+    case 46016: // Frenzied Priest
+        break;
+    case 46025: // Imp
+        aura = owner->GetAuraOfRankedSpell(18694);
+        if (aura) {
+            dmgBonus += 0.1f * (aura->GetId() + 1 - 18694);
+        }
+
+        aura = owner->GetAuraOfRankedSpell(18769);
+        if (aura) {
+            dmgBonus += 0.04f * (aura->GetId() + 1 - 18769);
+        }
+
+        
+
+        break;
+    case 46026: // Voidwalker
+        break;
+    default: // Do nothing additional
+        break;
+    }
+}
+
+static void handleUnitCritInherited(Unit* me, Unit* owner) {
+    int crit = 0;
+    Aura* aura;
+    uint32 entry;
+
+    if (!owner || !me)
+        return;
+
+    if (owner->IsNPCBot()) {
+        bot_ai* ai = (bot_ai*)owner->GetAI();
+
+        crit = ai->GetBotCritChance()/2;
+    } else if (owner->IsPlayer()) {
+        crit = owner->GetFloatValue(PLAYER_SPELL_CRIT_PERCENTAGE1 + 1) / 2 + owner->GetFloatValue(PLAYER_CRIT_PERCENTAGE) / 2;
+    }
+    else {
+        return;
+    }
+
+    entry = me->GetEntry();
+
+
+    if (entry == 46002)
+
+    switch (me->GetEntry()) {
+    case 46002:
+    case 46003:
+    case 46004:
+    case 46005:
+    case 46006:
+    case 46015:
+    case 46016:
+    case 46025:
+    case 46026:
+        aura = owner->GetAuraOfRankedSpell(30242);
+        if (aura)
+            crit += (aura->GetSpellInfo()->GetEffect(EFFECT_0).BasePoints + 1);
+        aura = owner->GetAuraOfRankedSpell(54347);
+        if (aura)
+            crit += (owner->GetFloatValue(PLAYER_SPELL_CRIT_PERCENTAGE1 + 1) * (aura->GetSpellInfo()->GetEffect(EFFECT_0).BasePoints + 1) / 100);
+
+        break;
+    }
+
+    UnitAddCriticalRate(me, crit);
+    me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
+    me->SetByteValue(UNIT_FIELD_BYTES_2, 1, owner->GetByteValue(UNIT_FIELD_BYTES_2, 1));
+}
+
+void AssistanceAI::InitFromDB() {
+    std::map<uint32, AssistsAddon>::iterator it = AssistanceAI::assist_addons.find(me->GetEntry());
+
+    if (it != AssistanceAI::assist_addons.end()) {
+        it->second.getFollowInfo(_followDistance, _followAngle);
+        _effSpell = it->second.getEffSpell();
+        _class = static_cast<AssistanceAI::ASSISTANCE_CLASS>(it->second.getClass());
+        _type = static_cast<AssistanceAI::ASSISTANCE_ATTACK_TYPE>(it->second.getAttackType());
+        _awakeTimer = it->second.getAwakeTime();
+        canAttack = !(it->second.hasFlag(AA_FLAG_NO_ATTACK));
+        isMovable = !(it->second.hasFlag(AA_FLAG_ROOT));
+    }
 }
 
 void AssistanceAI::JustAppeared() {
-    uint32 effSpell = 0;
-    bool playerOwner = false;
-    const char* greeting = getCustomGreeting(me->GetEntry());
-    Player* owner = me->GetOwner() ? me->GetOwner()->ToPlayer() : nullptr;
+    std::string greeting = getCustomGreeting(me->GetEntry());
+    Unit* owner = me->GetOwner();
 
-    if (greeting)
-        me->Say(greeting, Language::LANG_UNIVERSAL, me->GetOwner());
-
-    _followAngle = getSpecialFollowAngle();
-    _followDistance = 1.2f;
-
-    updateTimer(0);
-
-    if (!owner) {
-        Unit* o = me->GetCharmerOrOwner();
-
-        for (int i = 0; i < 3; i++) {
-            if (o) {
-                if (o->ToPlayer()) {
-                    owner = o->ToPlayer();
-                    break;
-                }
-                o = o->GetCharmerOrOwner();
-            } else
-                break;
-        }
-    }
-    else
-        playerOwner = true;
-
-    if (owner) {
-        int crit = 0;
-        Aura* aura;
-        if (playerOwner)
-            crit = owner->GetFloatValue(PLAYER_SPELL_CRIT_PERCENTAGE1 + 1) / 2 + owner->GetFloatValue(PLAYER_CRIT_PERCENTAGE) / 2;
-
-        switch (me->GetEntry()) {
-        case 46002:
-        case 46003:
-        case 46004:
-        case 46005:
-        case 46006:
-        case 46015:
-        case 46016:
-        case 46025:
-        case 46026:
-            aura = owner->GetAuraOfRankedSpell(30242);
-            if (aura)
-                crit += (aura->GetSpellInfo()->GetEffect(EFFECT_0).BasePoints + 1);
-            aura = owner->GetAuraOfRankedSpell(54347);
-            if (aura)
-                crit += (owner->GetFloatValue(PLAYER_SPELL_CRIT_PERCENTAGE1 + 1)* (aura->GetSpellInfo()->GetEffect(EFFECT_0).BasePoints + 1)/100);
-            
-            break;
-        }
-
-        UnitAddCriticalRate(me, crit);
-        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED);
-        me->SetByteValue(UNIT_FIELD_BYTES_2, 1, owner->GetByteValue(UNIT_FIELD_BYTES_2, 1));
+    if (owner == nullptr) {
+        TC_LOG_FATAL("Assistance AI", "An assist must have an owner");
+        me->PopAI();
+        return;
     }
 
-    _class = ASSISTANCE_CLASS::NONE;
-    _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_MELEE;
+    Player* p = me->GetOwner()->ToPlayer();
+    if (p) {
+        _realowner = p;
+    }
+    else {
+        // Here we don't have a player owner, try to find the master's master.
+        if (owner->IsNPCBot()) {
+            bot_ai* ai = ((bot_ai*)owner->GetAI());
+            _realowner = ai->GetBotOwner();
+        }
+        else {
+            Unit* m = me->GetOwner()->GetOwner();
+            if (m != nullptr && m->ToPlayer()) {
+                _realowner = m->ToPlayer();
+            }
+            else {
+                TC_LOG_FATAL("Assistance AI", "Cannot find a real owner for assistance");
+                me->PopAI();
+                return;
+            }
+        }
+    }
 
+    if (!greeting.empty())
+        me->Say(greeting, Language::LANG_UNIVERSAL, owner);
 
-    // Set class and attack type
+    handleUnitCritInherited(me, owner);
+    handleUnitEnhancement(me, owner);
+    InitFromDB();
+
+    /* Special entry handler */
     switch (me->GetEntry()) {
-    case 46002: // Wild Ghost
-        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        if (owner && owner->GetRace() == Races::RACE_BLOODELF) {
-
-        }
-        break;
-    case 46016:
-        me->SetCanDualWield(true);
-        break;
     case 45004:
         handleUndeadRaceTalent();
         break;
     case 45005:
         handleOrcRaceTalent();
         break;
-    case 45006:
+    case 45006: // Human talent
         me->SetPowerType(POWER_HEALTH);
-        me->SetVirtualItem(0, 1485);
-        if (me->GetDisplayId() == 3277) {
-            me->SetGender(Gender::GENDER_MALE);
-        }
-        else {
-            me->SetGender(Gender::GENDER_FEMALE);
-        }
-        effSpell = 7791;
-        break;
-    case 45007:
-        _class = ASSISTANCE_CLASS::NONE;
-        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        break;
-    case 45008:
-        _class = ASSISTANCE_CLASS::DPS;
-        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        break;
-    case 45009:
-        _class = ASSISTANCE_CLASS::DPS;
-        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        me->SetVirtualItem(0, 1664);
-        break;
-    case 45010:
-        _class = ASSISTANCE_CLASS::DPS;
-        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_MELEE;
-        me->SetVirtualItem(0, 12796);
-        me->SetVirtualItem(1, 12796);
-        break;
-    case 45011:
-        _class = ASSISTANCE_CLASS::HEALER;
-        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_MELEE;
-        me->SetVirtualItem(0, 5541);
-        me->SetVirtualItem(1, 2916);
-        break;
-    case 45003:
-    case 45016:
-    case 46000:
-    case 46001:
-    case 46006:
-    case 46009:
-    case 46011:
-    case 46012:
-    case 46015:
-    case 46028:
-        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        break;
-    case 46018:
-        _awakeTimer = 1500;
-        effSpell = 85907;
-        break;
-    case 46032:
-    case 46023: // Hellfire
-        me->SetVisible(false);
-        _awakeTimer = 1900;
-        break;
-    case 46003:
-    case 46004:
-    case 46005: // Warlock pets. Check gnome talent
-        if (me->GetCharmerOrOwnerOrSelf()->HasAura(87253))
-            if (Creature* pet = getOwnerPet()) {
-                uint32 entry = me->GetEntry();
-                if (pet && checkGnomeWarlockTelantPets(pet, me)) {
-                    effSpell = 87285;
-                    //me->ToTempSummon()->m_timer = (uint32)-1;
-                    //me->ToTempSummon()->m_lifetime = (uint32)-1;
-                    _followDistance = 1;
-                    _followAngle = float(M_PI * 3 / 2);
-                }
-            }
-        break;
-    case 46025:
-    case 46026:
-        effSpell = 87285;
-        //me->ToTempSummon()->GetTimer()= (uint32)-1;
-        //me->ToTempSummon()->m_lifetime = (uint32)-1;
-        _followDistance = 1;
-        _followAngle = float(M_PI * 3 / 2);
-        if (me->GetEntry() == 46025)
-            _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        break;
-    case 46020:
-    case 46021:
-    case 46019:
-        _awakeTimer = 1500;
-        effSpell = 85907;
-        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        break;
-    case 46030:
-        effSpell = 85907;
-        _followDistance = 0.5f;
-        _followAngle = float(M_PI * 5 / 4);
-        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        break;
-    //case 46007:
-    case 46029: // Demon Portal
-        isMovable = false;
-        me->CastSpell(me, 81108, true);
-        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        break;
-    case 46017:
-        _awakeTimer = 4000;
-        break;
-    case 46024:
-        effSpell = 89001;
-        me->AddUnitMovementFlag(MOVEMENTFLAG_HOVER);
-        //me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SWIMMING);
-        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        break;
-    case 46031:
-        effSpell = 89001;
-        me->AddUnitMovementFlag(MOVEMENTFLAG_HOVER);
-        _followDistance = 0.1f;
-        me->SetFloatValue(UNIT_FIELD_HOVERHEIGHT, 4);
-        me->CastSpell(me, 72585);
-        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        canAttack = false;
+        me->SetGender(me->GetDisplayId() == 3277 ? Gender::GENDER_MALE : Gender::GENDER_FEMALE);
+        me->CastSpell(owner, 81400, true);
+        owner->CastSpell(me, 81400, true);
         break;
     default:
-        _type = ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_MELEE;
+        ;
     }
 
-    if (effSpell > 0) {
-        me->CastSpell(me, effSpell, true);
+    if (_type == ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER)
+        _returnDistance = 40.f;
+
+    if (_effSpell > 0) {
+        me->CastSpell(me, _effSpell, true);
     }
-    AssistantsSpell(0, nullptr);
+
+    if (owner) {
+        _realowner->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_POWER_TYPE);
+        _realowner->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_PET_POWER_TYPE);
+    }
 
     me->StopMoving();
     me->GetMotionMaster()->Clear();
@@ -1290,83 +1713,98 @@ void AssistanceAI::EngagementStart(Unit* who) {
     }
 }
 
-void AssistanceAI::UpdateAI(uint32 diff/*diff*/)
-{
-    if (_updateTimer > diff) {
-        _updateTimer -= diff;
-        return;
-    }
-    else {
-        _updateTimer = AAI_DEFAULT_UPDATE_TIMER;
+bool AssistanceAI::updateCombatStatus() {
+    // Check real owner combat state
+    if (!_realowner->IsInCombat()) {
+        ResetPosition();
+        return false;
     }
 
-    if (me->GetOwner() == nullptr || me->GetOwnerGUID().IsGameObject())
-        return;
-
-    // We are not awaken. Do nothing
-    if (_awakeTimer > 0) {
-        me->StopMoving();
-        _awakeTimer -= diff;
-        if (_awakeTimer <= 0) {
-            me->SetVisible(true);
-        }
-        return;
-    }
-
-    if (!canAttack)
-        return ResetPosition();
-
-    // update spells cool down
-    updateTimer(diff);
-
-    bool needJoinCombat = false;
-    // we are not in combat. return
-    if (me->GetOwner()) {
-        if (!me->GetOwner()->IsInCombat()) {
-            return ResetPosition();
-        }
-        needJoinCombat = true;
-    }
-    if (!me->IsInCombat() && !needJoinCombat)
-        return ResetPosition();
-
+    // Check victim alive state
     if (me->HasUnitState(UNIT_STATE_CASTING)) {
-        return;
+        Creature* target = ObjectAccessor::GetCreature(*me, me->GetTarget());
+        if (target && !target->IsAlive()) {
+            me->CastStop();
+            return false;
+        } else
+            return false;
+    }
+
+    // When we check return distance. We need spawn owner
+    float dis = me->GetDistance(me->GetOwner());
+    if (dis > _returnDistance) {
+        ResetPosition();
+        TC_LOG_INFO("AAI", "Reset position: out of follow range");
+        return false;
+    }
+    else if (dis > 100) {
+        me->NearTeleportTo(me->GetOwner()->GetPosition());
+        me->CastSpell(me, 52096, true);
     }
 
     Unit* victim = GetVictim();
     if (victim) {
-        if (victim->GetDistance(me->GetOwner()) > 50) {
-            me->AttackStop();
-            return ResetPosition();
-        }
 
-        if (!isInCombat) {
-            isInCombat = true;
-            me->StopMoving();
-            me->GetMotionMaster()->Clear();
-        }
-
+        // Here we need to change target
         if (isTargetChanged == true) {
             me->Attack(victim, !isCaster());
             if (!isCaster()) {
-                if (AIFlag == AI_ACTION_FLAG::AI_ACTION_NONE || isTargetChanged)
-                    me->GetMotionMaster()->MoveChase(victim);
+                me->GetMotionMaster()->Clear();
+                me->GetMotionMaster()->MoveChase(victim);
+                TC_LOG_INFO("AAI", "Target is changed. chase it");
             }
         }
     }
     else {
-        return ResetPosition();
+        ResetPosition();
+        return false;
     }
 
-    bool res = AssistantsSpell(diff, victim);
+    return true;
+}
 
+void AssistanceAI::UpdateAI(uint32 diff)
+{
+    bool casted = false;
+
+    _updateTimer += diff;
+    if (_updateTimer < AAI_DEFAULT_UPDATE_TIMER)
+        return;
+
+    // Never take care of free unit
+    if (me->GetOwner() == nullptr || me->GetOwnerGUID().IsGameObject())
+        return;
+
+    // update spells cool down
+    updateTimer(_updateTimer);
+
+    // We are not awaken. Do nothing
+    if (_awakeTimer > 0) {
+        me->StopMoving();
+        _awakeTimer -= _updateTimer;
+        if (_awakeTimer <= 0)
+            me->SetVisible(true);
+        return;
+    }
+    _updateTimer = 0;
+
+    if (me->HasUnitState(UNIT_STATE_STUNNED | UNIT_STATE_FLEEING | UNIT_STATE_CONFUSED))
+        return;
+
+    if (!updateCombatStatus()) {
+        checkNoneCombatSpells();
+        casted = checkHealingSpells();
+        return;
+    }
+    else {
+        casted = checkHealingSpells();
+        if (!casted)
+            casted = checkDamagingSpells();
+        if (!casted)
+            casted = checkControlSpells();
+     }
     if (isCaster()) {
-        if (_class == ASSISTANCE_CLASS::NONE && !me->HasUnitState(UNIT_STATE_CHASE)) {
-            me->StopMoving();
-            me->GetMotionMaster()->Clear();
-            me->GetMotionMaster()->MoveFollow(me->GetOwner(), _followDistance, getSpecialFollowAngle());
-        } else if (res == true) {
+        if (casted == true) {
             // As a caster once we successfully casted one spell. We should stop if we are moving
             me->StopMoving();
             if (me->HasUnitState(UNIT_STATE_CHASE)) {

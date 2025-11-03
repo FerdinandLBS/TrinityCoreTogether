@@ -1,4 +1,4 @@
-﻿#include "Define.h"
+#include "Define.h"
 #include "Group.h"
 #include "ScriptMgr.h"
 #include "SharedDefines.h"
@@ -12,20 +12,59 @@
 #include <AI\CoreAI\AssistanceAI.h>
 // .. more includes
 
-#pragma execution_character_set("utf-8")
+#define TCTSTR_UPGRADE_GUARD  20090
+#define TCTSTR_UPGRADE_MAGE   20091
+#define TCTSTR_UPGRADE_HEALER 20092
 
+#define TCTSTR_HIRE_DWARF     20093
+#define TCTSTR_TRANS_EAGLE_NEXT         20094
+#define TCTSTR_TRANS_BLACKROCK_MOUNTAIN 20095
+#define TCTSTR_TRANS_ALTER_OF_MAKERS    20096
 
-void BuildSpecailTeleport(Player* player, Item* item, uint32 sender)
-{
-    PlayerMenu* menu = player->PlayerTalkClass;
-    menu->ClearMenus();
+#define TCTSTR_TRANS_SERVICE   20100
+#define TCTSTR_CLOSE           20101
+#define TCTSTR_BACK            20102
+#define TCTSTR_TRANS_GMISLAND  20110
+#define TCTSTR_TRANS_OUTLAND   20111
+#define TCTSTR_TRANS_NORTHLAND 20112
+#define TCTSTR_TRANS_DUNGEON   20113
+#define TCTSTR_TRANS_RAID      20114
+#define TCTSTR_TRANS_STORMWIND 20120
+#define TCTSTR_TRANS_IRONFORGE 20121
+#define TCTSTR_TRANS_DRANASSUS 20122
+#define TCTSTR_TRANS_EXORDA    20123
+#define TCTSTR_TRANS_ORGRIMMA  20124
+#define TCTSTR_TRANS_THUNDERBLUFF 20125
+#define TCTSTR_TRANS_UNDERCITY 20126
+#define TCTSTR_TRANS_SILVERMOON 20127
+#define TCTSTR_TRANS_BE_RIDING 20128
+#define TCTSTR_TRANS_UD_RIDING 20129
+#define TCTSTR_TRANS_TAUR_RIDING 20130
+#define TCTSTR_TRANS_TR_RIDING 20131
+#define TCTSTR_TRANS_DW_RIDING 20132
+#define TCTSTR_TRANS_HU_RIDING 20133
+#define TCTSTR_TRANS_GN_RIDING 20134
+#define TCTSTR_TRANS_RATCHET   20150
+#define TCTSTR_TRANS_BOOTYBAY  20151
+#define TCTSTR_TRANS_GADGETZAN 20152
+#define TCTSTR_TRANS_SHATTRATH 20160
+#define TCTSTR_TRANS_OUTLAND_SIZE 8
+#define TCTSTR_TRANS_DALARAN   20170
+#define TCTSTR_TRANS_DALARAN_SIZE 11
+#define TCTSTR_TRANS_RAID_START 20190
+#define TCTSTR_TRANS_RAID_SIZE 7
+#define TCTSTR_TRANS_DUNGEON_START 20200
+#define TCTSTR_TRANS_DUNGEON_SIZE 19
 
-    AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "黑石塔 55 - 65", GOSSIP_SENDER_INFO, MW_GOSSIP_ACTION_TRANS + 200);
-
-    SendGossipMenuFor(player, 4, item->GetGUID());
+static std::string GetTrinityString(uint32 entry) {
+    const TrinityString* ts = sObjectMgr->GetTrinityString(entry);
+    if (ts != nullptr) {
+        return ts->Content[0];
+    }
+    return "";
 }
 
-void BuildTransMenu(Player* player, Item* item, uint32 sender)
+void BuildTransMenu(Player* player, Item* item, uint32)
 {
     if (!player || !player->IsAlive())
         return;
@@ -34,55 +73,70 @@ void BuildTransMenu(Player* player, Item* item, uint32 sender)
     uint8 level = player->GetLevel();
     menu->ClearMenus();
 
-    if (player->GetTeam() == ALLIANCE)
-    {
-        AddGossipItemFor(player, GOSSIP_ICON_TAXI, "暴风城", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 1);
-        AddGossipItemFor(player, GOSSIP_ICON_TAXI, "铁炉堡", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 2);
-        AddGossipItemFor(player, GOSSIP_ICON_TAXI, "达纳苏斯", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 3);
-        AddGossipItemFor(player, GOSSIP_ICON_TAXI, "埃索达", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 4);
-    }
-    else
-    {
-        AddGossipItemFor(player, GOSSIP_ICON_TAXI, "奥格瑞玛", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 5);
-        AddGossipItemFor(player, GOSSIP_ICON_TAXI, "雷霆崖", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 6);
-        AddGossipItemFor(player, GOSSIP_ICON_TAXI, "幽暗城", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 7);
-        AddGossipItemFor(player, GOSSIP_ICON_TAXI, "银月城", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 8);
+    if (player->GetTeam() == ALLIANCE) {
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_STORMWIND), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 1);
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_IRONFORGE), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 2);
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_DRANASSUS), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 3);
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_EXORDA), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 4);
+    } else {
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_ORGRIMMA), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 5);
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_THUNDERBLUFF), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 6);
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_UNDERCITY), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 7);
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_SILVERMOON), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 8);
     }
 
     switch (player->GetRace()) {
     case RACE_BLOODELF:
-        AddGossipItemFor(player, GOSSIP_ICON_TAXI, "苏伦的养殖场", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 20);
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_BE_RIDING), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 20);
+        break;
+    case RACE_UNDEAD_PLAYER:
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_UD_RIDING), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 20);
+        break;
+    case RACE_HUMAN:
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_HU_RIDING), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 20);
+        break;
+    case RACE_TROLL:
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_TR_RIDING), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 20);
+        break;
+    case RACE_TAUREN:
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_TAUR_RIDING), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 20);
+        break;
+    case RACE_DWARF:
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_DW_RIDING), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 20);
+        break;
+    case RACE_GNOME:
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_GN_RIDING), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 20);
         break;
     }
 
     if (level > 13)
-        AddGossipItemFor(player, GOSSIP_ICON_TAXI, "棘齿城", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 9);
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_RATCHET), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 9);
 
     if (level > 35)
-        AddGossipItemFor(player, GOSSIP_ICON_TAXI, "藏宝海湾", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 10);
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_BOOTYBAY), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 10);
 
     if (level > 39)
-        AddGossipItemFor(player, GOSSIP_ICON_TAXI, "热沙岗", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 11);
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_GADGETZAN), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 11);
 
     if (level > 10)
-        AddGossipItemFor(player, GOSSIP_ICON_TAXI, "|cffFF8800GM岛|r", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 14);
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_GMISLAND), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 14);
 
     if (player->GetLevel() >= 58)
-        AddGossipItemFor(player, GOSSIP_ICON_TABARD, "|cffFF0005外域|r", MW_GOSSIP_SENDER_TRANS_OUTLAN, MW_GOSSIP_ACTION_SUB_MENU);
+        AddGossipItemFor(player, GOSSIP_ICON_TABARD, GetTrinityString(TCTSTR_TRANS_OUTLAND), MW_GOSSIP_SENDER_TRANS_OUTLAN, MW_GOSSIP_ACTION_SUB_MENU);
 
     if (player->GetLevel() >= 69)
-        AddGossipItemFor(player, GOSSIP_ICON_TABARD, "|cff0143FF诺森德|r", MW_GOSSIP_SENDER_TRANS_NORTHLAND, MW_GOSSIP_ACTION_SUB_MENU);
+        AddGossipItemFor(player, GOSSIP_ICON_TABARD, GetTrinityString(TCTSTR_TRANS_NORTHLAND), MW_GOSSIP_SENDER_TRANS_NORTHLAND, MW_GOSSIP_ACTION_SUB_MENU);
 
 
-    AddGossipItemFor(player, GOSSIP_ICON_TABARD, "|cff05F3255人副本|r", MW_GOSSIP_SENDER_TRANS_FIVE_DUNGEON, MW_GOSSIP_ACTION_SUB_MENU);
-    AddGossipItemFor(player, GOSSIP_ICON_TABARD, "|cffFF0BFF团队副本|r", MW_GOSSIP_SENDER_TRANS_RAID, MW_GOSSIP_ACTION_SUB_MENU);
+    AddGossipItemFor(player, GOSSIP_ICON_TABARD, GetTrinityString(TCTSTR_TRANS_DUNGEON), MW_GOSSIP_SENDER_TRANS_FIVE_DUNGEON, MW_GOSSIP_ACTION_SUB_MENU);
+    AddGossipItemFor(player, GOSSIP_ICON_TABARD, GetTrinityString(TCTSTR_TRANS_RAID), MW_GOSSIP_SENDER_TRANS_RAID, MW_GOSSIP_ACTION_SUB_MENU);
 
-    AddGossipItemFor(player, GOSSIP_ICON_TALK, "<<< 后退", MW_GOSSIP_SENDER_MAIN, MW_GOSSIP_ACTION_SUB_MENU);
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, GetTrinityString(TCTSTR_BACK), MW_GOSSIP_SENDER_MAIN, MW_GOSSIP_ACTION_SUB_MENU);
 
     SendGossipMenuFor(player, GOSSIP_ICON_TAXI, item->GetGUID());
 }
 
-void BuildMainMenu(Player* player, Item* item, uint32 sender)
+void BuildMainMenu(Player* player, Item* item, uint32)
 {
     if (!player || !player->IsAlive())
         return;
@@ -90,264 +144,256 @@ void BuildMainMenu(Player* player, Item* item, uint32 sender)
     PlayerMenu* menu = player->PlayerTalkClass;
     menu->ClearMenus();
 
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "|cff05E605传送服务|r", MW_GOSSIP_SENDER_TRANS, MW_GOSSIP_ACTION_SUB_MENU);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "|cffeff064迷你游戏|r", MW_GOSSIP_ACTION_MINI_GAME, MW_GOSSIP_ACTION_SUB_MENU);
-    AddGossipItemFor(player, GOSSIP_ICON_TALK, "关闭", MW_GOSSIP_SENDER_CLOSE, MW_GOSSIP_ACTION_SUB_MENU);
+    AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_SERVICE), MW_GOSSIP_SENDER_TRANS, MW_GOSSIP_ACTION_SUB_MENU);
+    //AddGossipItemFor(player, GOSSIP_ICON_TAXI, "|cffeff064????|r", MW_GOSSIP_ACTION_MINI_GAME, MW_GOSSIP_ACTION_SUB_MENU);
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, GetTrinityString(TCTSTR_CLOSE), MW_GOSSIP_SENDER_CLOSE, MW_GOSSIP_ACTION_SUB_MENU);
 
     SendGossipMenuFor(player, GOSSIP_ICON_TAXI, item->GetGUID());
 }
 
-void BuildRaidTeleport(Player* player, Item* item, uint32 sender)
+void BuildRaidTeleport(Player* player, Item* item, uint32)
 {
     PlayerMenu* menu = player->PlayerTalkClass;
     menu->ClearMenus();
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "熔火之心(60)", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 301);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "黑翼之巢(80)", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 302);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "安其拉(60)", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 303);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "祖尔格拉布(60)", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 304);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "祖阿曼(70)", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 305);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "卡拉赞(70)", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 306);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "奥妮克希亚巢穴(80)", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 307);
 
-    AddGossipItemFor(player, GOSSIP_ICON_TALK, "<<< 后退", MW_GOSSIP_SENDER_TRANS, MW_GOSSIP_ACTION_SUB_MENU);
+    for (uint32 i = 0; i < TCTSTR_TRANS_RAID_SIZE; i++) {
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_RAID_START + i), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 301 + i);
+    }
+
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, GetTrinityString(TCTSTR_BACK), MW_GOSSIP_SENDER_TRANS, MW_GOSSIP_ACTION_SUB_MENU);
 
     SendGossipMenuFor(player, 2, item->GetGUID());
 }
 
-void BuildNorthlandTeleport(Player* player, Item* item, uint32 sender)
+void BuildNorthlandTeleport(Player* player, Item* item, uint32)
 {
     PlayerMenu* menu = player->PlayerTalkClass;
     menu->ClearMenus();
-    AddGossipItemFor(player, GOSSIP_ICON_CHAT_13, "达拉然", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 101);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "乌特加德堡垒", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 104);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "魔枢", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 103);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "龙眠神殿", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 102);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "古代王国", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 105);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "达克萨隆要塞", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 111);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "古达克", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 106);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "风暴群山", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 107);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "纳克萨玛斯", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 110);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "银色比武场", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 108);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "冰冠堡垒", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 109);
+    for (int i = 0; i < TCTSTR_TRANS_DALARAN_SIZE; i++) {
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_DALARAN + i), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 101 + i);
+    }
 
-    AddGossipItemFor(player, GOSSIP_ICON_TALK, "<<< 后退", MW_GOSSIP_SENDER_TRANS, MW_GOSSIP_ACTION_SUB_MENU);
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, GetTrinityString(TCTSTR_BACK), MW_GOSSIP_SENDER_TRANS, MW_GOSSIP_ACTION_SUB_MENU);
 
     SendGossipMenuFor(player, 4, item->GetGUID());
 }
 
-void BuildOutlandTeleport(Player* player, Item* item, uint32 sender)
+void BuildOutlandTeleport(Player* player, Item* item, uint32)
 {
     PlayerMenu* menu = player->PlayerTalkClass;
     menu->ClearMenus();
-    AddGossipItemFor(player, GOSSIP_ICON_CHAT_13, "沙塔斯", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 201);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "地狱火堡垒", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 202);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "盘牙水库", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 203);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "奥金顿", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 204);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "风暴战舰", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 205);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "戈鲁尔巢穴", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 206);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "黑暗神庙", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 207);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "时光之穴", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 208);
 
-    AddGossipItemFor(player, GOSSIP_ICON_TALK, "<<< 后退", MW_GOSSIP_SENDER_TRANS, MW_GOSSIP_ACTION_SUB_MENU);
+    for (uint32 i = 0; i < TCTSTR_TRANS_OUTLAND_SIZE; i++) {
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_SHATTRATH + i), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 201 + i);
+    }
+
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, GetTrinityString(TCTSTR_BACK), MW_GOSSIP_SENDER_TRANS, MW_GOSSIP_ACTION_SUB_MENU);
 
     SendGossipMenuFor(player, 4, item->GetGUID());
 }
 
-void BuildDungeonTeleport(Player* player, Item* item, uint32 sender)
+void BuildDungeonTeleport(Player* player, Item* item, uint32)
 {
     PlayerMenu* menu = player->PlayerTalkClass;
     menu->ClearMenus();
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "怒焰裂谷 15 - 21", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 51);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "死亡矿井 15 - 21", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 52);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "哀嚎洞穴 15 - 25", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 53);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "影牙城堡 16 - 26", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 54);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "黑暗深渊 20 - 30", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 55);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "暴风城监狱 20 - 30", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 56);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "诺莫瑞根 24 - 34", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 57);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "剃刀沼泽 25 - 30", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 59);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "血色修道院 26 - 40", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 58);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "剃刀高地 34 - 40", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 64);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "奥达曼 35 - 40", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 61);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "祖尔法拉克 43 - 46", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 66);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "玛拉顿 43 - 48", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 60);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "厄运之槌 54 - 58", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 62);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "通灵学院 59 - 61", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 63);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "斯坦索姆 56 - 60", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 65);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "黑石深渊 49 - 57", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 67);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "沉没的神庙 50- 60", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 68);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "黑石塔 55 - 65", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 69);
+
+    for (uint32 i = 0; i < TCTSTR_TRANS_DUNGEON_SIZE; i++) {
+        AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_DUNGEON_START + i), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 51 + i);
+    }
      
-    AddGossipItemFor(player, GOSSIP_ICON_TALK, "<<< 后退", MW_GOSSIP_SENDER_TRANS, MW_GOSSIP_ACTION_SUB_MENU);
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, GetTrinityString(TCTSTR_BACK), MW_GOSSIP_SENDER_TRANS, MW_GOSSIP_ACTION_SUB_MENU);
 
     SendGossipMenuFor(player, 4, item->GetGUID());
 }
 
-void GossipActionDoTrans(Player* player, Item* item, uint32 action) {
+void GossipActionDoTrans(Player* player, Item*, uint32 action) {
     switch (action) {
     case MW_GOSSIP_ACTION_TRANS + 1: // StormWind City
         player->TeleportTo(0, -8730.59f, 722.68f, 101.7f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 2: // TLB
+    case MW_GOSSIP_ACTION_TRANS + 2: // Ironforge Keep
         player->TeleportTo(0, -4799.36f, -1107.36f, 502.7f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 3: // DNSS
-        player->TeleportTo(1, 9961, 2055, 1329, 6);
+    case MW_GOSSIP_ACTION_TRANS + 3: // Darnassus
+        player->TeleportTo(1, 9945.995f, 2590.0857f, 1316.5952f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 4: // 埃索达
+    case MW_GOSSIP_ACTION_TRANS + 4: // Exodar
         player->TeleportTo(530, -3998.3f, -11864.1f, 1, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 5: // 奥格瑞玛
+    case MW_GOSSIP_ACTION_TRANS + 5: // Orgrimmar
         player->TeleportTo(1, 1676.25f, -4313.45f, 62.0f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 6: // 雷霆崖
+    case MW_GOSSIP_ACTION_TRANS + 6: // Thunder Bluff
         player->TeleportTo(1, -1150.877197f, 15.459573f, 180.088318f, 1.300810f);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 7: // 幽暗城
+    case MW_GOSSIP_ACTION_TRANS + 7: // Under Cidy
         player->TeleportTo(0, 1596.05835f, 240.41658f, -13.89129f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 8: // 银月城
+    case MW_GOSSIP_ACTION_TRANS + 8: // SilverMoon
         player->TeleportTo(530, 9930.45f, -7129.1f, 48, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 9: // 棘齿城
+    case MW_GOSSIP_ACTION_TRANS + 9: // Ratchet
         player->TeleportTo(1, -977, -3788, 6, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 10:
+    case MW_GOSSIP_ACTION_TRANS + 10: // Bootbay
         player->TeleportTo(0, -14302, 518, 9, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 11:
+    case MW_GOSSIP_ACTION_TRANS + 11: // Gagetzan
         player->TeleportTo(1, -7156.56f, -3825.1f, 8.7f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 14: // GM岛 
+    case MW_GOSSIP_ACTION_TRANS + 14: // GM Island
         player->TeleportTo(1, 16222.1f, 16252.1f, 12.5872f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 20: // BE 骑术
-        player->TeleportTo(530, 9258.043f, -7472.375f, 35.55f, 4.63f);
+    case MW_GOSSIP_ACTION_TRANS + 20: // Riding Skill
+        switch (player->GetRace()) {
+        case RACE_BLOODELF:
+            player->TeleportTo(530, 9258.043f, -7472.375f, 35.85f, 4.63f);
+            break;
+        case RACE_UNDEAD_PLAYER:
+            player->TeleportTo(0, 2257.284F, 290.17767F, 34.41499F, 4.63f);
+            break;
+        case RACE_HUMAN:
+            player->TeleportTo(0, -9452.896f, -1365.998f, 46.967625f, 4.63f);
+            break;
+        case RACE_TROLL:
+            player->TeleportTo(1, -800.48224f, -4903.387f, 19.881464f, 4.63f);
+            break;
+        case RACE_TAUREN:
+            player->TeleportTo(1, -2241.4563f, -392.91983f, -9.023722f, 4.63f);
+            break;
+        case RACE_DWARF:
+            player->TeleportTo(0, -5538.6973f, -1314.2871f, 399.46607f, 4.63f);
+            break;
+        case RACE_GNOME:
+            player->TeleportTo(0, -5485.5596f, -669.82056f, 393.2037f, 4.63f);
+            break;
+        }
         break;
-    case MW_GOSSIP_ACTION_TRANS + 51: // 怒焰裂谷
+    case MW_GOSSIP_ACTION_TRANS + 51: // Ragefire Chasm
         player->TeleportTo(389, 3.8f, -14.8f, -17.f, 6.f);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 52: // 矿井
+    case MW_GOSSIP_ACTION_TRANS + 52: // Deadmines
         player->TeleportTo(36, -16, -383, 62, 6.f);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 53: // 哀嚎
+    case MW_GOSSIP_ACTION_TRANS + 53: // Wailing Caverns
         player->TeleportTo(43, -163.49f, 132.89f, -73.66f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 54: // 影牙
+    case MW_GOSSIP_ACTION_TRANS + 54: // Shadowfang Keep
         player->TeleportTo(33, -229.1f, 2109.17f, 77, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 55: // 深渊
+    case MW_GOSSIP_ACTION_TRANS + 55: // Blackfathom Deeps
         player->TeleportTo(48, -151.88f, 106.95f, -39.3f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 56: // 监狱
+    case MW_GOSSIP_ACTION_TRANS + 56: // Stormwind jail
         player->TeleportTo(34, 54.2f, 0.28f, -18, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 57: // 诺莫瑞根
+    case MW_GOSSIP_ACTION_TRANS + 57: // Gnomeregan
         player->TeleportTo(90, -327.5f, -4.7f, -152.3f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 58: // 血色
+    case MW_GOSSIP_ACTION_TRANS + 58: // Scarlet Monastery
         player->TeleportTo(0, 2894.34f, -809.55f, 160.33f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 59: // 剃刀沼泽
+    case MW_GOSSIP_ACTION_TRANS + 59: // Razorfen Downs
         player->TeleportTo(47, 1943, 1544.63f, 82, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 60: // 玛拉顿
-        player->TeleportTo(349, 1019.69f, -458.3f, -43, 6);
-        break;
-    case MW_GOSSIP_ACTION_TRANS + 61: // 奥达曼
-        player->TeleportTo(70, -226.8f, 49.1f, -45.9f, 6);
-        break;
-    case MW_GOSSIP_ACTION_TRANS + 62: // 厄运
-        player->TeleportTo(429, -201.11f, -328.66f, -2.7f, 6);
-        break;
-    case MW_GOSSIP_ACTION_TRANS + 63: // 通灵学院
-        player->TeleportTo(289, 196.39f, 127, 135, 6);
-        break;
-    case MW_GOSSIP_ACTION_TRANS + 64: // 剃刀高地
+    case MW_GOSSIP_ACTION_TRANS + 60: // Razorfen Kraul
         player->TeleportTo(129, 2592.55f, 1107.5f, 51.5f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 65: // 斯坦索姆
-        player->TeleportTo(329, 3394.13f, -3380.16f, 143.0f, 6);
+    case MW_GOSSIP_ACTION_TRANS + 61: // Audaman
+        player->TeleportTo(70, -226.8f, 49.1f, -45.9f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 66: // 祖尔法拉克
+    case MW_GOSSIP_ACTION_TRANS + 62: // Zul'Farrak
         player->TeleportTo(209, 1213.52f, 841.59f, 9, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 67: // 黑石深渊
+    case MW_GOSSIP_ACTION_TRANS + 63: // Maraudon
+        player->TeleportTo(349, 1019.69f, -458.3f, -43, 6);
+        break;
+    case MW_GOSSIP_ACTION_TRANS + 64: // Dire Maul
+        player->TeleportTo(429, -201.11f, -328.66f, -2.7f, 6);
+        break;
+    case MW_GOSSIP_ACTION_TRANS + 65: // Scholomance
+        player->TeleportTo(289, 196.39f, 127, 135, 6);
+        break;
+    case MW_GOSSIP_ACTION_TRANS + 66: // Stratholme
+        player->TeleportTo(329, 3394.13f, -3380.16f, 143.0f, 6);
+        break;
+    case MW_GOSSIP_ACTION_TRANS + 67: // Blackrock Depths
         player->TeleportTo(230, 458.3f, 26.5f, -70.64f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 68: // 沉没的神庙
+    case MW_GOSSIP_ACTION_TRANS + 68: // The Temple of Atal'Hakkar
         player->TeleportTo(109, -319.23f, 99.9f, -131.85f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 69: // 黑石塔
+    case MW_GOSSIP_ACTION_TRANS + 69: // Blackrock tower
         player->TeleportTo(229, 78.5f, -225.0f, 50.0f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 101: // 达拉燃
+    case MW_GOSSIP_ACTION_TRANS + 101: // ???
         player->TeleportTo(571, 5797, 795, 664, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 102: // 龙眠神殿
+    case MW_GOSSIP_ACTION_TRANS + 102: // ????
         player->TeleportTo(571, 3546.607178f, 273.218842f, 342.722f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 103: // 魔枢
+    case MW_GOSSIP_ACTION_TRANS + 103: // ??
         player->TeleportTo(571, 3831.737061f, 6960.383789f, 104.784271f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 104: // 乌特加德堡垒
+    case MW_GOSSIP_ACTION_TRANS + 104: // ??????
         player->TeleportTo(571, 1260.176636f, -4843.805664f, 215.763993f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 105: // 古代王国
+    case MW_GOSSIP_ACTION_TRANS + 105: // ????
         player->TeleportTo(571, 3695.932129f, 2143.285889f, 34.147270f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 106: // 古达克
+    case MW_GOSSIP_ACTION_TRANS + 106: // ???
         player->TeleportTo(571, 6938.497559f, -4452.765137f, 450.868896f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 107: // 风暴群山
+    case MW_GOSSIP_ACTION_TRANS + 107: // ????
         player->TeleportTo(571, 8949.208008f, -1266.415894f, 1025.499391f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 108: // 银色比武场
+    case MW_GOSSIP_ACTION_TRANS + 108: // ?????
         player->TeleportTo(571, 8486.941406f, 775.859863f, 558.568299f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 109: // 冰冠堡垒
+    case MW_GOSSIP_ACTION_TRANS + 109: // ????
         player->TeleportTo(571, 5864.67f, 2169.83f, 636.1f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 110: // 纳克萨玛斯
+    case MW_GOSSIP_ACTION_TRANS + 110: // ?????
         player->TeleportTo(571, 3666.089844f, -1269.738403f, 243.508927f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 111: // 达克萨隆要塞
+    case MW_GOSSIP_ACTION_TRANS + 111: // ??????
         player->TeleportTo(571, 4772.635742f, -2046.703125f, 238.28464f, 0.061439f);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 201: // 沙塔斯
+    case MW_GOSSIP_ACTION_TRANS + 201: // ???
         player->TeleportTo(530, -1859.95f, 5438.85f, -10.3f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 202: // 地狱火
+    case MW_GOSSIP_ACTION_TRANS + 202: // ???
         player->TeleportTo(530, -321.64f, 3082.49f, 32.6f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 203: // 水库
+    case MW_GOSSIP_ACTION_TRANS + 203: // ??
         player->TeleportTo(530, 764.034058f, 6866.363770f, -68.277512f, 6.266417f);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 204: // 奥金顿
+    case MW_GOSSIP_ACTION_TRANS + 204: // ???
         player->TeleportTo(530, -3377.06f, 4954.24f, -66.5f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 205: // 风暴战舰
+    case MW_GOSSIP_ACTION_TRANS + 205: // ????
         player->TeleportTo(530, 3101.006592f, 1537.525879f, 190.31f, 4.649131f);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 206: // 格鲁尔
+    case MW_GOSSIP_ACTION_TRANS + 206: // ???
         player->TeleportTo(565, 62.784199f, 35.462002f, -3.983500f, 1.418440f);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 207: // 黑庙
+    case MW_GOSSIP_ACTION_TRANS + 207: // ??
         player->TeleportTo(564, 96.45f, 1002.35f, -86.8f, 6);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 208: // 时光之穴
+    case MW_GOSSIP_ACTION_TRANS + 208: // ????
         player->TeleportTo(1, -8509.349606f, -4356.310059f, -208.358994f, 6);
         break;
         // Raid telepot
-    case MW_GOSSIP_ACTION_TRANS + 301: // 熔火之心
+    case MW_GOSSIP_ACTION_TRANS + 301: // ????
         player->TeleportTo(409, 1087.588f, -477.341f, -107.0f, 0.786652f);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 305: // 祖阿曼
+    case MW_GOSSIP_ACTION_TRANS + 305: // ???
         player->TeleportTo(530, 6832.783203f, -7858.009766f, 163.976166f, 4.697f);
         break;
-    case MW_GOSSIP_ACTION_TRANS + 306: // 卡拉赞
+    case MW_GOSSIP_ACTION_TRANS + 306: // ???
         player->TeleportTo(532, -11102.0f, -1998.19f, 50.05f, 0.533f);
         break; 
-    case MW_GOSSIP_ACTION_TRANS + 307: // 奥妮克西娅
+    case MW_GOSSIP_ACTION_TRANS + 307: // ?????
         player->TeleportTo(1, -4745.300293f, -3753.068604f, 50.219667f, 4.697f);
         break;
         /*
@@ -377,6 +423,8 @@ void UpgradeHumanRaceTalentMinion(Player* player, Creature* m, uint32 action) {
 
     Gender gender = m->GetGender();
     AssistanceAI* ai = (AssistanceAI*)m->GetAI();
+    if (!ai)
+        return;
 
     switch (action) {
     case MW_GOSSIP_ACTION_DO + 1:
@@ -385,42 +433,49 @@ void UpgradeHumanRaceTalentMinion(Player* player, Creature* m, uint32 action) {
         m->SetVirtualItem(0, 3455);
         m->SetVirtualItem(1, 1203);
         ai->SetData(0, 0);
-        m->m_spells[0] = 56222;
-        m->m_spells[1] = 81194;
-        UnitAddHealthPct(m, 160);
-        m->CastSpell(m, 81193, true);
+        ai->AttemptAddProperSpellForLevel(56222);
+        ai->AttemptAddProperSpellForLevel(81194);
+        //UnitAddHealthPct(m, 160);
+        //ai->SetData(ADATA_ID_STAT_PCT_AGI, 100);
+        //ai->SetData(ADATA_ID_STAT_PCT_STA, 50);
+        m->CastSpell(m, 81193, true); // Improve threats
         break;
     case MW_GOSSIP_ACTION_DO + 2:
         m->SetDisplayId(gender == GENDER_FEMALE ? 3292 : 1484);
         m->SetVirtualItem(0, 812);
         m->SetPowerType(Powers::POWER_MANA);
         ai->_type = AssistanceAI::ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        m->m_spells[0] = gender == GENDER_FEMALE ? 81199 : 81200;
-        m->m_spells[1] = gender == GENDER_FEMALE ? 81199 : 81200;
+        ai->AttemptAddProperSpellForLevel(gender == GENDER_FEMALE ? 81199 : 81200);
         ai->SetData(0, 1);
+        //ai->SetData(ADATA_ID_STAT_PCT_INT, 100);
+        //ai->SetData(ADATA_ID_STAT_PCT_SPI, 120);
         break;
     case MW_GOSSIP_ACTION_DO + 3:
         m->SetDisplayId(gender == GENDER_FEMALE ? 1295 : 3253);
         m->SetPowerType(Powers::POWER_MANA);
         ai->_class = AssistanceAI::ASSISTANCE_CLASS::HEALER;
         ai->_type = AssistanceAI::ASSISTANCE_ATTACK_TYPE::ATTACK_TYPE_CASTER;
-        m->m_spells[0] = 81204;
-        m->m_spells[1] = 81205;
+        ai->AttemptAddProperSpellForLevel(81204);
+        ai->AttemptAddProperSpellForLevel(81205);
         m->SetVirtualItem(0, 812);
         ai->SetData(0, 2);
+        //ai->SetData(ADATA_ID_STAT_PCT_INT, 80);
+        //ai->SetData(ADATA_ID_STAT_PCT_SPI, 160);
         break;
     }
     m->CastSpell(m, 24312, true);
+    ((Guardian*)m)->InitStatsForLevel(m->GetLevel());
     m->RemoveNpcFlag(NPCFlags::UNIT_NPC_FLAG_GOSSIP);
     m->UpdateDisplayPower();
     m->RemoveAura(81192);
     m->UpdateAllStats();
     m->SetFullHealth();
     m->SetObjectScale(1);
+    player->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_PET_POWER_TYPE);
     player->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_POWER_TYPE);
 }
 
-void BuildHumanRaceTalentGossip(Player* player, Creature* creature, uint32 sender)
+void BuildHumanRaceTalentGossip(Player* player, Creature* creature, uint32)
 {
     if (!player || !player->IsAlive() || !creature->IsAlive())
         return;
@@ -428,24 +483,27 @@ void BuildHumanRaceTalentGossip(Player* player, Creature* creature, uint32 sende
     PlayerMenu* menu = player->PlayerTalkClass;
     menu->ClearMenus();
 
-    AddGossipItemFor(player, GOSSIP_ICON_TALK, "|cffFF0005晋升 - 卫兵|r", MW_GOSSIP_HUM_TALENT_MAIN, MW_GOSSIP_ACTION_DO + 1);
-    AddGossipItemFor(player, GOSSIP_ICON_TALK, "|cff0500FF晋升 - 魔法士|r", MW_GOSSIP_HUM_TALENT_MAIN, MW_GOSSIP_ACTION_DO + 2);
-    AddGossipItemFor(player, GOSSIP_ICON_TALK, "|cff05C405晋升 - 信徒|r", MW_GOSSIP_HUM_TALENT_MAIN, MW_GOSSIP_ACTION_DO + 3);
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, "|cffFF0005" + GetTrinityString(TCTSTR_UPGRADE_GUARD) + "|r", MW_GOSSIP_HUM_TALENT_MAIN, MW_GOSSIP_ACTION_DO + 1);
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, "|cff0500FF" + GetTrinityString(TCTSTR_UPGRADE_MAGE) + "|r", MW_GOSSIP_HUM_TALENT_MAIN, MW_GOSSIP_ACTION_DO + 2);
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, "|cff05C405" + GetTrinityString(TCTSTR_UPGRADE_HEALER) + "|r", MW_GOSSIP_HUM_TALENT_MAIN, MW_GOSSIP_ACTION_DO + 3);
 
     SendGossipMenuFor(player, GOSSIP_ICON_TAXI, creature->GetGUID());
 }
 
 void GossipTCTogetherHumanRaceTalentSelected(Player* player, Creature* creature, uint32 sender, uint32 action) {
-
+    (void)player;
+    (void)creature;
+    (void)sender;
+    (void)action;
 }
 
-void HireDwarfRaceTalentMinion(Player* player, Creature* creature, uint32 action) {
+void HireDwarfRaceTalentMinion(Player* player, Creature* creature, uint32) {
     std::list<Creature*> list;
 
     for (int i = 0; i < 5; i++) {
         player->GetAllMinionsByEntry(list, 45008 + i);
         if (list.size() > 0) {
-            creature->Whisper("你已经雇佣了一名矮人探险者", Language::LANG_DWARVISH, player);
+            creature->Whisper(GetTrinityString(TCTSTR_HIRE_DWARF), Language::LANG_DWARVISH, player);
             return;
         }
     }
@@ -465,7 +523,7 @@ void GossipTCTogetherCreature(Player* player, Creature* creature, uint32 sender,
     }
 }
 
-void GossipTCTogetherGameObject(Player* player, GameObject* obj, uint32 sender, uint32 action) {
+void GossipTCTogetherGameObject(Player* player, GameObject* obj, uint32, uint32 action) {
     switch (obj->GetEntry()) {
     case 250000:
         GossipActionDoTrans(player, nullptr, action);
@@ -473,7 +531,7 @@ void GossipTCTogetherGameObject(Player* player, GameObject* obj, uint32 sender, 
     }
 }
 
-void BuildDwarfRaceTalentMenu(Player* player, GameObject* object, uint32 sender)
+void BuildDwarfRaceTalentMenu(Player* player, GameObject* object, uint32)
 {
     if (!player || !player->IsAlive() || player->IsInCombat())
         return;
@@ -482,79 +540,27 @@ void BuildDwarfRaceTalentMenu(Player* player, GameObject* object, uint32 sender)
     uint8 level = player->GetLevel();
     menu->ClearMenus();
 
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "铁炉堡", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 2);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "鹰巢山", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 500);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "黑石山", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 501);
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "造物者圣台", MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 502);
+    AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_IRONFORGE), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 2);
+    AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_EAGLE_NEXT), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 500);
+    AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_BLACKROCK_MOUNTAIN), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 501);
+    if (level > 70)
+    AddGossipItemFor(player, GOSSIP_ICON_TAXI, GetTrinityString(TCTSTR_TRANS_ALTER_OF_MAKERS), MW_GOSSIP_SENDER_ACTION_DO_TRANS, MW_GOSSIP_ACTION_TRANS + 502);
 
     SendGossipMenuFor(player, GOSSIP_ICON_TAXI, object->GetGUID());
 }
 
-void BuildMiniGameMenu(Player* player, Item* item) {
-    if (!player || !player->IsAlive() || player->IsInCombat())
+void BuildMiniGameMenu(Player*, Item*) {
+    /*if (!player || !player->IsAlive() || player->IsInCombat())
         return;
 
     PlayerMenu* menu = player->PlayerTalkClass;
     uint8 level = player->GetLevel();
     menu->ClearMenus();
 
-    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "坦克大战", MW_GOSSIP_ACTION_MINI_GAME, 0);
-    AddGossipItemFor(player, GOSSIP_ICON_TALK, "<<< 后退", MW_GOSSIP_SENDER_MAIN, MW_GOSSIP_ACTION_SUB_MENU);
+    AddGossipItemFor(player, GOSSIP_ICON_TAXI, "????", MW_GOSSIP_ACTION_MINI_GAME, 0);
+    AddGossipItemFor(player, GOSSIP_ICON_TALK, GetTrinityString(TCTSTR_BACK), MW_GOSSIP_SENDER_MAIN, MW_GOSSIP_ACTION_SUB_MENU);
 
-    SendGossipMenuFor(player, GOSSIP_ICON_TAXI, item->GetGUID());
-}
-
-void TankWar(Player* player) {
-    if (!player || !player->IsAlive() || player->IsInCombat())
-        return;
-
-    uint32 tile[4] = { 0, 250001, 250002, 0 };
-    uint32 mapData[13*13] = {
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //0
-        0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, //1
-        0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, //2
-        0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, //3
-        0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, //4
-        0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, //5
-        4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, //6
-        1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, //7
-        1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, //8
-        0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, //9
-        0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, //10
-        0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, //11
-        0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0 //12
-    };
-
-    player->SetFacingTo(M_PI/2);
-    Position home;
-
-    Position origin = player->GetPosition();
-    for (int i = 0; i < 13; i++) {
-        for (int j = 0; j < 13; j++) {
-            Position p(origin);
-            p.RelocateOffset(Position(i * 1.25f, j * 1.25));
-            if (tile[mapData[i + 13 * j]]) {
-                GameObject* go = player->SummonGameObject(tile[mapData[i + 13 * j]], p, QuaternionData(), 1000s);
-                if (mapData[i + 13 * j] == 2)
-                    go->SetObjectScale(0.1f);
-            }
-            if (i == 160) {
-                home = p;
-            }
-        }
-    }
-
-    player->MovePosition(home, 0, M_PI / 2);
-    player->CastSpell(nullptr, 88001, true);
-}
-
-void StartMiniGame(Player* player, uint32 action) {
-    CloseGossipMenuFor(player);
-    switch (action) {
-    case 0:
-        TankWar(player);
-        break;
-    }
+    SendGossipMenuFor(player, GOSSIP_ICON_TAXI, item->GetGUID());*/
 }
 
 void GossipSelect_Item(Player* player, Item* item, uint32 sender, uint32 action)
@@ -570,9 +576,6 @@ void GossipSelect_Item(Player* player, Item* item, uint32 sender, uint32 action)
     case MW_GOSSIP_ACTION_MINI_GAME:
         if (action == MW_GOSSIP_ACTION_SUB_MENU) {
             return BuildMiniGameMenu(player, item);
-        }
-        else {
-            return StartMiniGame(player, action);
         }
     case MW_GOSSIP_SENDER_TRANS:
         return BuildTransMenu(player, item, sender);
