@@ -20,6 +20,7 @@
 
 #include "Common.h"
 #include "Duration.h"
+#include "DataMap.h"
 #include "EventProcessor.h"
 #include "ModelIgnoreFlags.h"
 #include "MovementInfo.h"
