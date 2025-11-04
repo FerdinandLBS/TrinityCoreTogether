@@ -4,9 +4,9 @@
 -- This SQL will first store all quest items in a table. The table is temporary and is automatically deleted once SQL client disconnects.
 -- It then selects all completed quests of a player and inserts the reward items of that quest to the player account's transmog library.
 
-USE world_database;
+USE world;
 
-CREATE TEMPORARY TABLE IF NOT EXISTS characters_database.transmog__quest_reward_items (INDEX(ID)) AS (
+CREATE TEMPORARY TABLE IF NOT EXISTS characters.transmog__quest_reward_items (INDEX(ID)) AS (
 SELECT * FROM (
 SELECT quest_template.id AS ID, RewardChoiceItemID1 AS RewardItemID FROM quest_template WHERE RewardChoiceItemID1 <> 0 AND RewardChoiceItemQuantity1 <> 0
 UNION
@@ -30,6 +30,6 @@ SELECT quest_template.id AS ID, RewardItem4 AS RewardItemID FROM quest_template 
 ) x
 );
 
-USE characters_database;
+USE characters;
 
 REPLACE INTO custom_account_transmog (accountid, `type`, entry) SELECT c.account, 0, tqri.RewardItemID FROM transmog__quest_reward_items tqri INNER JOIN character_queststatus_rewarded cqr ON tqri.ID = cqr.quest INNER JOIN characters c ON c.guid = cqr.guid;

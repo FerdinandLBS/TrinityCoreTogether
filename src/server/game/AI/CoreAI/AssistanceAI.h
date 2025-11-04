@@ -26,14 +26,14 @@ class Creature;
 #define AA_FLAG_ROOT      0x00000001
 #define AA_FLAG_NO_ATTACK 0x00000002
 
-#define AAI_UNIT_ 46003 // Hellhound
-#define AAI_UNIT_ 46004 // Succubus
-#define AAI_UNIT_ 46005 // Felguard
-#define AAI_UNIT_ 46006 // Doomguard
-#define AAI_UNIT_ 46015 // Eye of Eternity
-#define AAI_UNIT_ 46016 // Frenzied Priest
-#define AAI_UNIT_ 46025 // Imp
-#define AAI_UNIT_ 46026 // Voidwalker
+#define AAI_UNIT_HELLHOUND 46003 // Hellhound
+#define AAI_UNIT_SUCCBUS   46004 // Succubus
+#define AAI_UNIT_FELGUARD  46005 // Felguard
+#define AAI_UNIT_DOOMGUARD 46006 // Doomguard
+#define AAI_UNIT_ETERNITY  46015 // Eye of Eternity
+#define AAI_UNIT_FRENZIED_PRIEST 46016 // Frenzied Priest
+#define AAI_UNIT_IMP       46025 // Imp
+#define AAI_UNIT_VOIDWALKER 46026 // Voidwalker
 
 class TC_GAME_API AssistsAddon
 {

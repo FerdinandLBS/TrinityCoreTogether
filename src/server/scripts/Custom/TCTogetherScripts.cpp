@@ -854,7 +854,7 @@ public:
                 std::list<Creature*> cl;
                 owner->GetAllMinionsByEntry(cl, 45002);
                 if (cl.size() > 0) {
-                    TempSummon* c = cl.front()->ToTempSummon();
+                    //TempSummon* c = cl.front()->ToTempSummon();
                     //c->SetRespawnTime
                 }
             }
@@ -1533,7 +1533,7 @@ public:
     {
         PrepareAuraScript(spell_lvl4_ench_echo_trigger_aura_AuraScript);
 
-        void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
+        void HandleProc(AuraEffect const*, ProcEventInfo& eventInfo)
         {
             PreventDefaultAction();
             Unit* actor = eventInfo.GetActor();
@@ -1663,7 +1663,7 @@ public:
             }
         }
 
-        void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
+        void HandleProc(AuraEffect const*, ProcEventInfo& eventInfo)
         {
             PreventDefaultAction();
             Unit* actor = eventInfo.GetActor();
@@ -1719,7 +1719,7 @@ public:
 #define SET_SPELL_ID(a,b,c) {spellid[0]=a;spellid[1]=b;spellid[2]=c;}
             PreventDefaultAction();
             Unit* actor = eventInfo.GetActor();
-            const Spell* sp = eventInfo.GetProcSpell();
+            //const Spell* sp = eventInfo.GetProcSpell();
             DamageInfo* dmgInfo = eventInfo.GetDamageInfo();
             uint8 clazz;
             uint32 power = 0;

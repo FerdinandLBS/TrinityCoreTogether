@@ -1220,6 +1220,8 @@ void AssistanceAI::updateTimer(uint32 diff)
 // Unit is idle. Only heal spells can cast
 void AssistanceAI::ResetPosition(bool force)
 {
+    (void)force;
+
     if (AIFlag == AI_ACTION_FLAG::AI_ACTION_HOLD_POSITION)
         return;
 
