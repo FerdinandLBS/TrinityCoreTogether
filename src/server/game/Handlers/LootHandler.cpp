@@ -87,7 +87,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPacket& recvData)
 
             float range = 30.0f;
             std::vector<Creature*> creaturedie;
-            player->GetDeadCreatureListInGrid(creaturedie, range);
+            player->GetDeadCreatureListInGrid(creaturedie, range, false);
             for (std::vector<Creature*>::iterator itr = creaturedie.begin(); itr != creaturedie.end(); ++itr)
             {
                 Creature* c = *itr;
@@ -280,7 +280,7 @@ void WorldSession::HandleLootMoneyOpcode(WorldPacket& /*recvData*/)
                     uint32 gold = 0;
                     Creature* c = nullptr;
                     std::vector<Creature*> creaturedie;
-                    player->GetDeadCreatureListInGrid(creaturedie, range);
+                    player->GetDeadCreatureListInGrid(creaturedie, range, false);
                     for (std::vector<Creature*>::iterator itr = creaturedie.begin(); itr != creaturedie.end(); ++itr)
                     {
                         c = *itr;

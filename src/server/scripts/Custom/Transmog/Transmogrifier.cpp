@@ -142,7 +142,7 @@ struct PendingItemsCheck : public BasicEvent
                 if (lastNotSavedAlert < GameTime::GetGameTimeMS() && player->GetNPCIfCanInteractWith(guid, UNIT_NPC_FLAG_GOSSIP) == nullptr)
                 {
                     lastNotSavedAlert = GameTime::GetGameTimeMS() + 2000;
-                    player->GetSession()->SendNotification("You have not saved your transmogrifications!");
+                    player->GetSession()->SendNotification("????????!");
                 }
                 player->m_Events.AddEvent(this, player->m_Events.CalculateTime(500ms));
                 return false;
@@ -197,11 +197,11 @@ public:
             (void)creature;
             uint32 itementry = action;
             if (itementry == RemovePending)
-                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Enchant_Disenchant:30:30:-18:0|tRemove pending transmogrification", SENDER_REVERT_TRANSMOG, base + page);
+                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Enchant_Disenchant:30:30:-18:0|t????????", SENDER_REVERT_TRANSMOG, base + page);
             else if (itementry == InvisibleEntry)
-                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Ability_Vanish:30:30:-18:0|tHide item", base + page, InvisibleEntry);
+                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Ability_Vanish:30:30:-18:0|t??", base + page, InvisibleEntry);
             else if (itementry == NormalEntry)
-                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Spell_Holy_Restoration:30:30:-18:0|tRestore original look", base + page, NormalEntry);
+                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Spell_Holy_Restoration:30:30:-18:0|t????", base + page, NormalEntry);
             else
                 AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, Transmogrification::instance().GetItemIcon(itementry, 30, 30, -18, 0) + name, base + page, itementry);
         }
@@ -211,11 +211,11 @@ public:
             (void)creature;
             uint32 enchantentry = action;
             if (enchantentry == RemovePending)
-                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Enchant_Disenchant:30:30:-18:0|tRemove pending enchant", SENDER_REVERT_ENCHANT, base + page);
+                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Enchant_Disenchant:30:30:-18:0|t??????????", SENDER_REVERT_ENCHANT, base + page);
             else if (enchantentry == InvisibleEntry)
-                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Ability_Vanish:30:30:-18:0|tHide enchant", base + page, InvisibleEntry);
+                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Ability_Vanish:30:30:-18:0|t??????", base + page, InvisibleEntry);
             else if (enchantentry == NormalEntry)
-                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Spell_Holy_Restoration:30:30:-18:0|tRestore original look", base + page, NormalEntry);
+                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Spell_Holy_Restoration:30:30:-18:0|t????", base + page, NormalEntry);
             else
                 AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, std::string("|TInterface/ICONS/INV_Enchant_FormulaGood_01:30:30:-18:0|t") + name, base + page, enchantentry);
         }
@@ -230,7 +230,7 @@ public:
         {
             WorldSession* session = player->GetSession();
             if (Transmogrification::instance().EnableTransmogInfo)
-                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Misc_Book_11:30:30:-18:0|tHow transmogrification works", SENDER_TRANSMOG_INFO, 0);
+                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Misc_Book_11:30:30:-18:0|t????????", SENDER_TRANSMOG_INFO, 0);
             for (uint8 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
             {
                 if (const char* slotName = Transmogrification::instance().GetSlotName(slot, session))
@@ -290,15 +290,15 @@ public:
                 }
             }
             if (Transmogrification::instance().EnableSets)
-                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/RAIDFRAME/UI-RAIDFRAME-MAINASSIST:30:30:-18:0|tManage sets", SENDER_PRESET_LIST, 0);
+                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/RAIDFRAME/UI-RAIDFRAME-MAINASSIST:30:30:-18:0|t????", SENDER_PRESET_LIST, 0);
             {
                 decltype(auto) pending = Transmogrification::instance().GetPendingTransmogs(player);
                 int32 copperCost = Transmogrification::instance().CalculateTransmogCost(pending);
-                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Enchant_EssenceCosmicGreater:30:30:-18:0|tSave pending transmogrifications", SENDER_TRANSMOG_SAVE, 0, "All equipped items with pending transmogrifications will save their appearance and are made soulbound, non-refundable and non-tradeable.\n\nDo you wish to continue?", copperCost, false);
-                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Enchant_Disenchant:30:30:-18:0|tCancel pending transmogrifications", SENDER_REVERT_ALL_TRANSMOG, 0, "Cancel pending transmogrifications from all equipped items?", 0, false);
+                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Enchant_EssenceCosmicGreater:30:30:-18:0|t????", SENDER_TRANSMOG_SAVE, 0, "???????????????????,?????????????????????\n\n????????", copperCost, false);
+                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Enchant_Disenchant:30:30:-18:0|t????", SENDER_REVERT_ALL_TRANSMOG, 0, "????????????????", 0, false);
             }
-            AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Spell_Holy_Restoration:30:30:-18:0|tRestore original look", SENDER_REMOVE_ALL_TRANSMOG, 0, "Equipped items are reverted to their original look with a pending change.\n\nDo you want to continue?", 0, false);
-            AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/PaperDollInfoFrame/UI-GearManager-Undo:30:30:-18:0|tUpdate menu", SENDER_SHOW_SLOTS, 0);
+            AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Spell_Holy_Restoration:30:30:-18:0|t????", SENDER_REMOVE_ALL_TRANSMOG, 0, "?????????????,??????????\n\n???????", 0, false);
+            AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/PaperDollInfoFrame/UI-GearManager-Undo:30:30:-18:0|t????", SENDER_SHOW_SLOTS, 0);
             SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
             return true;
         }
@@ -361,8 +361,8 @@ public:
                     for (PresetMapType::const_iterator it = player->presetMap.begin(); it != player->presetMap.end(); ++it)
                         AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Misc_Statue_02:30:30:-18:0|t" + it->second.name, SENDER_PRESET_VIEW, it->first);
                     if (player->presetMap.size() < Transmogrification::instance().MaxSets)
-                        AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/GuildBankFrame/UI-GuildBankFrame-NewTab:30:30:-18:0|tSave set ", SENDER_CODE_PRESET_SAVE, 0, "Insert set name and click accept", 0, true);
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Ability_Spy:30:30:-18:0|tBack..", SENDER_SHOW_SLOTS, 0);
+                        AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/GuildBankFrame/UI-GuildBankFrame-NewTab:30:30:-18:0|t???? ", SENDER_CODE_PRESET_SAVE, 0, "???????????", 0, true);
+                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Ability_Spy:30:30:-18:0|t??..", SENDER_SHOW_SLOTS, 0);
                     SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
                 } break;
                 case SENDER_PRESET_USE: // Use preset
@@ -430,7 +430,7 @@ public:
                                     auto it = Transmogrification::enchant_visual_to_name.find(source->ItemVisual);
                                     if (it != Transmogrification::enchant_visual_to_name.end()) {
                                         if (const char* slotName = Transmogrification::instance().GetSlotName(std::get<uint8>(v), session))
-                                            AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Scroll_05:30:30:-18:0|t" + std::string(slotName) + std::string(" enchant: ") + it->second, sender, action);
+                                            AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Scroll_05:30:30:-18:0|t" + std::string(slotName) + std::string(" ??: ") + it->second, sender, action);
                                     }
                                 }
                                 break;
@@ -440,10 +440,10 @@ public:
                         }
                     }
 
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Misc_Statue_02:30:30:-18:0|tUse set", SENDER_PRESET_USE, action, "Using a set will remove pending transmogrifications and add the transmogrifications from the set as pending.\nDo you wish to continue?\n\n" + it->second.name, 0, false);
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Misc_Statue_02:30:30:-18:0|tRename set", SENDER_CODE_PRESET_RENAME, action, "Insert new name\n\nOld name: " + it->second.name, 0, true);
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/PaperDollInfoFrame/UI-GearManager-LeaveItem-Opaque:30:30:-18:0|tDelete set", SENDER_PRESET_DELETE, action, "Are you sure you want to delete " + it->second.name + "?", 0, false);
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Ability_Spy:30:30:-18:0|tBack..", SENDER_PRESET_LIST, 0);
+                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Misc_Statue_02:30:30:-18:0|t????", SENDER_PRESET_USE, action, "?????????????,?????????????????\n????????\n\n" + it->second.name, 0, false);
+                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/INV_Misc_Statue_02:30:30:-18:0|t?????", SENDER_CODE_PRESET_RENAME, action, "??????\n\n???: " + it->second.name, 0, true);
+                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/PaperDollInfoFrame/UI-GearManager-LeaveItem-Opaque:30:30:-18:0|t????", SENDER_PRESET_DELETE, action, "???? " + it->second.name + "?", 0, false);
+                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Ability_Spy:30:30:-18:0|t??..", SENDER_PRESET_LIST, 0);
                     SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, creature->GetGUID());
                 } break;
                 case SENDER_PRESET_DELETE: // Delete preset
@@ -461,12 +461,12 @@ public:
                 } break;
                 case SENDER_PRESET_INFO: // Set info
                 {
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Ability_Spy:30:30:-18:0|tBack..", SENDER_PRESET_LIST, 0);
+                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Ability_Spy:30:30:-18:0|t??..", SENDER_PRESET_LIST, 0);
                     SendGossipMenuFor(player, Transmogrification::instance().SetNpcText, creature->GetGUID());
                 } break;
                 case SENDER_TRANSMOG_INFO: // Transmog info
                 {
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Ability_Spy:30:30:-18:0|tBack..", SENDER_SHOW_SLOTS, 0);
+                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Ability_Spy:30:30:-18:0|t??..", SENDER_SHOW_SLOTS, 0);
                     SendGossipMenuFor(player, Transmogrification::instance().TransmogNpcText, creature->GetGUID());
                 } break;
                 case SENDER_TRANSMOG_SAVE:
@@ -631,13 +631,13 @@ public:
                     return;
                 }
             }
-            AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, std::string("|TInterface/PaperDollInfoFrame/UI-GearManager-Undo:30:30:-18:0|t") + Transmogrification::instance().GetSlotName(slot, player->GetSession()) + " - Page " + std::to_string(data.current_page) + "/" + std::to_string(data.total_pages), base + page, 0);
+            AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, std::string("|TInterface/PaperDollInfoFrame/UI-GearManager-Undo:30:30:-18:0|t") + Transmogrification::instance().GetSlotName(slot, player->GetSession()) + " - ?? " + std::to_string(data.current_page) + "/" + std::to_string(data.total_pages), base + page, 0);
             if (data.next)
-                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Spell_ChargePositive:30:30:-18:0|tNext page", base + page + 1, 0);
+                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Spell_ChargePositive:30:30:-18:0|t???", base + page + 1, 0);
             if (data.prev)
-                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Spell_ChargeNegative:30:30:-18:0|tPrevious page", base + page - 1, 0);
+                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Spell_ChargeNegative:30:30:-18:0|t???", base + page - 1, 0);
             if (data.ismainpage)
-                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Ability_Spy:30:30:-18:0|tShow main menu", SENDER_SHOW_MAIN_MENU, 0);
+                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "|TInterface/ICONS/Ability_Spy:30:30:-18:0|t???", SENDER_SHOW_MAIN_MENU, 0);
             for (uint32 i = data.start; i < data.end; ++i)
             {
                 auto& value = actions.at(i);
@@ -665,7 +665,7 @@ public:
             Item* item = Transmogrification::instance().GetEquippedItem(player, slot);
             if (!item)
             {
-                player->GetSession()->SendNotification("No item equipped");
+                player->GetSession()->SendNotification("????");
                 OnGossipHello(player, creature);
                 return;
             }

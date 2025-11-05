@@ -3818,3 +3818,5 @@ template TC_GAME_API void WorldObject::GetCreatureListWithEntryInGrid(std::vecto
 template TC_GAME_API void WorldObject::GetPlayerListInGrid(std::list<Player*>&, float, bool) const;
 template TC_GAME_API void WorldObject::GetPlayerListInGrid(std::deque<Player*>&, float, bool) const;
 template TC_GAME_API void WorldObject::GetPlayerListInGrid(std::vector<Player*>&, float, bool) const;
+
+template TC_GAME_API void WorldObject::GetDeadCreatureListInGrid(std::vector<Creature*>&, float, bool) const;
