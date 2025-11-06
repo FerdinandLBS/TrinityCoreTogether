@@ -113,6 +113,8 @@ public:
     {
         if (!u || u == _me)
             return false;
+        if (!u->IsAlive())
+            return false;
         if (!u->InSamePhase(_me))
             return false;
         if (!u->IsHostileTo(_me) && !u->IsInCombatWith(_me))

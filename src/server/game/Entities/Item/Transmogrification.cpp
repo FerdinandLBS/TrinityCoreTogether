@@ -27,6 +27,46 @@
 #include <sstream>
 #include <string>
 
+const char* CanTransmogrifyResultMessage(TransmogResult result)
+{
+    switch (result)
+    {
+    case TransmogResult_Ok: return sObjectMgr->GetTransmogCString(30);
+    case TransmogResult_InvalidItemType: return sObjectMgr->GetTransmogCString(31);
+    case TransmogResult_ItemBlocked: return sObjectMgr->GetTransmogCString(32);
+    case TransmogResult_FishingPoleBlocked: return sObjectMgr->GetTransmogCString(33);
+    case TransmogResult_InvalidItemQuality: return sObjectMgr->GetTransmogCString(34);
+    case TransmogResult_RequiredEventNotActive: return sObjectMgr->GetTransmogCString(35);
+    case TransmogResult_ItemMustHaveStats: return sObjectMgr->GetTransmogCString(36);
+    case TransmogResult_InvalidFaction: return sObjectMgr->GetTransmogCString(37);
+    case TransmogResult_InvalidClass: return sObjectMgr->GetTransmogCString(38);
+    case TransmogResult_InvalidRace: return sObjectMgr->GetTransmogCString(39);
+    case TransmogResult_MissingProfiency: return sObjectMgr->GetTransmogCString(40);
+    case TransmogResult_MissingSkill: return sObjectMgr->GetTransmogCString(41);
+    case TransmogResult_TooLowSkill: return sObjectMgr->GetTransmogCString(42);
+    case TransmogResult_MissingSpell: return sObjectMgr->GetTransmogCString(43);
+    case TransmogResult_TooLowLevelPlayer: return sObjectMgr->GetTransmogCString(44);
+    case TransmogResult_TooLowLevelItem: return sObjectMgr->GetTransmogCString(45);
+    case TransmogResult_TooHighLevelItem: return sObjectMgr->GetTransmogCString(46);
+    case TransmogResult_ItemTypesDontMatch: return sObjectMgr->GetTransmogCString(47);
+    case TransmogResult_ArmorTypesDontMatch: return sObjectMgr->GetTransmogCString(48);
+    case TransmogResult_WeaponTypesDontMatch: return sObjectMgr->GetTransmogCString(49);
+    case TransmogResult_EquipSlotsDontMatch: return sObjectMgr->GetTransmogCString(50);
+    case TransmogResult_InvalidSlot: return sObjectMgr->GetTransmogCString(51);
+    case TransmogResult_NonexistantTransmog: return sObjectMgr->GetTransmogCString(52);
+    case TransmogResult_EmptySlot: return sObjectMgr->GetTransmogCString(53);
+    case TransmogResult_NoPendingTarnsmogs: return sObjectMgr->GetTransmogCString(54);
+    case TransmogResult_CostChangedDuringTransaction: return sObjectMgr->GetTransmogCString(55);
+    case TransmogResult_NotEnoughMoney: return sObjectMgr->GetTransmogCString(56);
+    case TransmogResult_TooLongSetName: return sObjectMgr->GetTransmogCString(57);
+    case TransmogResult_NoTransmogrifications: return sObjectMgr->GetTransmogCString(58);
+    case TransmogResult_AtMaxSets: return sObjectMgr->GetTransmogCString(59);
+    case TransmogResult_NonexistantSet: return sObjectMgr->GetTransmogCString(60);
+    case TransmogResult_ItemNotFitForEnchantRequirements: return sObjectMgr->GetTransmogCString(61);
+    default: return "";
+    }
+}
+
 /*
 SELECT ItemVisual, GROUP_CONCAT(DBCNAME), GROUP_CONCAT(Name_Lang_enUS), GROUP_CONCAT(effect) FROM
 (
@@ -87,27 +127,26 @@ Transmogrification & Transmogrification::instance()
     static Transmogrification inst;
     return inst;
 }
-
 const char* Transmogrification::GetSlotName(uint8 slot, WorldSession* /*session*/)
 {
     TC_LOG_DEBUG("custom.transmog", "Transmogrification::GetSlotName");
 
     switch (slot)
     {
-        case EQUIPMENT_SLOT_HEAD: return  "Head";// session->GetTrinityString(LANG_SLOT_NAME_HEAD);
-        case EQUIPMENT_SLOT_SHOULDERS: return  "Shoulders";// session->GetTrinityString(LANG_SLOT_NAME_SHOULDERS);
-        case EQUIPMENT_SLOT_BODY: return  "Shirt";// session->GetTrinityString(LANG_SLOT_NAME_BODY);
-        case EQUIPMENT_SLOT_CHEST: return  "Chest";// session->GetTrinityString(LANG_SLOT_NAME_CHEST);
-        case EQUIPMENT_SLOT_WAIST: return  "Waist";// session->GetTrinityString(LANG_SLOT_NAME_WAIST);
-        case EQUIPMENT_SLOT_LEGS: return  "Legs";// session->GetTrinityString(LANG_SLOT_NAME_LEGS);
-        case EQUIPMENT_SLOT_FEET: return  "Feet";// session->GetTrinityString(LANG_SLOT_NAME_FEET);
-        case EQUIPMENT_SLOT_WRISTS: return  "Wrists";// session->GetTrinityString(LANG_SLOT_NAME_WRISTS);
-        case EQUIPMENT_SLOT_HANDS: return  "Hands";// session->GetTrinityString(LANG_SLOT_NAME_HANDS);
-        case EQUIPMENT_SLOT_BACK: return  "Back";// session->GetTrinityString(LANG_SLOT_NAME_BACK);
-        case EQUIPMENT_SLOT_MAINHAND: return  "Main hand";// session->GetTrinityString(LANG_SLOT_NAME_MAINHAND);
-        case EQUIPMENT_SLOT_OFFHAND: return  "Off hand";// session->GetTrinityString(LANG_SLOT_NAME_OFFHAND);
-        case EQUIPMENT_SLOT_RANGED: return  "Ranged";// session->GetTrinityString(LANG_SLOT_NAME_RANGED);
-        case EQUIPMENT_SLOT_TABARD: return  "Tabard";// session->GetTrinityString(LANG_SLOT_NAME_TABARD);
+        case EQUIPMENT_SLOT_HEAD: return sObjectMgr->GetTransmogCString(62);
+        case EQUIPMENT_SLOT_SHOULDERS: return sObjectMgr->GetTransmogCString(63);
+        case EQUIPMENT_SLOT_BODY: return sObjectMgr->GetTransmogCString(64);
+        case EQUIPMENT_SLOT_CHEST: return sObjectMgr->GetTransmogCString(65);
+        case EQUIPMENT_SLOT_WAIST: return sObjectMgr->GetTransmogCString(66);
+        case EQUIPMENT_SLOT_LEGS: return sObjectMgr->GetTransmogCString(67);
+        case EQUIPMENT_SLOT_FEET: return sObjectMgr->GetTransmogCString(68);
+        case EQUIPMENT_SLOT_WRISTS: return sObjectMgr->GetTransmogCString(69);
+        case EQUIPMENT_SLOT_HANDS: return sObjectMgr->GetTransmogCString(70);
+        case EQUIPMENT_SLOT_BACK: return sObjectMgr->GetTransmogCString(71);
+        case EQUIPMENT_SLOT_MAINHAND: return sObjectMgr->GetTransmogCString(72);
+        case EQUIPMENT_SLOT_OFFHAND: return sObjectMgr->GetTransmogCString(73);
+        case EQUIPMENT_SLOT_RANGED: return sObjectMgr->GetTransmogCString(74);
+        case EQUIPMENT_SLOT_TABARD: return sObjectMgr->GetTransmogCString(75);
         default: return NULL;
     }
 }
@@ -901,7 +940,7 @@ void Transmogrification::AddToCollection(Player* player, Item* item)
     if (!item)
         return;
     if (uint32 transmog = AddItemVisualToCollection(player, item))
-        ChatHandler(player->GetSession()).PSendSysMessage(AddToCollectionMessageFmt, GetItemLink(transmog, player->GetSession()).c_str());
+        ChatHandler(player->GetSession()).PSendSysMessage(sObjectMgr->GetTransmogCString(29), GetItemLink(transmog, player->GetSession()).c_str());
 }
 
 void Transmogrification::AddToCollection(Player* player, const ItemTemplate* itemtemplate)
@@ -911,7 +950,7 @@ void Transmogrification::AddToCollection(Player* player, const ItemTemplate* ite
     if (!itemtemplate)
         return;
     if (uint32 transmog = AddItemVisualToCollection(player, itemtemplate)) {
-        ChatHandler(player->GetSession()).PSendSysMessage(AddToCollectionMessageFmt, GetItemLink(transmog, player->GetSession()).c_str());
+        ChatHandler(player->GetSession()).PSendSysMessage(sObjectMgr->GetTransmogCString(29), GetItemLink(transmog, player->GetSession()).c_str());
     }
 }
 
@@ -926,7 +965,7 @@ void Transmogrification::AddToCollectionEnchant(Player* player, uint32 enchant_i
         {
             auto it = enchant_visual_to_name.find(enchantEntry->ItemVisual);
             if (it != enchant_visual_to_name.end()) {
-                ChatHandler(player->GetSession()).PSendSysMessage(AddToCollectionMessageFmt, it->second);
+                ChatHandler(player->GetSession()).PSendSysMessage(sObjectMgr->GetTransmogCString(29), it->second);
             }
         }
     }

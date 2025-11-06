@@ -1644,6 +1644,8 @@ void World::SetInitialWorldSettings()
     if (!sObjectMgr->LoadTrinityStrings())
         exit(1);                                            // Error message displayed in function already
 
+    sObjectMgr->LoadTransmogStrings();
+
     ///- Update the realm entry in the database with the realm type from the config file
     //No SQL injection as values are treated as integers
 

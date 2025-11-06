@@ -1150,6 +1150,10 @@ class TC_GAME_API ObjectMgr
             return _exclusiveQuestGroups.equal_range(exclusiveGroupId);
         }
 
+        bool LoadTransmogStrings();
+        const char* GetTransmogCString(uint32 entry);
+        const std::string* GetTransmogString(uint32 entry);
+
         bool LoadTrinityStrings();
 
         void LoadEventScripts();
@@ -1726,6 +1730,7 @@ class TC_GAME_API ObjectMgr
         QuestGreetingLocaleContainer _questGreetingLocaleStore;
 
         TrinityStringContainer _trinityStringStore;
+        std::unordered_map<uint32, std::string> _transmogStringStore;
 
         CacheVendorItemContainer _cacheVendorItemStore;
         std::unordered_map<uint32, Trainer::Trainer> _trainers;

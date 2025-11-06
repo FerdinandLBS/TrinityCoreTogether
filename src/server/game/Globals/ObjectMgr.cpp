@@ -8893,6 +8893,48 @@ void ObjectMgr::LoadGameObjectForQuests()
     TC_LOG_INFO("server.loading", ">> Loaded {} GameObjects for quests in {} ms", count, GetMSTimeDiffToNow(oldMSTime));
 }
 
+const char* ObjectMgr::GetTransmogCString(uint32 entry) {
+    const std::string* str = GetTransmogString(entry);
+
+    if (str == nullptr) {
+        return nullptr;
+    }
+    return str->c_str();
+}
+
+const std::string* ObjectMgr::GetTransmogString(uint32 entry) {
+    auto res = _transmogStringStore.find(entry);
+    if (res == _transmogStringStore.end()) {
+        return nullptr;
+    }
+    return &res->second;
+}
+
+bool ObjectMgr::LoadTransmogStrings() {
+    uint32 oldMSTime = getMSTime();
+
+    _transmogStringStore.clear(); // for reload case
+
+    QueryResult result = WorldDatabase.Query("SELECT entry, string FROM world.transmog_translate");
+    if (!result)
+    {
+        TC_LOG_INFO("server.loading", ">> Loaded 0 transmog strings. DB table `transmog_translate` is empty.");
+        return false;
+    }
+
+    do
+    {
+        Field* fields = result->Fetch();
+
+        uint32 entry = fields[0].GetUInt32();
+
+        _transmogStringStore.insert(std::pair<uint32, std::string>(entry, fields[1].GetString()));
+    } while (result->NextRow());
+
+    TC_LOG_INFO("server.loading", ">> Loaded {} transmog strings in {} ms", _transmogStringStore.size(), GetMSTimeDiffToNow(oldMSTime));
+    return true;
+}
+
 bool ObjectMgr::LoadTrinityStrings()
 {
     uint32 oldMSTime = getMSTime();
