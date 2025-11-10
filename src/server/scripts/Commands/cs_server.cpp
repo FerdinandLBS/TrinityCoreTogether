@@ -54,6 +54,8 @@ EndScriptData */
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
+extern uint32 g_itemEnhanceId;
+
 class server_commandscript : public CommandScript
 {
 public:
@@ -92,6 +94,7 @@ public:
             { "loglevel", rbac::RBAC_PERM_COMMAND_SERVER_SET_LOGLEVEL, true, &HandleServerSetLogLevelCommand, "" },
             { "motd",     rbac::RBAC_PERM_COMMAND_SERVER_SET_MOTD,     true, &HandleServerSetMotdCommand,     "" },
             { "closed",   rbac::RBAC_PERM_COMMAND_SERVER_SET_CLOSED,   true, &HandleServerSetClosedCommand,   "" },
+            { "enhanceid",   rbac::RBAC_PERM_COMMAND_SET_ENHENC_ID,       true, &HandleServerSetEnhanceID,       "" },
         };
 
         static std::vector<ChatCommand> serverCommandTable =
@@ -114,6 +117,16 @@ public:
             { "server", rbac::RBAC_PERM_COMMAND_SERVER, true, nullptr, "", serverCommandTable },
         };
         return commandTable;
+    }
+
+    static bool HandleServerSetEnhanceID(ChatHandler* handler, char const* args) {
+        g_itemEnhanceId = atoi(args);
+
+        handler->PSendSysMessage("Set item enhance id to %d", g_itemEnhanceId);
+        if (g_itemEnhanceId > 0) {
+            g_itemEnhanceId = 0 - g_itemEnhanceId;
+        }
+        return true;
     }
 
     // Triggering corpses expire check in world

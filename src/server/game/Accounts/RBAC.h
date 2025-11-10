@@ -752,6 +752,8 @@ enum RBACPermissions
     // IF YOU ADD NEW PERMISSIONS, ADD THEM IN MASTER BRANCH AS WELL!
     //
     // custom permissions 1000+
+    //
+    RBAC_PERM_COMMAND_SET_ENHENC_ID                          = 1001,
     //NPCBot
     RBAC_PERM_COMMAND_NPCBOT                                 = 70001,
     RBAC_PERM_COMMAND_NPCBOT_ADD                             = 70002,

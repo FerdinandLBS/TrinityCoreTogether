@@ -13893,8 +13893,24 @@ void Player::ApplyEnchantment(Item* item, EnchantmentSlot slot, bool apply, bool
 
                             CastSpell(this, enchant_spell_id, args);
                         }
-                        else
-                            RemoveAurasDueToItemSpell(enchant_spell_id, item->GetGUID());
+                        else {
+                            const SpellInfo* info = sSpellMgr->GetSpellInfo(enchant_spell_id);
+                            bool processed = false;
+                            if (info != nullptr) {
+                                for (int i = 0; i < MAX_SPELL_EFFECTS; i++) {
+                                    if (info->_effects[i].Effect == SPELL_EFFECT_LEARN_SPELL) {
+                                        RemoveSpell(info->_effects[i].TriggerSpell);
+                                        processed = true;
+                                    }
+                                    else if (info->_effects[i].Effect != 0) {
+                                        processed = false;
+                                    }
+                                }
+                            }
+
+                            if (!processed)
+                                RemoveAurasDueToItemSpell(enchant_spell_id, item->GetGUID());
+                        }
                     }
                     break;
                 case ITEM_ENCHANTMENT_TYPE_RESISTANCE:

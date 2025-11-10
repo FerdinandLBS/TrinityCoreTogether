@@ -30,9 +30,12 @@
 #include "botmgr.h"
 #include <unordered_map>
 #include <map>
+#include <random>
 //#include "SpellUtility.h"
 
 //#include "bot_ai.h"
+
+uint32 g_itemEnhanceId = 0;
 
 bool IsChanneling(Unit const* u = nullptr) { return u->GetCurrentSpell(CURRENT_CHANNELED_SPELL); }
 bool IsCasting(Unit const* u = nullptr) { return (u->HasUnitState(UNIT_STATE_CASTING) || IsChanneling(u) || u->IsNonMeleeSpellCast(false, false, true, false, false)); }
@@ -257,11 +260,11 @@ class spell_deamon_gate_warlock : public SpellScriptLoader
 public:
     spell_deamon_gate_warlock() : SpellScriptLoader("spell_deamon_gate_warlock") { }
 
-    class spell_bloodelf_warlock_SpellScript : public SpellScript
+    class spell_bloodelf_warlock_SpellScript : public AuraScript
     {
-        PrepareSpellScript(spell_bloodelf_warlock_SpellScript);
+        PrepareAuraScript(spell_bloodelf_warlock_SpellScript);
 
-        void HandleAfterCast()
+        void HandleAfterCast(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
         {
             Unit* owner = GetCaster();
             if (!owner)
@@ -270,13 +273,24 @@ public:
             SummonRandomDemon(owner, owner->GetOwner());
         }
 
+        void HandleProc(AuraEffect const* /*aurEff*/) {
+            Unit* owner = GetCaster();
+            if (!owner)
+                return;
+
+            SummonRandomDemon(owner, owner->GetOwner());
+        }
+
+
         void Register() override
         {
-            AfterCast += SpellCastFn(spell_bloodelf_warlock_SpellScript::HandleAfterCast);
+            AfterEffectApply += AuraEffectApplyFn(spell_bloodelf_warlock_SpellScript::HandleAfterCast, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL, AURA_EFFECT_HANDLE_REAL);
+
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_bloodelf_warlock_SpellScript::HandleProc, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
         }
     };
 
-    SpellScript* GetSpellScript() const override
+    AuraScript* GetAuraScript() const override
     {
         return new spell_bloodelf_warlock_SpellScript();
     }
@@ -1363,29 +1377,87 @@ public:
     {
         return new spell_bot_surroud_format_SpellScript();
     }
+};  
+
+std::vector<int32_t> enh_id_set[4] = {
+    // level 1
+    {
+        -119, -118, -117, -116, -115,
+        -114, -113, -112, -111, -110
+    },
+
+    // level 2
+    {
+        -129, -128, -127, -126, -125,
+        -124, -123, -122, -121, -120
+    },
+
+    // level 3
+    {
+        -212, -210,
+        -210, -139, -138, -137, -136,
+        -135, -134, -133, -132, -131,
+        -130
+    },
+
+    // level 4
+    {
+        -209, /*-208, -207, -206,*/ -205,
+        -204, -203, -202, -201, -200,
+        -199, -198, -197, -196, -195,
+        -194, -193, -192, -191
+    }
 };
 
-int generate_random_item_suffix(int curr, bool is_weapon) {
-    int level = abs(curr) / 10 - 10;
 
-    if (level <= 3) {
-        if ((rand() % 100) < (40 - level * 10)) {
-            level++;
+#define INVALID_ITEM_SUFFIX -100
+
+uint32 get_item_enhance_level(int random_suffix) {
+    for (int i = 0; i < 4; i++) {
+        if (std::binary_search(enh_id_set[i].begin(), enh_id_set[i].end(), random_suffix)) {
+            return i;
         }
-
-        if (level < 4)
-            return -(rand() % 10 + level * 10 + 100);
     }
+    return INVALID_ITEM_SUFFIX;
+}
 
-    // level = 4;
-    if (is_weapon) {
-        int ids[] = { 3,4,5,6,13,14 };
-        return -(190 + ids[rand() % 6]);
+void notify_enhance_result(Player* player, int id, Item* /*item*/, bool is_upgrade) {
+    const char* msg = nullptr;
+    const char* suffix_name = "";
+    const ItemRandomSuffixEntry* entry = sItemRandomSuffixStore.LookupEntry(abs(id));
+    if (entry != nullptr) {
+        // For zhCN
+        suffix_name = entry->Name[4];
+    }
+    if (is_upgrade) {
+        player->CastSpell(player, 26291, true);
+        player->CastSpell(player, 26294, true);
+        player->CastSpell(player, 26334, true);
+        msg = sObjectMgr->GetTrinityStringForDBCLocale(20001);
     }
     else {
-        int ids[] = { 1, 2,7,8,9,10,11, 13, 14 };
-        return -(190 + ids[rand() % 9]);
+        msg = sObjectMgr->GetTrinityStringForDBCLocale(20000);
     }
+
+    player->GetSession()->SendAreaTriggerMessage(msg, suffix_name);
+}
+
+int generate_random_item_suffix(int curr, bool /*is_weapon*/, bool& is_upgrade) {
+    int level = get_item_enhance_level(curr);
+
+    is_upgrade = false;
+    if (level < 3) {
+        if ((rand() % 100) < (40 - level * 10)) {
+            is_upgrade = true;;
+            level++;
+        }
+    }
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dist(0, enh_id_set[level].size() - 1);
+
+    return enh_id_set[level][dist(gen)];
 }
 
 class item_weapon_levelup : SpellScriptLoader
@@ -1425,6 +1497,7 @@ public:
         }
 
         void HandleAfterCast() {
+            bool is_upgrade = false;
             Player* player = GetCaster()->ToPlayer();
             Spell* spell = GetSpell();
             Item* weapon = spell->m_targets.GetItemTarget();
@@ -1434,12 +1507,21 @@ public:
 
             int origin_id = weapon->GetItemRandomPropertyId();
             if (origin_id > -110) origin_id = -110;
-            int id = generate_random_item_suffix(origin_id, true);
-            while (id == origin_id) id = generate_random_item_suffix(origin_id, true);
+            int id;
+
+            if (g_itemEnhanceId != 0) {
+                id = g_itemEnhanceId;
+                g_itemEnhanceId = 0;
+            } else {
+                id = generate_random_item_suffix(origin_id, true, is_upgrade);
+                while (id == origin_id) id = generate_random_item_suffix(origin_id, true, is_upgrade);
+            }
 
             player->ApplyEnchantment(weapon, false);
             weapon->SetItemRandomProperties(id);
             player->ApplyEnchantment(weapon, true);
+
+            notify_enhance_result(player, id, weapon, is_upgrade);
         }
 
         void Register() override
@@ -1491,6 +1573,7 @@ public:
             return SpellCastResult::SPELL_CAST_OK;
         }
         void HandleAfterCast() {
+            bool is_upgrade = false;
             Player* player = GetCaster()->ToPlayer();
             Spell* spell = GetSpell();
             Item* weapon = spell->m_targets.GetItemTarget();
@@ -1500,14 +1583,22 @@ public:
 
             int origin_id = weapon->GetItemRandomPropertyId();
             if (origin_id > -110) origin_id = -110;
-            int id = generate_random_item_suffix(origin_id, false);
-            while (id == origin_id) {
-                id = generate_random_item_suffix(origin_id, false);
+
+            int id;
+            if (g_itemEnhanceId != 0) {
+                id = g_itemEnhanceId;
+                g_itemEnhanceId = 0;
+            }
+            else {
+                id = generate_random_item_suffix(origin_id, false, is_upgrade);
+                while (id == origin_id) id = generate_random_item_suffix(origin_id, true, is_upgrade);
             }
 
             player->ApplyEnchantment(weapon, false);
             weapon->SetItemRandomProperties(id);
             player->ApplyEnchantment(weapon, true);
+
+            notify_enhance_result(player, id, weapon, is_upgrade);
         }
 
         void Register() override

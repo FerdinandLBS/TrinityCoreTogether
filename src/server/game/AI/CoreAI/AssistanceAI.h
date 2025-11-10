@@ -154,6 +154,8 @@ public:
         _followAngle = static_cast<float>((rand() % 32) * M_PI / 16);
         _followDistance = 1.2f;
         _gcd = 0;
+        _effSpell = 0;
+        _realowner = nullptr;
         for (int i = 0; i < AAI_SPELL_MAX_TYPES; i++) {
             std::vector<int32> nullVector;
             _spells.insert(std::pair<unsigned, std::vector<int32>>(i, nullVector));

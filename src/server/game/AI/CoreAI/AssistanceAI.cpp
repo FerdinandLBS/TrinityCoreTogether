@@ -1686,6 +1686,9 @@ void AssistanceAI::JustAppeared() {
         me->CastSpell(owner, 81400, true);
         owner->CastSpell(me, 81400, true);
         break;
+    case 46029:
+        me->CastSpell(me, 81107, true);
+        break;
     default:
         ;
     }

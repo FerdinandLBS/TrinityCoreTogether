@@ -94,7 +94,7 @@ INSERT INTO world.assists_addon (`entry`, `str_inh`, `agi_inh`, `sta_inh`, `int_
 VALUES
 (46003, 0.15, 2.15, 0.25, 0.15, 0.15, '', '', '', 3, 0, 0, 0, 0, 1.0, 4.7123889795), -- Hellhound
 (46004, 0.15, 2.15, 0.25, 0.15, 0.15, '', '', '', 3, 0, 0, 0, 0, 1.0, 4.7123889795), -- Succubus
-(46005, 2.15, 2.15, 0.65, 0.15, 0.15, '', '', '', 3, 0, 0, 0, 0, 1.0, 4.7123889795), -- Felguard
+(46005, 0.15, 2.15, 0.65, 0.15, 0.15, '', '', '', 3, 0, 0, 0, 0, 1.0, 4.7123889795), -- Felguard
 (46020, 0.15, 0.15, 0.15, 0.15, 0.15, '为了洛丹伦', '有人受伤吗？', '', 2, 1, 1500, 85907, 0, 0, 0), -- War3 Priest
 (46025, 1.15, 1.15, 1.35, 0.15, 0.15, '', '', '', 3, 1, 0, 0, 0, 1.0, 4.7123889795),  -- Imp
 (46029, 1.15, 1.15, 1.35, 0.15, 0.15, '', '', '', 0, 1, 0, 81108, 3, 0, 0),  -- Demo Gate
@@ -106,7 +106,8 @@ VALUES
 (45008, 0.2, 0.2, 0.2, 0.4, 0.4, '', '', '', 3, 1, 0, 0, 0, 0, 0), -- Albert. Dwarf Talent
 (45009, 0.2, 0.2, 0.2, 0.4, 0.4, '', '', '', 3, 1, 0, 0, 0, 0, 0), -- Black Stone. Dwarf Talent
 (45010, 0.4, 0.4, 0.2, 0.2, 0.2, '', '', '', 3, 0, 0, 0, 0, 0, 0), -- Thunder Hammer. Dwarf Talent
-(45011, 0.2, 0.2, 0.2, 0.4, 0.4, '', '', '', 2, 1, 0, 0, 0, 0, 0); -- Ligth. Dwarf Talent
+(45011, 0.2, 0.2, 0.2, 0.4, 0.4, '', '', '', 2, 1, 0, 0, 0, 0, 0), -- Ligth. Dwarf Talent
+('46026', '2.15', '2.15', '1.65', '0.15', '0.15', '', '', '', '3', '0', '0', '0', '0', '1', '4.71239');
 
 -- Insert trinity strings
 INSERT INTO world.trinity_string (`entry`,`content_default`) VALUES
@@ -198,6 +199,7 @@ insert into world.playercreateinfo_item (`race`, `class`, `itemid`, `amount`) VA
 insert into world.playercreateinfo_item (`race`, `class`, `itemid`, `amount`) VALUES ('0', '0', '11602', '1');
 insert into world.playercreateinfo_item (`race`, `class`, `itemid`, `amount`) VALUES ('0', '0', '28395', '1');
 insert into world.playercreateinfo_item (`race`, `class`, `itemid`, `amount`) VALUES ('0', '0', '24490', '1');
+insert into world.playercreateinfo_item (`race`, `class`, `itemid`, `amount`) VALUES ('0', '0', '7146', '1');
 
 -- 多重施法
 INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81123', 'spell_multiple_trigger_aura');
@@ -210,7 +212,7 @@ INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `
 INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('45001', '3', '81003', '12340');
 
 -- 召唤恶魔
-INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81108', 'spell_deamon_gate_warlock');
+INSERT INTO `world`.`spell_script_names` (`spell_id`, `ScriptName`) VALUES ('81107', 'spell_deamon_gate_warlock');
 INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES 
 ('46029', '0', '0', '0', '0', '0', '9510', '0', '0', '0', '虚空传送门', '', '', '0', '1', '80', '0', '14', '0', '0.01', '0.01', '1', '0', '0', '2000', '2000', '1', '1', '2', '33555200', '2048', '0', '0', '10', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '0', '1', '1', '0', '1', '1', '1', '0', '0', '1', '0', '0', '64', 'AssistanceAI', '12340');
 INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('46029', '0', '81107', '12340');
@@ -1484,12 +1486,16 @@ INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALU
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '203', '0.3');
 INSERT INTO `world`.`item_enchantment_template` (`entry`, `ench`, `chance`) VALUES ('9001', '204', '0.3');
 
+-- <<< Item enhance >>>
+DELETE FROM `world`.`trinity_string` WHERE entry >= 20000;
+INSERT INTO `world`.`trinity_string` (`entry`, `content_default`) VALUES ('20000', '锻造成功！获得强化：%s');
+INSERT INTO `world`.`trinity_string` (`entry`, `content_default`) VALUES ('20001', '恭喜！强化等级提升了！获得强化：%s');
+
 -- lvl4 supporting
 -- Summon Priest
 INSERT INTO `world`.`creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`, `KillCredit1`, `KillCredit2`, `modelid1`, `modelid2`, `modelid3`, `modelid4`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `lootid`, `pickpocketloot`, `skinloot`, `PetSpellDataId`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `spell_school_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES ('46020', '0', '0', '0', '0', '0', '17329', '0', '0', '0', '牧师', '', '', '0', '1', '80', '0', '1718', '0', '1', '1.14286', '0.7', '0', '0', '1400', '2000', '1', '1', '1', '0', '2048', '0', '0', '7', '0', '0', '0', '0', '0', '0', '0', '0', 'AssistanceAI', '1', '1', '0.7', '1', '1', '1', '1', '0', '0', '1', '0', '0', '0', 'AssistanceAI', '12340');
 INSERT INTO `world`.`creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES ('46020', '0', '85902', '12340');
 INSERT INTO `world`.`creature_equip_template` (`CreatureID`, `ID`, `ItemID1`, `ItemID2`, `ItemID3`, `VerifiedBuild`) VALUES ('46020', '1', '5303', '0', '0', '18019');
-
 
 -- 武器
 update world.item_template set RandomSuffix=9002 where Quality>=3 and InventoryType>0 and RandomProperty=0 and RandomSuffix=0 and InventoryType<>0 and InventoryType<>18 and InventoryType<>24 and InventoryType<>27 and (InventoryType=13 or InventoryType=14 or InventoryType=15 or InventoryType=17 or InventoryType=21 or InventoryType=22);

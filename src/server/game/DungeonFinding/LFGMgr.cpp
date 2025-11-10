@@ -63,8 +63,7 @@ LFGDungeonData::LFGDungeonData(LFGDungeonEntry const* dbc) : id(dbc->ID), name(d
 }
 
 LFGMgr::LFGMgr(): m_QueueTimer(0), m_lfgProposalId(1),
-    m_options(sWorld->getIntConfig(CONFIG_LFG_OPTIONSMASK)),
-    m_isSoloLFG(false)
+    m_options(sWorld->getIntConfig(CONFIG_LFG_OPTIONSMASK))
 {
 }
 
@@ -1238,7 +1237,7 @@ void LFGMgr::UpdateProposal(uint32 proposalId, ObjectGuid guid, bool accept)
         if (itPlayers->second.accept != LFG_ANSWER_AGREE)   // No answer (-1) or not accepted (0)
             allAnswered = false;
 
-    if (!sLFGMgr->IsSoloLFG() && !allAnswered)
+    if (!allAnswered)
     {
         for (LfgProposalPlayerContainer::const_iterator it = proposal.players.begin(); it != proposal.players.end(); ++it)
             SendLfgUpdateProposal(it->first, proposal);
@@ -2319,11 +2318,6 @@ LfgDungeonSet LFGMgr::GetRandomAndSeasonalDungeons(uint8 level, uint8 expansion)
             randomDungeons.insert(dungeon.Entry());
     }
     return randomDungeons;
-}
-
-void LFGMgr::ToggleSoloLFG()
-{
-    m_isSoloLFG = !m_isSoloLFG;
 }
 
 } // namespace lfg
