@@ -21,6 +21,7 @@ void AddSC_Transmogrification();
 extern void AddSC_telebook_script();
 extern void AddSC_TCTogether_script();
 extern void AddSC_RewardOnLevel();
+extern void AddSC_AutoLeanrSpellsScripts();
 
 class SpellScriptName : public SpellScriptLoader
 {
@@ -59,4 +60,5 @@ void AddCustomScripts()
     AddSC_telebook_script();
     AddSC_TCTogether_script();
     AddSC_RewardOnLevel();
+    AddSC_AutoLeanrSpellsScripts();
 }
