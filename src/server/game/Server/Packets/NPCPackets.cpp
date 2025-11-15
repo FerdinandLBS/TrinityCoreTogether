@@ -67,3 +67,14 @@ WorldPacket const* WorldPackets::NPC::TrainerBuySucceeded::Write()
 
     return &_worldPacket;
 }
+
+WorldPacket const* WorldPackets::NPC::GossipPOI::Write()
+{
+    _worldPacket << int32(Flags);
+    _worldPacket << Pos;
+    _worldPacket << int32(Icon);
+    _worldPacket << int32(Importance);
+    _worldPacket << Name;
+
+    return &_worldPacket;
+}

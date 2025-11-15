@@ -54,6 +54,20 @@ namespace WorldPackets
             std::array<int32, 3> ReqAbility = { };
         };
 
+        class GossipPOI final : public ServerPacket
+        {
+        public:
+            GossipPOI() : ServerPacket(SMSG_GOSSIP_POI, 4 + 4 + 4 + 4 + 4 + 32) { }
+
+            WorldPacket const* Write() override;
+
+            uint32 Flags = 0;
+            TaggedPosition<Position::XY> Pos;
+            int32 Icon = 0;
+            int32 Importance = 0;
+            std::string Name;
+        };
+
         class TrainerList final : public ServerPacket
         {
         public:

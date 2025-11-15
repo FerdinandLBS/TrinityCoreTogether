@@ -38,6 +38,16 @@ public:
         return _callbacks.back();
     }
 
+    bool Empty() const
+    {
+        return _callbacks.empty();
+    }
+
+    void CancelAll()
+    {
+        _callbacks.clear();
+    }
+
     void ProcessReadyCallbacks()
     {
         if (_callbacks.empty())

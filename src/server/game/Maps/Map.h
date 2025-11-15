@@ -38,10 +38,17 @@
 #include <list>
 #include <memory>
 #include <mutex>
+#ifdef ELUNA
+#include "LuaValue.h"
+#include "ElunaMgr.h"
+#endif
 
 class Battleground;
 class BattlegroundMap;
 class CreatureGroup;
+#ifdef ELUNA
+class Eluna;
+#endif
 class GameObjectModel;
 class Group;
 class InstanceMap;
@@ -351,7 +358,7 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
 
         void VisitNearbyCellsOf(WorldObject* obj, TypeContainerVisitor<Trinity::ObjectUpdater, GridTypeMapContainer> &gridVisitor, TypeContainerVisitor<Trinity::ObjectUpdater, WorldTypeMapContainer> &worldVisitor);
         virtual void Update(uint32);
-
+        bool IsParentMap() const { return GetParent() == this; }
         float GetVisibilityRange() const { return m_VisibleDistance; }
         //function for setting up visibility distance for maps on per-type/per-Id basis
         virtual void InitVisibilityDistance();
@@ -823,6 +830,10 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
 
         typedef std::function<void(Map*)> FarSpellCallback;
         void AddFarSpellCallback(FarSpellCallback&& callback);
+#ifdef ELUNA
+        Eluna* GetEluna() const { return sElunaMgr->Get(_elunaInfo); }
+        LuaVal lua_data = LuaVal({});
+#endif
 
     private:
         // Type specific code for add/remove to/from grid
@@ -903,6 +914,9 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
         std::unordered_set<Object*> _updateObjects;
 
         MPSCQueue<FarSpellCallback> _farSpellCallbacks;
+#ifdef ELUNA
+        ElunaInfo _elunaInfo;
+#endif
 };
 
 enum InstanceResetMethod

@@ -594,6 +594,51 @@ void Guild::Member::UpdateLogoutTime()
     m_logoutTime = GameTime::GetGameTime();
 }
 
+void Guild::_SetLeader(CharacterDatabaseTransaction trans, Member& leader)
+{
+    bool isInTransaction = bool(trans);
+    if (!isInTransaction)
+        trans = CharacterDatabase.BeginTransaction();
+
+    m_leaderGuid = leader.GetGUID();
+    leader.ChangeRank(trans, GR_GUILDMASTER);
+
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_GUILD_LEADER);
+    stmt->setUInt32(0, m_leaderGuid.GetCounter());
+    stmt->setUInt32(1, m_id);
+    trans->Append(stmt);
+
+    if (!isInTransaction)
+        CharacterDatabase.CommitTransaction(trans);
+}
+
+void Guild::HandleSetNewGuildMaster(WorldSession* session, std::string_view name)
+{
+    Player* player = session->GetPlayer();
+
+    Member* oldGuildMaster = GetMember(GetLeaderGUID());
+    ASSERT(oldGuildMaster);
+
+    if (!_IsLeader(player))
+    {
+        SendCommandResult(session, GUILD_COMMAND_CHANGE_LEADER, ERR_GUILD_PERMISSIONS);
+        return;
+    }
+
+    Member* newGuildMaster = GetMember(name);
+    if (!newGuildMaster)
+        return;
+
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+
+    _SetLeader(trans, *newGuildMaster);
+    oldGuildMaster->ChangeRank(trans, GR_OFFICER);
+
+    _BroadcastEvent(GE_LEADER_CHANGED, ObjectGuid::Empty, player->GetName(), newGuildMaster->GetName());
+
+    CharacterDatabase.CommitTransaction(trans);
+}
+
 void Guild::Member::SaveToDB(CharacterDatabaseTransaction trans) const
 {
     CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_GUILD_MEMBER);

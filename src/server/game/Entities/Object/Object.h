@@ -36,6 +36,10 @@
 #include <list>
 #include <set>
 #include <unordered_map>
+#ifdef ELUNA
+#include "ElunaEventMgr.h"
+#include "LuaValue.h"
+#endif
 
 class Corpse;
 class Creature;
@@ -57,6 +61,10 @@ class UpdateData;
 class WorldObject;
 class WorldPacket;
 class ZoneScript;
+#ifdef ELUNA
+class ElunaEventProcessor;
+class Eluna;
+#endif
 struct FactionTemplateEntry;
 struct PositionFullTerrainStatus;
 struct QuaternionData;
@@ -527,6 +535,17 @@ class TC_GAME_API WorldObject : public Object, public WorldLocation
         bool IsStoredInWorldObjectGridContainer() const;
 
         uint32  LastUsedScriptID;
+
+#ifdef ELUNA
+        std::unique_ptr <ElunaEventProcessor> elunaMapEvents;
+        std::unique_ptr <ElunaEventProcessor> elunaWorldEvents;
+
+        Eluna* GetEluna() const;
+
+        std::unique_ptr<ElunaEventProcessor>& GetElunaEvents(int32 mapId) { return (mapId == -1) ? elunaWorldEvents : elunaMapEvents; }
+
+        LuaVal lua_data = LuaVal({});
+#endif
 
         // Transports
         Transport* GetTransport() const { return m_transport; }

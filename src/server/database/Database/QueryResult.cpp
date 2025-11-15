@@ -359,6 +359,12 @@ PreparedResultSet::~PreparedResultSet()
     CleanUp();
 }
 
+QueryResultFieldMetadata const& ResultSet::GetFieldMetadata(std::size_t index) const
+{
+    ASSERT(index < std::size_t(_fieldCount));
+    return _fieldMetadata[index];
+}
+
 bool ResultSet::NextRow()
 {
     MYSQL_ROW row;
@@ -440,6 +446,12 @@ Field const& PreparedResultSet::operator[](std::size_t index) const
     ASSERT(m_rowPosition < m_rowCount);
     ASSERT(index < m_fieldCount);
     return m_rows[uint32(m_rowPosition) * m_fieldCount + index];
+}
+
+QueryResultFieldMetadata const& PreparedResultSet::GetFieldMetadata(std::size_t index) const
+{
+    ASSERT(index < std::size_t(m_fieldCount));
+    return m_fieldMetadata[index];
 }
 
 void PreparedResultSet::CleanUp()

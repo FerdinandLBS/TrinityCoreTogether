@@ -22,6 +22,10 @@
 #include "CreatureAI.h"
 #include "Player.h"
 
+#ifdef ELUNA
+#include "LuaEngine.h"
+#endif
+
 //npcbot
 #include "botmgr.h"
 //end npcbot
@@ -79,6 +83,20 @@ void CombatReference::EndCombat()
     bool const needSecondAI = second->GetCombatManager().UpdateOwnerCombatState();
 
     // ...and if that happened, also notify the AI of it...
+#ifdef ELUNA
+    if (needFirstAI)
+    {
+        if (Player* player = first->ToPlayer())
+            if (Eluna* e = first->GetEluna())
+                e->OnPlayerLeaveCombat(player);
+    }
+    if (needSecondAI)
+    {
+        if (Player* player = second->ToPlayer())
+            if (Eluna* e = second->GetEluna())
+                e->OnPlayerLeaveCombat(player);
+    }
+#endif
     if (needFirstAI)
         if (UnitAI* firstAI = first->GetAI())
             firstAI->JustExitedCombat();
@@ -114,8 +132,15 @@ void CombatReference::SuppressFor(Unit* who)
 {
     Suppress(who);
     if (who->GetCombatManager().UpdateOwnerCombatState())
+    {
+#ifdef ELUNA
+        if (Player* player = who->ToPlayer())
+            if (Eluna* e = player->GetEluna())
+                e->OnPlayerLeaveCombat(player);
+#endif
         if (UnitAI* ai = who->GetAI())
             ai->JustExitedCombat();
+    }
 }
 
 bool PvPCombatReference::Update(uint32 tdiff)
@@ -347,8 +372,15 @@ void CombatManager::SuppressPvPCombat()
     for (auto const& pair : _pvpRefs)
         pair.second->Suppress(_owner);
     if (UpdateOwnerCombatState())
+    {
+#ifdef ELUNA
+        if (Player* player = _owner->ToPlayer())
+            if (Eluna* e = player->GetEluna())
+                e->OnPlayerLeaveCombat(player);
+#endif
         if (UnitAI* ownerAI = _owner->GetAI())
             ownerAI->JustExitedCombat();
+    }
 }
 
 void CombatManager::EndAllPvECombat()
@@ -397,6 +429,11 @@ void CombatManager::EndAllPvPCombat()
 
 /*static*/ void CombatManager::NotifyAICombat(Unit* me, Unit* other)
 {
+#ifdef ELUNA
+    if (Player* player = me->ToPlayer())
+        if (Eluna* e = player->GetEluna())
+            e->OnPlayerEnterCombat(player, other);
+#endif
     if (UnitAI* ai = me->GetAI())
         ai->JustEnteredCombat(other);
 }

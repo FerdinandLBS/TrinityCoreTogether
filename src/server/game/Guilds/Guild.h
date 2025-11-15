@@ -645,6 +645,8 @@ class TC_GAME_API Guild
         time_t GetCreatedDate() const { return m_createdDate; }
         uint64 GetBankMoney() const { return m_bankMoney; }
 
+        void _SetLeader(CharacterDatabaseTransaction trans, Member& leader);
+        void HandleSetNewGuildMaster(WorldSession* session, std::string_view name);
         bool SetName(std::string_view name);
 
         // Handle client commands

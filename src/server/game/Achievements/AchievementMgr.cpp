@@ -44,6 +44,9 @@
 #include "SpellMgr.h"
 #include "World.h"
 #include "WorldSession.h"
+#ifdef ELUNA
+#include "LuaEngine.h"
+#endif
 #include "WowTime.h"
 
 bool AchievementCriteriaData::IsValid(AchievementCriteriaEntry const* criteria)
@@ -1529,6 +1532,11 @@ void AchievementMgr::CompletedAchievement(AchievementEntry const* achievement)
 
     UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_ACHIEVEMENT, achievement->ID);
     UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_EARN_ACHIEVEMENT_POINTS, achievement->Points);
+
+#ifdef ELUNA
+    if (Eluna* e = GetPlayer()->GetEluna())
+        e->OnAchievementComplete(GetPlayer(), achievement->ID);
+#endif
 
     // reward items and titles if any
     AchievementReward const* reward = sAchievementMgr->GetAchievementReward(achievement);
